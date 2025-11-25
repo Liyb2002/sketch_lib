@@ -149,14 +149,6 @@ def main():
             grid.save(grid_path)
             print(f"    Saved grid: {grid_path}")
 
-            views = crop_grid_to_views(grid, N_COLS, N_ROWS)
-            print(f"    Cropping into {len(views)} views...")
-
-            for i, v in enumerate(views):
-                view_path = views_root / f"{stem}_view_{i}.png"
-                v.save(view_path)
-                print(f"      saved {view_path}")
-
     print("\n[NVS] All done.")
 
 
