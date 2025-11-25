@@ -18,7 +18,7 @@ from PIL import Image
 from segment_anything import sam_model_registry, SamAutomaticMaskGenerator
 
 # ------------- config -------------
-ROOT_DIR = Path("sketches")           # root folder of all categories
+ROOT_DIR = Path("sketches_raw")           # root folder of all categories
 MODEL_TYPE = "vit_h"                  # "vit_h", "vit_l", or "vit_b"
 CHECKPOINT = "sam_vit_h_4b8939.pth"   # path to your SAM checkpoint
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
