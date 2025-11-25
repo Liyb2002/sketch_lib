@@ -41,7 +41,7 @@ SRC_ID = "0"
 DST_ID = "1"
 
 # Label name shared by both sketches
-LABEL = "wheel"
+LABEL = "tank"
 
 # Diff threshold for mask extraction
 DIFF_THRESH = 20
