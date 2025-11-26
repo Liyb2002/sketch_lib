@@ -2,11 +2,14 @@
 """
 extract_components_clean.py — split Zero123++ 2×3 grid into 6 images
 and convert grey backgrounds into pure white while preserving sketch lines.
+Creates a separate folder for each grid image containing its 6 views.
+Cleans the components folder before writing.
 """
 
 from pathlib import Path
 from PIL import Image
 import numpy as np
+import shutil
 
 ROOT = Path(__file__).resolve().parent
 SKETCHES_DIR = ROOT / "sketches"
@@ -38,20 +41,11 @@ def clean_background(tile: Image.Image) -> Image.Image:
     Convert grey background to pure white while keeping sketch lines.
     Works because sketches are dark & background is light grey.
     """
-
     arr = np.array(tile).astype(np.uint8)
-
-    # Convert to grayscale to detect background
     gray = arr.mean(axis=2)
-
-    # Threshold: everything lighter than 200 becomes pure white
-    # You can adjust 200 → 180 or 220 depending on style
     mask_bg = gray > 165
-
-    # Create a white canvas
     out = arr.copy()
     out[mask_bg] = [255, 255, 255]
-
     return Image.fromarray(out)
 
 
@@ -66,8 +60,13 @@ def main():
             print("  no views/ folder, skipping")
             continue
 
-        out_dir = obj_dir / "components"
-        out_dir.mkdir(exist_ok=True)
+        components_root = obj_dir / "components"
+
+        # Clean the components folder fully
+        if components_root.exists():
+            print("  Cleaning components/ folder...")
+            shutil.rmtree(components_root)
+        components_root.mkdir(exist_ok=True)
 
         grid_paths = sorted(views_dir.glob("*_grid.png"))
         if not grid_paths:
@@ -79,11 +78,15 @@ def main():
             grid_img = Image.open(grid_path).convert("RGB")
             tiles = split_grid(grid_img)
 
+            # Folder for this specific grid
             stem = grid_path.stem.replace("_grid", "")
+            grid_output_dir = components_root / stem
+            grid_output_dir.mkdir(exist_ok=True)
 
+            # Save views with simple names: view_0.png … view_5.png
             for i, tile in enumerate(tiles):
                 cleaned = clean_background(tile)
-                out_path = out_dir / f"{stem}_comp_{i}.png"
+                out_path = grid_output_dir / f"view_{i}.png"
                 cleaned.save(out_path)
                 print(f"    Saved {out_path}")
 
