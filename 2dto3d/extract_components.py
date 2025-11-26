@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-extract_components_clean.py — split Zero123++ 2×3 grid into 6 images
+extract_individual_clean.py — split Zero123++ 2×3 grid into 6 images
 and convert grey backgrounds into pure white while preserving sketch lines.
 Creates a separate folder for each grid image containing its 6 views.
-Cleans the components folder before writing.
+Cleans the individual folder before writing.
 """
 
 from pathlib import Path
@@ -60,13 +60,13 @@ def main():
             print("  no views/ folder, skipping")
             continue
 
-        components_root = obj_dir / "components"
+        individual_root = obj_dir / "individual_object"
 
-        # Clean the components folder fully
-        if components_root.exists():
-            print("  Cleaning components/ folder...")
-            shutil.rmtree(components_root)
-        components_root.mkdir(exist_ok=True)
+        # Clean the individual folder fully
+        if individual_root.exists():
+            print("  Cleaning individual/ folder...")
+            shutil.rmtree(individual_root)
+        individual_root.mkdir(exist_ok=True)
 
         grid_paths = sorted(views_dir.glob("*_grid.png"))
         if not grid_paths:
@@ -80,7 +80,7 @@ def main():
 
             # Folder for this specific grid
             stem = grid_path.stem.replace("_grid", "")
-            grid_output_dir = components_root / stem
+            grid_output_dir = individual_root / stem
             grid_output_dir.mkdir(exist_ok=True)
 
             # Save views with simple names: view_0.png … view_5.png
