@@ -1,27 +1,32 @@
 #!/usr/bin/env python3
 """
-match_view.py — Find the canonical view using DINOv2 (Structural Mode).
-Features:
-- Intermediate Layers (Focus on Pose)
-- Silhouette Masking (Ignore Texture)
-- Auto-Cropping (Ignore Scale/Position)
-- Feature Whitening (Maximize Score Separation)
+match_sequence.py — Cannolize a sequence of sketches to a Master Pose.
+Logic:
+1. Master Pose = 0.png
+2. For every other sketch (1.png, 2.png...):
+   - Look at its OWN expansion (expanded_36/1/, expanded_36/2/...)
+   - Find the view that matches the structure/pose of 0.png.
+   - Save that view to cannolized/{id}.png.
 """
 
 import os
+import shutil
 import torch
 import numpy as np
 import torch.nn.functional as F
+from pathlib import Path
 from PIL import Image, ImageOps
 from transformers import AutoImageProcessor, AutoModel
 
 # --- CONFIGURATION ---
-TARGET_IMAGE_PATH = "sketches/chairs/1.png"
-CANDIDATES_FOLDER = "sketches/chairs/expanded_36/0/"
-RESULT_PATH = "match_result.png"
+BASE_DIR = Path("sketches/chairs")
+EXPANDED_DIR = BASE_DIR / "expanded_36"
+OUTPUT_DIR = BASE_DIR / "cannolized"
 
-# 1. LAYER SELECTION
-# Layer 9 is usually the best balance for structural pose
+# The Master Pose Image
+ANCHOR_POSE_FILENAME = "0.png"
+
+# 1. LAYER SELECTION (Layer 9 is best for structural pose)
 LAYER_INDEX = 9 
 
 # 2. MASKING DETAILS
@@ -30,7 +35,7 @@ USE_SILHOUETTE = True
 # ---------------------------------------------------------------------
 
 def load_dinov2():
-    print(f"Loading DINOv2-base (Layer {LAYER_INDEX})...")
+    print(f"[DINO] Loading DINOv2-base (Layer {LAYER_INDEX})...")
     device = "cuda" if torch.cuda.is_available() else "cpu"
     processor = AutoImageProcessor.from_pretrained('facebook/dinov2-base')
     model = AutoModel.from_pretrained('facebook/dinov2-base').to(device)
@@ -40,10 +45,9 @@ def preprocess_structure(image_path):
     """
     1. Load Image
     2. Convert to Silhouette (Black Ink / White Bg)
-    3. Auto-Crop to the content (Removes empty whitespace)
+    3. Auto-Crop to the content
     """
     if not os.path.exists(image_path):
-        print(f"Error: File not found {image_path}")
         return None
         
     img = Image.open(image_path).convert("RGB")
@@ -59,16 +63,12 @@ def preprocess_structure(image_path):
         img = Image.fromarray(silhouette)
 
     # --- AUTO-CROP LOGIC ---
-    # Invert so ink is white (getbbox looks for non-zero pixels)
     inverted = ImageOps.invert(img)
     bbox = inverted.getbbox()
     
     if bbox:
-        # Crop to the drawing
         img = img.crop(bbox)
-        
-        # Optional: Add a small white border back so it's not cramped
-        # DINO likes a little context
+        # Add padding back so DINO has context
         w, h = img.size
         pad = max(w, h) // 10
         new_size = (w + 2*pad, h + 2*pad)
@@ -92,92 +92,110 @@ def get_raw_embedding(image_path, processor, model, device):
     embedding = target_layer[:, 0, :] # [CLS] token
     return embedding
 
-def create_comparison_image(target_path, best_match_path, score):
-    img_a = Image.open(target_path).convert("RGB")
-    img_b = Image.open(best_match_path).convert("RGB")
-    
-    ratio = img_a.height / img_b.height
-    new_size = (int(img_b.width * ratio), img_a.height)
-    img_b = img_b.resize(new_size, Image.Resampling.LANCZOS)
-    
-    dst = Image.new('RGB', (img_a.width + img_b.width + 10, img_a.height), (255, 255, 255))
-    dst.paste(img_a, (0, 0))
-    dst.paste(img_b, (img_a.width + 10, 0))
-    return dst
+def find_best_match(target_path, candidates_folder, processor, model, device):
+    """
+    Compares target_path (Master Pose) against all images in candidates_folder.
+    Returns: (best_image_filename, best_score)
+    """
+    # 1. Get Target Vector (Master Pose)
+    target_raw = get_raw_embedding(target_path, processor, model, device)
+    if target_raw is None: 
+        print(f"  ! Could not process target: {target_path}")
+        return None, 0.0
 
-def main():
-    processor, model, device = load_dinov2()
-    
-    # 1. Collect Raw Vectors
-    print("Collecting embeddings...")
-    
-    # Target
-    target_raw = get_raw_embedding(TARGET_IMAGE_PATH, processor, model, device)
-    if target_raw is None: return
+    # 2. Get Candidate Vectors (The expanded views of the current object)
+    if not candidates_folder.exists():
+        print(f"  ! Candidate folder missing: {candidates_folder}")
+        return None, 0.0
 
-    # Candidates
-    if not os.path.exists(CANDIDATES_FOLDER):
-        return
+    candidate_files = sorted([f for f in candidates_folder.iterdir() if f.suffix.lower() == ".png"])
+    if not candidate_files:
+        print("  ! No candidates found.")
+        return None, 0.0
 
-    candidate_files = sorted([f for f in os.listdir(CANDIDATES_FOLDER) if f.endswith(".png")])
     candidate_raws = []
-    valid_filenames = []
+    valid_files = []
 
-    for fname in candidate_files:
-        path = os.path.join(CANDIDATES_FOLDER, fname)
-        emb = get_raw_embedding(path, processor, model, device)
+    for f in candidate_files:
+        emb = get_raw_embedding(f, processor, model, device)
         if emb is not None:
             candidate_raws.append(emb)
-            valid_filenames.append(fname)
+            valid_files.append(f)
             
     if not candidate_raws:
-        print("No candidates found.")
-        return
+        return None, 0.0
 
-    # Stack into a tensor: Shape (N, 768)
+    # Stack into tensor: (N, 768)
     candidates_tensor = torch.cat(candidate_raws, dim=0)
     
     # --- WHITENING TRICK ---
-    # Calculate the "Average Chair" vector
     mean_vector = torch.mean(candidates_tensor, dim=0, keepdim=True)
     
-    # Subtract mean from everything
-    # This removes generic "chair features" and isolates specific "pose features"
     target_centered = target_raw - mean_vector
     candidates_centered = candidates_tensor - mean_vector
     
-    # Normalize AFTER centering
     target_norm = F.normalize(target_centered, p=2, dim=1)
     candidates_norm = F.normalize(candidates_centered, p=2, dim=1)
     
-    # --- COMPARE ---
-    # Dot product of normalized centered vectors
+    # Compare
     scores = torch.mm(target_norm, candidates_norm.transpose(0, 1)).squeeze()
     
-    best_score = -999.0
-    best_idx = -1
-    
-    print("\n--- Scores (Whitened) ---")
-    for i, score_tensor in enumerate(scores):
-        val = score_tensor.item()
-        fname = valid_filenames[i]
-        print(f"  {fname}: {val:.4f}")
+    if scores.dim() == 0:
+        best_idx = 0
+        best_score = scores.item()
+    else:
+        best_idx = torch.argmax(scores).item()
+        best_score = scores[best_idx].item()
         
-        if val > best_score:
-            best_score = val
-            best_idx = i
+    return valid_files[best_idx], best_score
 
-    best_filename = valid_filenames[best_idx]
 
-    print("\n" + "="*40)
-    print(f"WINNER: {best_filename}")
-    print(f"Score:  {best_score:.4f}")
-    print("="*40)
+def main():
+    # 1. Setup
+    if OUTPUT_DIR.exists():
+        shutil.rmtree(OUTPUT_DIR)
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     
-    best_path = os.path.join(CANDIDATES_FOLDER, best_filename)
-    comparison = create_comparison_image(TARGET_IMAGE_PATH, best_path, best_score)
-    comparison.save(RESULT_PATH)
-    print(f"Visual saved to: {RESULT_PATH}")
+    processor, model, device = load_dinov2()
+
+    # 2. Identify the Master Pose
+    anchor_path = BASE_DIR / ANCHOR_POSE_FILENAME
+    if not anchor_path.exists():
+        print(f"Error: Master pose image {ANCHOR_POSE_FILENAME} not found.")
+        return
+    
+    # 3. Process Sequence
+    all_files = sorted([f for f in BASE_DIR.iterdir() if f.suffix == ".png" and f.stem.isdigit()], key=lambda x: int(x.stem))
+    
+    print(f"\n[Seq] Processing {len(all_files)} sketches. Master Pose: {ANCHOR_POSE_FILENAME}")
+
+    for current_sketch_path in all_files:
+        sketch_id = current_sketch_path.stem
+        
+        # --- SPECIAL CASE: THE MASTER ITSELF ---
+        if current_sketch_path.name == ANCHOR_POSE_FILENAME:
+            print(f"Processing {current_sketch_path.name} -> Copying Master")
+            shutil.copy(current_sketch_path, OUTPUT_DIR / current_sketch_path.name)
+            continue
+
+        # --- THE FOLLOWERS ---
+        # Goal: Find the view of THIS sketch that matches the MASTER'S pose
+        
+        candidates_dir = EXPANDED_DIR / sketch_id
+        
+        print(f"Processing {current_sketch_path.name}...")
+        print(f"  > Target Pose: {ANCHOR_POSE_FILENAME}")
+        print(f"  > Candidates:  expanded_36/{sketch_id}/")
+
+        best_match, score = find_best_match(anchor_path, candidates_dir, processor, model, device)
+        
+        if best_match:
+            print(f"  > Match Found: {best_match.name} (Score: {score:.4f})")
+            shutil.copy(best_match, OUTPUT_DIR / current_sketch_path.name)
+        else:
+            print(f"  > No match found for {sketch_id}")
+
+    print(f"\n[Seq] Done. Results in {OUTPUT_DIR}")
 
 if __name__ == "__main__":
     main()

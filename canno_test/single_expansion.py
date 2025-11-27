@@ -1,15 +1,10 @@
 #!/usr/bin/env python3
 """
-expand_recursive_6x6.py — Recursive Zero123++ Generation (Batch Mode)
+expand_single_6.py — Single Zero123++ Generation (Batch Mode)
 - Target: All images in sketches/chairs/
-- Logic: For each sketch:
-    Round 1: Generate 6 parent views (grid 2x3)
-    -> Clean & SAVE these 6 parents
-    Round 2: For each parent, generate 6 children (2x3)
-    -> Clean & SAVE children
-- Result: 6 (parents) + 36 (children) = 42 images per sketch.
+- Logic: For each sketch: Generate 6 views -> Clean -> Save
 - Config: White Padding, Threshold 160, 2x3 Cut
-- Behavior: ALWAYS regenerates (overwrites existing folders).
+- Output: 6 images per sketch (0.png - 5.png)
 """
 
 from pathlib import Path
@@ -30,8 +25,8 @@ CUSTOM_PIPELINE = "sudo-ai/zero123plus-pipeline"
 # Input Folder (Processes all .png/.jpg inside)
 INPUT_FOLDER = "sketches/chairs/"
 
-# Base Output Folder (Subfolders will be created per object ID)
-OUTPUT_BASE = "sketches/chairs/expanded_36/"
+# Base Output Folder
+OUTPUT_BASE = "sketches/chairs/expanded_6/"
 
 # Grid Layout: 2 Columns, 3 Rows
 N_COLS = 2
@@ -77,7 +72,7 @@ def clean_background(img: Image.Image, threshold: int = BG_THRESHOLD) -> Image.I
     gray = arr.mean(axis=2)
     mask_bg = gray > threshold
     out = arr.copy()
-    out[mask_bg] = [255, 255, 255]  # Force to White
+    out[mask_bg] = [255, 255, 255] # Force to White
     return Image.fromarray(out)
 
 
@@ -130,68 +125,36 @@ def main():
 
     # 3. PROCESS LOOP
     for target_path in image_files:
-        sketch_id = target_path.stem  # e.g., "0" from "0.png"
+        sketch_id = target_path.stem 
         object_output_dir = output_root / sketch_id
         
         # If folder exists, delete it to ensure fresh start
         if object_output_dir.exists():
-            print(f"Cleaning existing folder: {object_output_dir}")
             shutil.rmtree(object_output_dir)
-        
         object_output_dir.mkdir(parents=True, exist_ok=True)
 
         print(f"\n[NVS] Processing: {target_path.name} -> {object_output_dir}")
 
-        # --- ROUND 1: GENERATE PARENT VIEWS ---
-        print("  > Round 1: Generating initial 6 views...")
+        # --- GENERATE VIEWS ---
+        print("  > Generating 6 views...")
         input_img = prepare_input_image(target_path)
         
         with torch.autocast("cuda"):
             base_grid = pipe(input_img, num_inference_steps=NUM_STEPS).images[0]
         
-        raw_parent_views = crop_grid_to_views(base_grid, N_COLS, N_ROWS)
+        raw_views = crop_grid_to_views(base_grid, N_COLS, N_ROWS)
         
-        # Clean background of Round 1 before saving & sending to Round 2
-        cleaned_parent_views = [clean_background(v, threshold=BG_THRESHOLD)
-                                for v in raw_parent_views]
+        # --- CLEAN AND SAVE ---
+        count = 0
+        for v in raw_views:
+            cleaned = clean_background(v, threshold=BG_THRESHOLD)
+            save_name = f"{count}.png"
+            cleaned.save(object_output_dir / save_name)
+            count += 1
 
-        # -----------------------------------------------------------------
-        # SAVE INTERMEDIATE NODES (FIRST TREE / PARENT VIEWS)
-        # -----------------------------------------------------------------
-        image_counter = 0
-        print("  > Saving parent views (intermediate nodes)...")
-        for p_idx, parent_view in enumerate(cleaned_parent_views):
-            save_name = f"{image_counter}.png"   # 0..5
-            parent_view.save(object_output_dir / save_name)
-            image_counter += 1
+        print(f"  > Saved {count} views for {sketch_id}")
 
-        # --- ROUND 2: RECURSIVE EXPANSION ---
-        print("  > Round 2: Expanding each parent view...")
-        
-        # Expand each CLEANED parent view
-        for p_idx, parent_view in enumerate(cleaned_parent_views):
-            print(f"    - Expanding Parent View {p_idx}...")
-            
-            # Prepare parent view (already white-bg, padding is safe)
-            child_input = prepare_input_image(parent_view)
-            
-            with torch.autocast("cuda"):
-                child_grid = pipe(child_input, num_inference_steps=NUM_STEPS).images[0]
-                
-            child_views = crop_grid_to_views(child_grid, N_COLS, N_ROWS)
-            
-            # Clean and Save children
-            for c_idx, child_view in enumerate(child_views):
-                cleaned_child = clean_background(child_view, threshold=BG_THRESHOLD)
-                
-                save_name = f"{image_counter}.png"  # continues from 6..41
-                cleaned_child.save(object_output_dir / save_name)
-                
-                image_counter += 1
-
-        print(f"  > Saved {image_counter} views (6 parents + {image_counter - 6} children) for {sketch_id}")
-
-    print(f"\n[NVS] Batch Expansion Complete!")
+    print(f"\n[NVS] Single Expansion Complete!")
 
 if __name__ == "__main__":
     main()
