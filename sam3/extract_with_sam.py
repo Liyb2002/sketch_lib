@@ -4,6 +4,7 @@ extract_components_with_sam3.py (extended)
 Now also saves:
 1) overlays for each mask on the original image
 2) a single bounding-box visualization per view
+3) a binary mask image per detected instance
 """
 
 from pathlib import Path
@@ -90,6 +91,7 @@ def save_components_for_label(
 
         x0, y0, x1, y1 = map(float, box)
 
+        # record for overlays & bbox viz
         results.append({
             "label": label_slug,
             "score": float(score),
@@ -98,7 +100,9 @@ def save_components_for_label(
             "index": saved,
         })
 
-        # Expand bbox
+        # -------------------------
+        # 1) Expand bbox for crop
+        # -------------------------
         cx = 0.5 * (x0 + x1)
         cy = 0.5 * (y0 + y1)
         w = (x1 - x0) * BBOX_SCALE
@@ -109,20 +113,34 @@ def save_components_for_label(
         new_x1 = min(W, int(cx + w / 2))
         new_y1 = min(H, int(cy + h / 2))
 
+        if new_x1 <= new_x0 or new_y1 <= new_y0:
+            continue
+
         crop_img = image.crop((new_x0, new_y0, new_x1, new_y1))
         crop_mask = mask_bin[new_y0:new_y1, new_x0:new_x1]
 
         if crop_mask.sum() == 0:
             continue
 
-        # White background crop
+        # -------------------------
+        # 2) Cropped component on white background
+        # -------------------------
         comp = Image.new("RGB", crop_img.size, (255, 255, 255))
         alpha = Image.fromarray((crop_mask.astype(np.uint8) * 255))
         comp.paste(crop_img, (0, 0), alpha)
 
-        comp.save(out_dir / f"{label_slug}_{saved}.png")
-        saved += 1
+        comp_path = out_dir / f"{label_slug}_{saved}.png"
+        comp.save(comp_path)
 
+        # -------------------------
+        # 3) FULL-IMAGE BINARY MASK
+        #    e.g. legs → leg_0_mask.png, leg_1_mask.png, ...
+        # -------------------------
+        mask_img = Image.fromarray((mask_bin.astype(np.uint8) * 255), mode="L")
+        mask_path = out_dir / f"{label_slug}_{saved}_mask.png"
+        mask_img.save(mask_path)
+
+        saved += 1
         if saved >= MAX_INSTANCES_PER_LABEL:
             break
 
@@ -138,20 +156,22 @@ def process_view_image(
     print(f"  [view] {img_path.name}")
     image = Image.open(img_path).convert("RGB")
 
+    # view folder: view0.png -> view0/
     view_dir = img_path.with_suffix("")
     view_dir.mkdir(exist_ok=True)
+    # clear previous outputs
     for p in view_dir.glob("*.png"):
         p.unlink()
 
     state = processor.set_image(image)
 
     colors = [
-        (255,0,0), (0,255,0), (0,0,255),
-        (255,255,0), (255,0,255), (0,255,255),
-        (255,128,0), (128,0,255),
+        (255, 0, 0), (0, 255, 0), (0, 0, 255),
+        (255, 255, 0), (255, 0, 255), (0, 255, 255),
+        (255, 128, 0), (128, 0, 255),
     ]
 
-    all_results = []
+    all_results: List[Dict[str, Any]] = []
     total_saved = 0
 
     for label in labels:
@@ -160,25 +180,32 @@ def process_view_image(
         if masks.shape[0] == 0:
             continue
 
-        results = save_components_for_label(label, image, masks, boxes, scores, out_dir=view_dir)
+        results = save_components_for_label(
+            label, image, masks, boxes, scores, out_dir=view_dir
+        )
         all_results.extend(results)
         total_saved += len(results)
 
-        # Save overlays per mask
+        # -------------------------
+        # Individual mask overlays on original image
+        # -------------------------
         for r in results:
             overlay = image.copy().convert("RGBA")
             mask = r["mask_bin"]
 
             color = colors[r["index"] % len(colors)]
-            alpha = Image.fromarray((mask.astype(np.uint8) * 120))  # transparency
+            alpha = Image.fromarray((mask.astype(np.uint8) * 120))  # semi-transparent
 
             color_img = Image.new("RGBA", overlay.size, color + (0,))
             color_img.putalpha(alpha)
             overlay = Image.alpha_composite(overlay, color_img)
 
-            overlay.save(view_dir / f"{r['label']}_{r['index']}_overlay.png")
+            overlay_path = view_dir / f"{r['label']}_{r['index']}_overlay.png"
+            overlay.save(overlay_path)
 
-    # Save combined bbox visualization
+    # -------------------------
+    # Combined bounding-box visualization
+    # -------------------------
     if all_results:
         bbox_img = image.copy()
         draw = ImageDraw.Draw(bbox_img)
@@ -202,6 +229,10 @@ def process_object_instance(
 ):
     print(f"[instance] {instance_dir}")
     images = find_images(instance_dir)
+    if not images:
+        print(f"  [skip] no images in {instance_dir}")
+        return
+
     for img_path in images:
         process_view_image(img_path, labels, processor, model_device)
 
@@ -231,6 +262,7 @@ def main():
 
         inst_root = obj_dir / "individual_object"
         if not inst_root.is_dir():
+            print(f"[warn] {obj_dir.name}: no individual_object/ folder, skipping")
             continue
 
         for instance_dir in sorted(inst_root.iterdir()):
