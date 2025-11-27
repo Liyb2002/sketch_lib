@@ -35,7 +35,7 @@ from google.genai import types
 SKETCHES_ROOT = Path("sketches")
 
 # Change this per object type, or wrap in a loop over subfolders
-OBJECT_TYPE = "chairs"  # e.g. "chairs", "car", "bike", "plane"
+OBJECT_TYPE = "headphones"  # e.g. "chairs", "car", "bike", "plane"
 
 # Image-capable Gemini model (adjust if your key uses a different one)
 MODEL_NAME = "gemini-2.5-flash-image"
