@@ -1,17 +1,16 @@
 #!/usr/bin/env python3
 """
-expand_single_6.py — Single Zero123++ Generation (Batch Mode)
-- Target: All images in sketches/chairs/
-- Logic: For each sketch: Generate 6 views -> Clean -> Save
+expand_single_6.py — Single Zero123++ Generation for 0.png
+- Target: 0.png in the same folder as this script
+- Logic: Generate 6 views -> Clean -> Save
 - Config: White Padding, Threshold 160, 2x3 Cut
-- Output: 6 images per sketch (0.png - 5.png)
+- Output: 6 images (0.png - 5.png) in 6_views_test/
 """
 
 from pathlib import Path
 import shutil
 import numpy as np
 import torch
-import os
 from PIL import Image
 from diffusers import DiffusionPipeline, EulerAncestralDiscreteScheduler
 
@@ -22,11 +21,11 @@ from diffusers import DiffusionPipeline, EulerAncestralDiscreteScheduler
 MODEL_ID = "sudo-ai/zero123plus-v1.2"
 CUSTOM_PIPELINE = "sudo-ai/zero123plus-pipeline"
 
-# Input Folder (Processes all .png/.jpg inside)
-INPUT_FOLDER = "sketches/chairs/"
+# Input image name (in same folder as this script)
+INPUT_IMAGE_NAME = "0.png"
 
-# Base Output Folder
-OUTPUT_BASE = "sketches/chairs/expanded_6/"
+# Output Folder (relative to this script)
+OUTPUT_FOLDER = "6_views_test/"
 
 # Grid Layout: 2 Columns, 3 Rows
 N_COLS = 2
@@ -72,7 +71,7 @@ def clean_background(img: Image.Image, threshold: int = BG_THRESHOLD) -> Image.I
     gray = arr.mean(axis=2)
     mask_bg = gray > threshold
     out = arr.copy()
-    out[mask_bg] = [255, 255, 255] # Force to White
+    out[mask_bg] = [255, 255, 255]  # Force to White
     return Image.fromarray(out)
 
 
@@ -90,11 +89,16 @@ def crop_grid_to_views(grid_img: Image.Image, n_cols: int, n_rows: int):
 
 
 def main():
-    input_root = ROOT / INPUT_FOLDER
-    output_root = ROOT / OUTPUT_BASE
+    input_path = ROOT / INPUT_IMAGE_NAME
+    output_root = ROOT / OUTPUT_FOLDER
 
-    if not input_root.exists():
-        raise FileNotFoundError(f"Input folder not found: {input_root}")
+    if not input_path.exists():
+        raise FileNotFoundError(f"Input image not found: {input_path}")
+
+    # Recreate the output folder fresh
+    if output_root.exists():
+        shutil.rmtree(output_root)
+    output_root.mkdir(parents=True, exist_ok=True)
 
     if not torch.cuda.is_available():
         raise RuntimeError("CUDA not available.")
@@ -114,46 +118,26 @@ def main():
         pass
     pipe.to("cuda")
 
-    # 2. FIND IMAGES
-    valid_exts = {".png", ".jpg", ".jpeg"}
-    image_files = sorted([
-        f for f in input_root.iterdir() 
-        if f.is_file() and f.suffix.lower() in valid_exts
-    ])
+    print(f"\n[NVS] Processing single image: {input_path.name} -> {output_root}")
 
-    print(f"[NVS] Found {len(image_files)} images in {input_root}")
+    # --- GENERATE VIEWS ---
+    print("  > Generating 6 views...")
+    input_img = prepare_input_image(input_path)
+    
+    with torch.autocast("cuda"):
+        base_grid = pipe(input_img, num_inference_steps=NUM_STEPS).images[0]
+    
+    raw_views = crop_grid_to_views(base_grid, N_COLS, N_ROWS)
+    
+    # --- CLEAN AND SAVE ---
+    count = 0
+    for v in raw_views:
+        cleaned = clean_background(v, threshold=BG_THRESHOLD)
+        save_name = f"{count}.png"
+        cleaned.save(output_root / save_name)
+        count += 1
 
-    # 3. PROCESS LOOP
-    for target_path in image_files:
-        sketch_id = target_path.stem 
-        object_output_dir = output_root / sketch_id
-        
-        # If folder exists, delete it to ensure fresh start
-        if object_output_dir.exists():
-            shutil.rmtree(object_output_dir)
-        object_output_dir.mkdir(parents=True, exist_ok=True)
-
-        print(f"\n[NVS] Processing: {target_path.name} -> {object_output_dir}")
-
-        # --- GENERATE VIEWS ---
-        print("  > Generating 6 views...")
-        input_img = prepare_input_image(target_path)
-        
-        with torch.autocast("cuda"):
-            base_grid = pipe(input_img, num_inference_steps=NUM_STEPS).images[0]
-        
-        raw_views = crop_grid_to_views(base_grid, N_COLS, N_ROWS)
-        
-        # --- CLEAN AND SAVE ---
-        count = 0
-        for v in raw_views:
-            cleaned = clean_background(v, threshold=BG_THRESHOLD)
-            save_name = f"{count}.png"
-            cleaned.save(object_output_dir / save_name)
-            count += 1
-
-        print(f"  > Saved {count} views for {sketch_id}")
-
+    print(f"  > Saved {count} views in {output_root}")
     print(f"\n[NVS] Single Expansion Complete!")
 
 if __name__ == "__main__":
