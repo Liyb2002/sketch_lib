@@ -1,0 +1,38 @@
+{
+    "view_0": {
+        "iou_score": 0.7536303630363036,
+        "azimuth": 116,
+        "elevation": -8,
+        "roll": 279
+    },
+    "view_1": {
+        "iou_score": 0.794372601961063,
+        "azimuth": 83,
+        "elevation": 41,
+        "roll": 274
+    },
+    "view_2": {
+        "iou_score": 0.8683027110368753,
+        "azimuth": 291,
+        "elevation": 77,
+        "roll": 70
+    },
+    "view_3": {
+        "iou_score": 0.7367275163289231,
+        "azimuth": 279,
+        "elevation": 15,
+        "roll": 86
+    },
+    "view_4": {
+        "iou_score": 0.822590938098277,
+        "azimuth": 256,
+        "elevation": 38,
+        "roll": 97
+    },
+    "view_5": {
+        "iou_score": 0.8305105105105105,
+        "azimuth": 89,
+        "elevation": 63,
+        "roll": 270
+    }
+}
