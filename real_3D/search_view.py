@@ -33,15 +33,15 @@ SHAPE_IMG   = OUT_DIR / "shape.png"
 OVERLAY_IMG = OUT_DIR / "overlay.png"
 CAMERA_JSON = OUT_DIR / "camera.json"
 
-IMG_SIZE = 120  # small + fast
+IMG_SIZE = 128  # small + fast
 
 COARSE_AZ_STEP = 15.0
 COARSE_EL_STEP = 15.0
 AZ_MIN, AZ_MAX = -180.0, 180.0
 EL_MIN, EL_MAX = -60.0, 60.0
 
-FINE_AZ_DELTA = 20.0
-FINE_EL_DELTA = 20.0
+FINE_AZ_DELTA = 15.0
+FINE_EL_DELTA = 15.0
 FINE_AZ_STEP  = 0.5
 FINE_EL_STEP  = 0.5
 
