@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
 """
-debug_view0_projection_v2.py
+verify_and_overlay.py
 
-Fixes:
-1. Reverses projection direction (look AT object, not away).
-2. Forces image save even if points are missing.
+1. Reads 'independent_view_fits/all_cameras.json' and the .ply file.
+2. Re-renders the views (verification step) to get the base object shape.
+3. Looks for "./segmentations/view_{x}/" relative to where this script is run.
+4. Overlays masks (e.g., "backrest_1_mask.png") with unique colors in 2D.
+5. Projects the 2D overlap (rendered silhouette ∩ segmentation) back to 3D and
+   saves per-view colored .ply/.ply mesh files highlighting those regions.
 """
 
 import json
@@ -12,178 +15,529 @@ import math
 import numpy as np
 import cv2
 import open3d as o3d
+from open3d.visualization import rendering
 from pathlib import Path
+import sys
 
-# ---------------- CONFIG ----------------
-PLY_PATH     = Path("trellis_outputs/0_trellis_gaussian.ply")
-CAMERAS_JSON = Path("independent_view_fits/all_cameras.json")
-SEGS_DIR     = Path("segmentations/view_0") 
-OUT_PATH     = Path("debug_view0_projection.png")
-IMG_SIZE     = 160
+# ---------------- CONFIGURATION ----------------
 
-def get_camera_vectors(az_deg, el_deg):
-    """
-    Returns the camera basis vectors.
-    pos_vec: Vector from Center -> Camera (The position on the sphere)
-    up_vec:  Vector pointing 'Up' relative to the camera
-    right_vec: Vector pointing 'Right' relative to the camera
-    """
+# Relative paths (assuming you run this script from the root folder)
+PLY_PATH       = Path("trellis_outputs/0_trellis_gaussian.ply")
+JSON_PATH      = Path("independent_view_fits/all_cameras.json")
+SEG_DIR        = Path("segmentations")
+OUTPUT_DIR     = Path("final_overlays")
+IMG_SIZE       = 160
+
+# Camera intrinsics (must match rendering)
+FOV_DEG = 40.0
+ASPECT  = 1.0  # square images
+
+# ---------------- COLOR MANAGEMENT ----------------
+
+# Explicit bright colors for visibility
+DISTINCT_COLORS = [
+    (0, 0, 255),   # Red
+    (0, 255, 0),   # Green
+    (255, 0, 0),   # Blue
+    (0, 255, 255), # Yellow
+    (255, 0, 255), # Magenta
+    (255, 255, 0), # Cyan
+    (0, 165, 255), # Orange
+    (128, 0, 128), # Purple
+    (0, 128, 128), # Teal
+    (128, 128, 0), # Olive
+    (128, 128, 128) # Grey
+]
+
+object_color_map = {}
+color_index = 0
+
+def get_color_for_object(obj_name):
+    """Assigns a consistent color to an object name (e.g., 'backrest')."""
+    global color_index
+    if obj_name not in object_color_map:
+        object_color_map[obj_name] = DISTINCT_COLORS[color_index % len(DISTINCT_COLORS)]
+        color_index += 1
+    return object_color_map[obj_name]
+
+# ---------------- HELPER FUNCTIONS (Rendering) ----------------
+
+def sph_dir(az_deg, el_deg):
     az = math.radians(az_deg)
     el = math.radians(el_deg)
-    
-    # Spherical to Cartesian (Position on Unit Sphere)
     x = math.cos(el) * math.sin(az)
     y = math.cos(el) * math.cos(az)
     z = math.sin(el)
-    pos_vec = np.array([x, y, z], dtype=np.float32)
-    
-    # World Up (Z-up)
-    world_up = np.array([0.0, 0.0, 1.0], dtype=np.float32)
-    
-    # Right Vector (Cross product of Position and World Up)
-    # Note: Position vector points OUT from center.
-    right_vec = np.cross(pos_vec, world_up)
-    if np.linalg.norm(right_vec) < 0.001: 
-        right_vec = np.array([1.0, 0.0, 0.0], dtype=np.float32)
-    right_vec /= np.linalg.norm(right_vec)
-    
-    # Camera Up (Cross product of Right and Position)
-    up_vec = np.cross(right_vec, pos_vec)
-    up_vec /= np.linalg.norm(up_vec)
-    
-    return pos_vec, up_vec, right_vec
+    return np.array([x, y, z], dtype=float)
 
-def project_points_manual(points, center, radius, az, el, img_size):
-    pos_vec, up_vec, right_vec = get_camera_vectors(az, el)
-    eye = center + pos_vec * radius
-    
-    # Vector from Eye to Point
-    vec = points - eye
-    
-    # --- FIX IS HERE ---
-    # The camera looks AT the center. 
-    # So the View Direction is -pos_vec (Center - Eye).
-    view_dir = -pos_vec 
-    
-    # Project vectors onto camera basis
-    # Z (Depth) = Dot product with View Direction
-    dist_z = np.dot(vec, view_dir)
-    
-    # Y (Vertical) = Dot product with Up Vector
-    dist_y = np.dot(vec, up_vec)
-    
-    # X (Horizontal) = Dot product with Right Vector
-    dist_x = np.dot(vec, right_vec)
-    
-    # Perspective Projection
-    fov_rad = math.radians(40)
-    focal_length = (img_size / 2) / math.tan(fov_rad / 2)
-    
-    # Avoid div by zero
-    safe_z = np.maximum(dist_z, 0.001)
-    
-    # u = f * (x / z) + cx
-    u = (focal_length * dist_x / safe_z) + (img_size / 2)
-    
-    # v = -f * (y / z) + cy  (Negative because Image Y is down, World Y is up)
-    v = -(focal_length * dist_y / safe_z) + (img_size / 2)
-    
-    uv = np.stack([u, v], axis=1).astype(int)
-    return uv, dist_z
+def load_geometry(path: Path):
+    if not path.exists():
+        print(f"❌ Error: PLY file not found at {path.resolve()}")
+        sys.exit(1)
+    geom = o3d.io.read_point_cloud(str(path))
+    if geom.is_empty():
+        geom = o3d.io.read_triangle_mesh(str(path))
+        geom.compute_vertex_normals()
+    return geom
+
+def compute_normalization_params(mask: np.ndarray, size: int):
+    """
+    From a raw binary mask (0/1), compute the normalization parameters
+    used by normalize_mask (crop bbox, scale, and placement).
+    """
+    ys, xs = np.where(mask > 0)
+    if len(xs) == 0:
+        return None
+
+    y_min, y_max = ys.min(), ys.max()
+    x_min, x_max = xs.min(), xs.max()
+    h_box = y_max - y_min + 1
+    w_box = x_max - x_min + 1
+
+    target_size = int(size * 0.85)
+    scale      = target_size / max(h_box, w_box)
+    new_h      = int(h_box * scale)
+    new_w      = int(w_box * scale)
+
+    start_y = (size - new_h) // 2
+    start_x = (size - new_w) // 2
+
+    return {
+        "x_min":   x_min,
+        "y_min":   y_min,
+        "h_box":   h_box,
+        "w_box":   w_box,
+        "scale":   scale,
+        "start_x": start_x,
+        "start_y": start_y,
+        "new_h":   new_h,
+        "new_w":   new_w,
+    }
+
+def normalize_mask(mask: np.ndarray, size: int, params=None) -> (np.ndarray, dict):
+    """
+    Centers and scales the mask (85% fill) - same as search script.
+    Returns (normalized_mask, params).
+    """
+    if params is None:
+        params = compute_normalization_params(mask, size)
+
+    if params is None:
+        return np.zeros((size, size), dtype=np.uint8), None
+
+    x_min   = params["x_min"]
+    y_min   = params["y_min"]
+    scale   = params["scale"]
+    start_x = params["start_x"]
+    start_y = params["start_y"]
+    new_h   = params["new_h"]
+    new_w   = params["new_w"]
+
+    ys, xs = np.where(mask > 0)
+    if len(xs) == 0:
+        return np.zeros((size, size), dtype=np.uint8), params
+
+    y_max = ys.max()
+    x_max = xs.max()
+
+    crop = mask[y_min:y_max+1, x_min:x_max+1]
+
+    # Resize cropped region
+    resized = cv2.resize(
+        (crop.astype(np.uint8) * 255),
+        (new_w, new_h),
+        interpolation=cv2.INTER_AREA
+    )
+
+    canvas = np.zeros((size, size), dtype=np.uint8)
+    canvas[start_y:start_y+new_h, start_x:start_x+new_w] = resized
+
+    return (canvas > 0).astype(np.uint8), params
+
+def render_solid_silhouette(renderer, center, radius, az, el) -> np.ndarray:
+    """Renders 3D object from specific view and returns a raw silhouette mask."""
+    scene = renderer.scene
+    direction = sph_dir(az, el)
+    eye = center + radius * direction
+    up = np.array([0.0, 0.0, 1.0])
+
+    cam = scene.camera
+    cam.set_projection(FOV_DEG, ASPECT, radius*0.01, radius*100.0,
+                       rendering.Camera.FovType.Vertical)
+    cam.look_at(center, eye, up)
+
+    img_o3d = renderer.render_to_image()
+    img = np.asarray(img_o3d)
+    # Background is white; object is black due to material
+    mask = (img[:, :, 0] < 200).astype(np.uint8)
+    return mask
+
+# ---------------- BACKPROJECTION HELPERS ----------------
+
+def compute_camera_basis(center, radius, az_deg, el_deg):
+    """
+    Reconstruct the same camera pose as render_solid_silhouette:
+      eye = center + radius * sph_dir(az, el)
+      forward = center - eye
+      up_world = (0, 0, 1)
+    Returns eye, forward, right, up_cam.
+    """
+    direction = sph_dir(az_deg, el_deg)
+    eye = center + radius * direction
+
+    forward = center - eye
+    norm_f = np.linalg.norm(forward)
+    if norm_f < 1e-8:
+        forward = np.array([0.0, 0.0, 1.0])
+        norm_f = 1.0
+    forward = forward / norm_f
+
+    up_world = np.array([0.0, 0.0, 1.0], dtype=float)
+    right = np.cross(forward, up_world)
+    right_norm = np.linalg.norm(right)
+    if right_norm < 1e-8:
+        up_world = np.array([0.0, 1.0, 0.0], dtype=float)
+        right = np.cross(forward, up_world)
+        right_norm = np.linalg.norm(right)
+    right = right / right_norm
+
+    up_cam = np.cross(right, forward)
+    up_cam = up_cam / np.linalg.norm(up_cam)
+
+    return eye, forward, right, up_cam
+
+def project_points_to_pixels(points, eye, forward, right, up_cam,
+                             img_w, img_h, fov_deg=FOV_DEG, aspect=ASPECT):
+    """
+    Perspective-project 3D points into image pixels (raw render space).
+
+    Returns:
+      - valid_mask: boolean array [N], True if point is in front of camera and within image bounds
+      - u_coords, v_coords: integer pixel coordinates [N] in [0, W/H)
+    """
+    pts_rel = points - eye  # (N, 3)
+
+    # Camera-space coords
+    x_cam = np.dot(pts_rel, right)    # (N,)
+    y_cam = np.dot(pts_rel, up_cam)   # (N,)
+    z_cam = np.dot(pts_rel, forward)  # (N,)
+
+    # Only points in front of the camera
+    valid = z_cam > 1e-6
+    if not np.any(valid):
+        return valid, np.zeros_like(z_cam, int), np.zeros_like(z_cam, int)
+
+    z_cam_valid = z_cam[valid]
+    x_cam_valid = x_cam[valid]
+    y_cam_valid = y_cam[valid]
+
+    fov_rad = math.radians(fov_deg)
+    half_h = math.tan(fov_rad / 2.0)
+    half_w = half_h * aspect
+
+    # Normalized device coordinates in [-1, 1]
+    x_ndc = x_cam_valid / (z_cam_valid * half_w)
+    y_ndc = y_cam_valid / (z_cam_valid * half_h)
+
+    # Convert to pixel coordinates
+    u = (x_ndc * 0.5 + 0.5) * img_w
+    v = (1.0 - (y_ndc * 0.5 + 0.5)) * img_h  # flip y
+
+    u = u.astype(np.int32)
+    v = v.astype(np.int32)
+
+    in_bounds = (u >= 0) & (u < img_w) & (v >= 0) & (v < img_h)
+
+    full_valid = np.zeros_like(valid)
+    full_valid_idx = np.where(valid)[0][in_bounds]
+
+    full_valid[full_valid_idx] = True
+
+    u_full = np.zeros_like(z_cam, dtype=np.int32)
+    v_full = np.zeros_like(z_cam, dtype=np.int32)
+    u_full[full_valid_idx] = u[in_bounds]
+    v_full[full_valid_idx] = v[in_bounds]
+
+    return full_valid, u_full, v_full
+
+def apply_roll_to_pixels(u, v, roll_deg, img_w, img_h):
+    """
+    Apply the same 2D roll as:
+      M = cv2.getRotationMatrix2D(center_pt, roll, 1.0)
+      rotated = warpAffine(...)
+    Here we transform the pixel coordinates directly.
+    """
+    center_pt = (img_w / 2.0, img_h / 2.0)
+    M = cv2.getRotationMatrix2D(center_pt, roll_deg, 1.0)  # 2x3
+
+    ones = np.ones_like(u, dtype=np.float32)
+    pts = np.stack([u.astype(np.float32), v.astype(np.float32), ones], axis=-1)  # (N,3)
+    uv_rot = pts @ M.T  # (N,2)
+
+    u_rot = uv_rot[:, 0]
+    v_rot = uv_rot[:, 1]
+
+    return u_rot, v_rot
+
+def raw_to_normalized_pixels(u_raw, v_raw, norm_params, img_size):
+    """
+    Map raw render-space pixel coordinates into normalized mask space,
+    using the same transform as normalize_mask.
+    """
+    if norm_params is None:
+        return u_raw.astype(np.float32), v_raw.astype(np.float32)
+
+    x_min   = norm_params["x_min"]
+    y_min   = norm_params["y_min"]
+    scale   = norm_params["scale"]
+    start_x = norm_params["start_x"]
+    start_y = norm_params["start_y"]
+
+    # Shift into cropped bbox
+    x_box = u_raw.astype(np.float32) - float(x_min)
+    y_box = v_raw.astype(np.float32) - float(y_min)
+
+    # Scale
+    x_scaled = x_box * scale
+    y_scaled = y_box * scale
+
+    # Place into full canvas
+    u_norm = start_x + x_scaled
+    v_norm = start_y + y_scaled
+
+    return u_norm, v_norm
+
+def backproject_overlap_to_3d(geom, center, radius, az, el, roll,
+                              overlap_mask, img_size, norm_params):
+    """
+    Backproject overlap pixels (in final normalized + rolled space) to 3D.
+
+    Returns:
+      - colors: (N,3) float32 in [0,1] for each point/vertex
+      - overlapped: boolean mask of size N indicating overlap
+    """
+    # 1. Extract geometry points
+    if isinstance(geom, o3d.geometry.PointCloud):
+        pts = np.asarray(geom.points)  # (N,3)
+    elif isinstance(geom, o3d.geometry.TriangleMesh):
+        pts = np.asarray(geom.vertices)  # (N,3)
+    else:
+        raise TypeError("geom must be PointCloud or TriangleMesh")
+
+    N = len(pts)
+    if N == 0:
+        return np.zeros((0, 3), dtype=np.float32), np.zeros(0, dtype=bool)
+
+    # 2. Camera basis (same as renderer)
+    eye, forward, right, up_cam = compute_camera_basis(center, radius, az, el)
+
+    # 3. Project to raw render-space pixels
+    valid, u_raw, v_raw = project_points_to_pixels(
+        pts, eye, forward, right, up_cam,
+        img_size, img_size, fov_deg=FOV_DEG, aspect=ASPECT
+    )
+
+    # 4. Map raw -> normalized space (same as normalize_mask)
+    u_norm, v_norm = raw_to_normalized_pixels(u_raw, v_raw, norm_params, img_size)
+
+    # 5. Apply roll on normalized pixels
+    u_final, v_final = apply_roll_to_pixels(u_norm, v_norm, roll, img_size, img_size)
+
+    # 6. Check overlap mask
+    H, W = overlap_mask.shape
+    u_pix = np.round(u_final).astype(np.int32)
+    v_pix = np.round(v_final).astype(np.int32)
+
+    in_bounds = (u_pix >= 0) & (u_pix < W) & (v_pix >= 0) & (v_pix < H)
+
+    overlapped = np.zeros(N, dtype=bool)
+    idx = np.where(valid & in_bounds)[0]
+    if len(idx) > 0:
+        overlapped[idx] = overlap_mask[v_pix[idx], u_pix[idx]]
+
+    # 7. Build colors: overlapped = red, others = gray
+    colors = np.zeros((N, 3), dtype=np.float32)
+    colors[:] = np.array([0.6, 0.6, 0.6], dtype=np.float32)  # base gray
+    colors[overlapped] = np.array([1.0, 0.0, 0.0], dtype=np.float32)  # red
+
+    return colors, overlapped
+
+# ---------------- SEGMENTATION & OVERLAY ----------------
+
+def parse_filename(filename):
+    """
+    Input: "backrest_1_mask" (no extension)
+    Output: "backrest"
+
+    Logic:
+    1. Remove '_mask' suffix.
+    2. Split by last underscore to remove the count.
+    """
+    if filename.endswith("_mask"):
+        base = filename[:-5]
+    else:
+        return None
+
+    parts = base.rsplit('_', 1)  # Split from right, max 1 split
+    if len(parts) == 2:
+        return parts[0]
+    return base  # Fallback
+
+def apply_segmentation_overlays(base_render_bgr, view_name):
+    """
+    Colorize the base_render_bgr using segmentation masks
+    under SEG_DIR / view_name.
+    """
+    current_seg_dir = SEG_DIR / view_name
+
+    if not current_seg_dir.exists():
+        print(f"   ⚠️ Warning: Folder not found: {current_seg_dir}")
+        return base_render_bgr
+
+    overlay_accum = base_render_bgr.copy()
+
+    mask_files = sorted(list(current_seg_dir.glob("*_mask.png")))
+    if not mask_files:
+        print(f"   ℹ️ No masks in {current_seg_dir}")
+        return base_render_bgr
+
+    for mask_path in mask_files:
+        obj_name = parse_filename(mask_path.stem)
+        if not obj_name:
+            continue
+
+        color = get_color_for_object(obj_name)
+
+        seg_mask = cv2.imread(str(mask_path), cv2.IMREAD_GRAYSCALE)
+        if seg_mask is None:
+            continue
+
+        if seg_mask.shape[:2] != (IMG_SIZE, IMG_SIZE):
+            seg_mask = cv2.resize(seg_mask, (IMG_SIZE, IMG_SIZE), interpolation=cv2.INTER_NEAREST)
+
+        overlay_accum[seg_mask > 0] = color
+        print(f"   + Applied {obj_name} ({mask_path.name})")
+
+    return overlay_accum
+
+def get_seg_union(view_name):
+    """
+    Build a union mask of all segmentations for this view (IMG_SIZE x IMG_SIZE, 0/1).
+    """
+    current_seg_dir = SEG_DIR / view_name
+    seg_union = np.zeros((IMG_SIZE, IMG_SIZE), dtype=np.uint8)
+
+    if not current_seg_dir.exists():
+        return seg_union
+
+    for mask_path in current_seg_dir.glob("*_mask.png"):
+        seg = cv2.imread(str(mask_path), cv2.IMREAD_GRAYSCALE)
+        if seg is None:
+            continue
+        if seg.shape[:2] != (IMG_SIZE, IMG_SIZE):
+            seg = cv2.resize(seg, (IMG_SIZE, IMG_SIZE), interpolation=cv2.INTER_NEAREST)
+        seg_union[seg > 0] = 1
+
+    return seg_union
+
+# ---------------- MAIN ----------------
 
 def main():
-    print("--- 🔬 Debugging View 0 Projection (v2) ---")
+    # Debug: print absolute path so user knows where we are looking
+    print(f"--- 📂 Path Check ---")
+    print(f"Script running in: {Path.cwd()}")
+    print(f"Looking for PLY at: {PLY_PATH.resolve()}")
+    print(f"Looking for JSON at: {JSON_PATH.resolve()}")
+    print(f"Looking for SEG  at: {SEG_DIR.resolve()}")
 
-    # 1. Load Data
-    if not CAMERAS_JSON.exists(): 
-        print("❌ all_cameras.json not found")
-        return
-        
-    with open(CAMERAS_JSON, 'r') as f: cameras = json.load(f)
-    
-    if "view_0" not in cameras:
-        print("❌ view_0 not in json")
+    if not JSON_PATH.exists():
+        print(f"❌ Error: JSON file not found!")
         return
 
-    params = cameras["view_0"]
-    az, el, roll = params['azimuth'], params['elevation'], params['roll']
-    print(f"Cam: Az {az}, El {el}, Roll {roll}")
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
-    pcd = o3d.io.read_point_cloud(str(PLY_PATH))
-    if len(pcd.points) == 0:
-        mesh = o3d.io.read_triangle_mesh(str(PLY_PATH))
-        pcd = mesh.sample_points_poisson_disk(5000)
-    points = np.asarray(pcd.points)
-    
-    bbox = pcd.get_axis_aligned_bounding_box()
+    with open(JSON_PATH, "r") as f:
+        camera_data = json.load(f)
+
+    # Setup Renderer
+    geom = load_geometry(PLY_PATH)
+    bbox = geom.get_axis_aligned_bounding_box()
     center = bbox.get_center()
     radius = 2.5 * float(np.max(bbox.get_extent()))
-    if radius <= 0: radius = 1.0
+    if radius <= 0:
+        radius = 1.0
 
-    # 2. Project
-    uvs, dists = project_points_manual(points, center, radius, az, el, IMG_SIZE)
-    
-    # 3. Stats
-    print(f"\nDepth Stats (dist_z):")
-    print(f"   Min: {np.min(dists):.4f}")
-    print(f"   Max: {np.max(dists):.4f}")
-    
-    valid_mask = (dists > 0)
-    print(f"   Points with positive depth: {np.sum(valid_mask)} / {len(points)}")
-    
-    # 4. Draw Image
-    canvas = np.zeros((IMG_SIZE, IMG_SIZE, 3), dtype=np.uint8)
-    
-    # Filter points inside image
-    on_screen = valid_mask & \
-                (uvs[:, 0] >= 0) & (uvs[:, 0] < IMG_SIZE) & \
-                (uvs[:, 1] >= 0) & (uvs[:, 1] < IMG_SIZE)
-                
-    final_uvs = uvs[on_screen]
-    print(f"   Points on screen: {len(final_uvs)}")
+    renderer = rendering.OffscreenRenderer(IMG_SIZE, IMG_SIZE)
+    renderer.scene.set_background([1.0, 1.0, 1.0, 1.0])
 
-    # Apply Roll Correction (Visualization Only)
-    if roll != 0 and len(final_uvs) > 0:
-        print(f"   Applying roll {roll}...")
-        cx, cy = IMG_SIZE/2, IMG_SIZE/2
-        theta = math.radians(-roll) 
-        
-        px = final_uvs[:, 0] - cx
-        py = final_uvs[:, 1] - cy
-        
-        new_px = px * math.cos(theta) - py * math.sin(theta)
-        new_py = px * math.sin(theta) + py * math.cos(theta)
-        
-        final_uvs[:, 0] = (new_px + cx).astype(int)
-        final_uvs[:, 1] = (new_py + cy).astype(int)
-        
-        # Clip again after rotation
-        mask_roll = (final_uvs[:, 0] >= 0) & (final_uvs[:, 0] < IMG_SIZE) & \
-                    (final_uvs[:, 1] >= 0) & (final_uvs[:, 1] < IMG_SIZE)
-        final_uvs = final_uvs[mask_roll]
+    mat = rendering.MaterialRecord()
+    mat.shader = "defaultUnlit"
+    mat.base_color = (0.0, 0.0, 0.0, 1.0)
+    mat.point_size = 2.5
+    renderer.scene.add_geometry("obj", geom, mat)
 
-    # Draw Points (Grey)
-    for u, v in final_uvs:
-        canvas[v, u] = [200, 200, 200]
+    center_pt = (IMG_SIZE // 2, IMG_SIZE // 2)
 
-    # Overlay Masks (Red)
-    mask_composite = np.zeros((IMG_SIZE, IMG_SIZE), dtype=np.uint8)
-    if SEGS_DIR.exists():
-        for p in SEGS_DIR.glob("*_mask.png"):
-            m = cv2.imread(str(p), 0)
-            if m is not None:
-                m = cv2.resize(m, (IMG_SIZE, IMG_SIZE), interpolation=cv2.INTER_NEAREST)
-                mask_composite = np.maximum(mask_composite, m)
-    
-    red_layer = np.zeros_like(canvas)
-    red_layer[:, :, 2] = mask_composite
-    
-    mask_indices = mask_composite > 50
-    canvas[mask_indices] = cv2.addWeighted(canvas[mask_indices], 0.5, red_layer[mask_indices], 0.5, 0.0)
+    print(f"\n--- 🎨 Processing Views ---")
 
-    # Force Save
-    cv2.imwrite(str(OUT_PATH), canvas)
-    print(f"\n✅ Saved debug image to {OUT_PATH}")
+    for view_name, params in camera_data.items():
+        if "error" in params:
+            continue
+
+        print(f"\nRendering {view_name}...")
+
+        az, el, roll = params['azimuth'], params['elevation'], params['roll']
+
+        # 1. Base render: silhouette (raw) + normalization + roll
+        raw_mask = render_solid_silhouette(renderer, center, radius, az, el)
+        norm_mask, norm_params = normalize_mask(raw_mask, IMG_SIZE)
+
+        M = cv2.getRotationMatrix2D(center_pt, roll, 1.0)
+        final_render_mask = cv2.warpAffine(
+            norm_mask, M, (IMG_SIZE, IMG_SIZE),
+            flags=cv2.INTER_NEAREST,
+            borderMode=cv2.BORDER_CONSTANT,
+            borderValue=0
+        )
+
+        # Create base image (Dark Grey object, White Background)
+        base_img = np.ones((IMG_SIZE, IMG_SIZE, 3), dtype=np.uint8) * 255
+        base_img[final_render_mask > 0] = [60, 60, 60]
+
+        # 2. 2D Overlay
+        final_img = apply_segmentation_overlays(base_img, view_name)
+
+        # Save 2D overlay
+        out_path = OUTPUT_DIR / f"{view_name}_overlaid.png"
+        cv2.imwrite(str(out_path), final_img)
+
+        # 3. Build segmentation union mask (for overlap in 2D)
+        seg_union = get_seg_union(view_name)
+
+        # Overlap in normalized + rolled 2D space
+        overlap_mask = (final_render_mask > 0) & (seg_union > 0)
+
+        # 4. Backproject overlap to 3D and color points
+        colors, overlapped = backproject_overlap_to_3d(
+            geom, center, radius, az, el, roll,
+            overlap_mask, IMG_SIZE, norm_params
+        )
+
+        # 5. Save colored 3D geometry for this view
+        if isinstance(geom, o3d.geometry.PointCloud):
+            geom_colored = o3d.geometry.PointCloud(geom)
+            geom_colored.colors = o3d.utility.Vector3dVector(colors)
+            out_ply = OUTPUT_DIR / f"{view_name}_overlap3d.ply"
+            o3d.io.write_point_cloud(str(out_ply), geom_colored)
+        else:
+            geom_colored = o3d.geometry.TriangleMesh(geom)
+            geom_colored.vertex_colors = o3d.utility.Vector3dVector(colors)
+            out_ply = OUTPUT_DIR / f"{view_name}_overlap3d_mesh.ply"
+            o3d.io.write_triangle_mesh(str(out_ply), geom_colored)
+
+        print(f"   3D overlap saved to: {out_ply.name} (overlapped points: {overlapped.sum()})")
+
+    print(f"\n✅ Success! 2D images + 3D overlaps saved to: {OUTPUT_DIR.resolve()}")
 
 if __name__ == "__main__":
     main()
