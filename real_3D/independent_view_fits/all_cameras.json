@@ -1,20 +1,20 @@
 {
     "view_0": {
-        "iou_score": 0.7536303630363036,
-        "azimuth": 116,
-        "elevation": -8,
-        "roll": 279
+        "iou_score": 0.7593060468249958,
+        "azimuth": 114,
+        "elevation": -5,
+        "roll": 278
     },
     "view_1": {
-        "iou_score": 0.794372601961063,
-        "azimuth": 83,
-        "elevation": 41,
+        "iou_score": 0.7978723404255319,
+        "azimuth": 81,
+        "elevation": 40,
         "roll": 274
     },
     "view_2": {
-        "iou_score": 0.8683027110368753,
-        "azimuth": 291,
-        "elevation": 77,
+        "iou_score": 0.8697219361483007,
+        "azimuth": 290,
+        "elevation": 76,
         "roll": 70
     },
     "view_3": {
@@ -24,13 +24,13 @@
         "roll": 86
     },
     "view_4": {
-        "iou_score": 0.822590938098277,
+        "iou_score": 0.8238391574916227,
         "azimuth": 256,
         "elevation": 38,
         "roll": 97
     },
     "view_5": {
-        "iou_score": 0.8305105105105105,
+        "iou_score": 0.8321115250570845,
         "azimuth": 89,
         "elevation": 63,
         "roll": 270

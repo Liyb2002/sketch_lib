@@ -1,15 +1,21 @@
 #!/usr/bin/env python3
 """
-verify_and_overlay.py
+verify_and_overlay_relaxed_surface.py
 
 1. Reads 'independent_view_fits/all_cameras.json' and the .ply file.
 2. Re-renders the views (verification step) to get the base object shape.
 3. Looks for "./segmentations/view_{x}/" relative to where this script is run.
 4. Overlays masks (e.g., "backrest_1_mask.png") with unique colors in 2D.
 5. Projects the 2D overlap (rendered silhouette ∩ segmentation) back to 3D and
-   saves per-view colored .ply/.ply mesh files, with
+   saves per-view colored .ply/.ply mesh files, with:
+
    - each component having its own color (even if labels repeat),
-   - slight tolerance via 2D dilation to color more neighboring points.
+   - slight tolerance via 2D dilation to color more neighboring pixels,
+   - **surface-only gating** (closest visible point per pixel),
+   - **relaxed 3D labeling**: for each visible labeled point, all 3D points
+     within a sphere of radius RELAX_RADIUS are also labeled,
+   - if a masked part doesn't intersect the visible surface in 2D, no 3D points
+     are labeled for it.
 """
 
 import json
@@ -34,9 +40,13 @@ IMG_SIZE       = 160
 FOV_DEG = 40.0
 ASPECT  = 1.0  # square images
 
-# Tolerance for mask → 3D mapping
+# Tolerance for mask → 3D mapping (2D)
 DILATION_KERNEL_SIZE = 3     # 3x3 kernel
-DILATION_ITERATIONS  = 1     # expand slightly
+DILATION_ITERATIONS  = 1     # expand slightly in 2D for robustness
+
+# 3D relaxation: radius around visible labeled points
+# RELAX_RADIUS = RELAX_RADIUS_FACTOR * max(bbox_extent)
+RELAX_RADIUS_FACTOR = 0.2   # tune this (0.05 = 5% of max extent)
 
 # ---------------- COLOR MANAGEMENT ----------------
 
@@ -129,7 +139,7 @@ def compute_normalization_params(mask: np.ndarray, size: int):
 
 def normalize_mask(mask: np.ndarray, size: int, params=None) -> (np.ndarray, dict):
     """
-    Centers and scales the mask (85% fill) - same as search script.
+    Centers and scales the mask (85% fill).
     Returns (normalized_mask, params).
     """
     if params is None:
@@ -227,6 +237,7 @@ def project_points_to_pixels(points, eye, forward, right, up_cam,
     Returns:
       - valid_mask: boolean array [N], True if point is in front of camera and within image bounds
       - u_coords, v_coords: integer pixel coordinates [N] in [0, W/H)
+      - z_cam: depth along camera forward axis (for visibility / nearest surface)
     """
     pts_rel = points - eye  # (N, 3)
 
@@ -238,7 +249,7 @@ def project_points_to_pixels(points, eye, forward, right, up_cam,
     # Only points in front of the camera
     valid = z_cam > 1e-6
     if not np.any(valid):
-        return valid, np.zeros_like(z_cam, int), np.zeros_like(z_cam, int)
+        return valid, np.zeros_like(z_cam, int), np.zeros_like(z_cam, int), z_cam
 
     z_cam_valid = z_cam[valid]
     x_cam_valid = x_cam[valid]
@@ -271,7 +282,7 @@ def project_points_to_pixels(points, eye, forward, right, up_cam,
     u_full[full_valid_idx] = u[in_bounds]
     v_full[full_valid_idx] = v[in_bounds]
 
-    return full_valid, u_full, v_full
+    return full_valid, u_full, v_full, z_cam
 
 def apply_roll_to_pixels(u, v, roll_deg, img_w, img_h):
     """
@@ -323,13 +334,17 @@ def raw_to_normalized_pixels(u_raw, v_raw, norm_params, img_size):
 def precompute_projection(geom, center, radius, az, el, roll, img_size, norm_params):
     """
     For a given view, project all 3D points once into final 2D (normalized + rolled)
-    coordinates. Returns:
+    coordinates and compute:
 
       - pts: (N,3) array of 3D points
-      - valid_mask: (N,) bool, True where projection is valid & in-bounds
-      - u_pix, v_pix: (N,) int pixel coords in [0, img_size)
+      - visible_index: (img_size, img_size) int array, where each pixel stores
+                       the index of the **closest visible 3D point** for that pixel,
+                       or -1 if no point projects there.
+
+    This enforces "surface-only" gating: only the front-most point per pixel
+    can ever be used as a seed for labeling.
     """
-    # 1. Extract geometry points
+    # Extract geometry points
     if isinstance(geom, o3d.geometry.PointCloud):
         pts = np.asarray(geom.points)  # (N,3)
     elif isinstance(geom, o3d.geometry.TriangleMesh):
@@ -339,33 +354,51 @@ def precompute_projection(geom, center, radius, az, el, roll, img_size, norm_par
 
     N = len(pts)
     if N == 0:
-        return pts, np.zeros(0, dtype=bool), np.zeros(0, dtype=int), np.zeros(0, dtype=int)
+        visible_index = np.full((img_size, img_size), -1, dtype=np.int32)
+        return pts, visible_index
 
-    # 2. Camera basis
+    # Camera basis
     eye, forward, right, up_cam = compute_camera_basis(center, radius, az, el)
 
-    # 3. Project to raw render-space pixels
-    valid, u_raw, v_raw = project_points_to_pixels(
+    # Project to raw render-space pixels + depth
+    valid, u_raw, v_raw, z_cam = project_points_to_pixels(
         pts, eye, forward, right, up_cam,
         img_size, img_size, fov_deg=FOV_DEG, aspect=ASPECT
     )
 
-    # 4. Map raw -> normalized space
+    # Map raw -> normalized space
     u_norm, v_norm = raw_to_normalized_pixels(u_raw, v_raw, norm_params, img_size)
 
-    # 5. Apply roll on normalized pixels
+    # Apply roll on normalized pixels
     u_final, v_final = apply_roll_to_pixels(u_norm, v_norm, roll, img_size, img_size)
 
-    # 6. Round & in-bounds
+    # Round & in-bounds
     u_pix = np.round(u_final).astype(np.int32)
     v_pix = np.round(v_final).astype(np.int32)
 
     H = W = img_size
     in_bounds = (u_pix >= 0) & (u_pix < W) & (v_pix >= 0) & (v_pix < H)
 
-    valid_mask = valid & in_bounds
+    final_valid = valid & in_bounds
+    if not np.any(final_valid):
+        visible_index = np.full((img_size, img_size), -1, dtype=np.int32)
+        return pts, visible_index
 
-    return pts, valid_mask, u_pix, v_pix
+    # Initialize per-pixel depth and visible index
+    depth_img = np.full((H, W), np.inf, dtype=np.float32)
+    visible_index = np.full((H, W), -1, dtype=np.int32)
+
+    # Only consider valid projected points
+    idxs = np.where(final_valid)[0]
+    for i in idxs:
+        u = u_pix[i]
+        v = v_pix[i]
+        z = z_cam[i]
+        if z < depth_img[v, u]:
+            depth_img[v, u] = z
+            visible_index[v, u] = i
+
+    return pts, visible_index
 
 # ---------------- SEGMENTATION & OVERLAY ----------------
 
@@ -417,7 +450,8 @@ def apply_segmentation_overlays(base_render_bgr, components):
     """
     Colorize the base_render_bgr using component masks.
 
-    Each component (mask file) gets its own color, even if labels repeat.
+    Each component (mask file) gets its own color, even if labels repeat,
+    purely in 2D for visualization.
     """
     overlay_accum = base_render_bgr.copy()
 
@@ -456,9 +490,15 @@ def main():
     geom = load_geometry(PLY_PATH)
     bbox = geom.get_axis_aligned_bounding_box()
     center = bbox.get_center()
-    radius = 2.5 * float(np.max(bbox.get_extent()))
+    extent = bbox.get_extent()
+    max_extent = float(np.max(extent))
+    radius = 2.5 * max_extent
     if radius <= 0:
         radius = 1.0
+
+    # 3D relaxation radius (absolute)
+    relax_radius = RELAX_RADIUS_FACTOR * max_extent
+    print(f"Using RELAX_RADIUS = {relax_radius:.6f} (factor={RELAX_RADIUS_FACTOR})")
 
     renderer = rendering.OffscreenRenderer(IMG_SIZE, IMG_SIZE)
     renderer.scene.set_background([1.0, 1.0, 1.0, 1.0])
@@ -470,6 +510,16 @@ def main():
     renderer.scene.add_geometry("obj", geom, mat)
 
     center_pt = (IMG_SIZE // 2, IMG_SIZE // 2)
+
+    # Build KD-tree once for all views (points are the same)
+    if isinstance(geom, o3d.geometry.PointCloud):
+        kd_points = geom
+    else:
+        # TriangleMesh: build a PointCloud from vertices for KD-tree
+        kd_points = o3d.geometry.PointCloud()
+        kd_points.points = geom.vertices
+    kd_tree = o3d.geometry.KDTreeFlann(kd_points)
+    pts_np = np.asarray(kd_points.points)  # shared numpy array for neighbors
 
     print(f"\n--- 🎨 Processing Views ---")
 
@@ -500,15 +550,15 @@ def main():
         # 2. Load component masks for this view
         components = load_component_masks(view_name)
 
-        # 3. 2D Overlay (per-component colors)
+        # 3. 2D Overlay (per-component colors) for visualization
         final_img = apply_segmentation_overlays(base_img, components)
 
         # Save 2D overlay
         out_path = OUTPUT_DIR / f"{view_name}_overlaid.png"
         cv2.imwrite(str(out_path), final_img)
 
-        # 4. Precompute projection of all 3D points for this view
-        pts, proj_valid, u_pix, v_pix = precompute_projection(
+        # 4. Precompute visible-surface projection of all 3D points for this view
+        pts, visible_index = precompute_projection(
             geom, center, radius, az, el, roll, IMG_SIZE, norm_params
         )
 
@@ -517,8 +567,12 @@ def main():
         colors = np.zeros((N, 3), dtype=np.float32)
         colors[:] = np.array([0.6, 0.6, 0.6], dtype=np.float32)
 
-        # 6. For each component, build a slightly dilated overlap mask,
-        #    then color corresponding 3D points with that component's color.
+        # 6. For each component, build a slightly dilated overlap mask.
+        #    Only use pixels that:
+        #      - are inside seg_dilated AND final_render_mask, and
+        #      - have a visible surface point (visible_index >= 0).
+        #    Then RELAX in 3D: for each such visible point, color all points in a
+        #    sphere of radius relax_radius.
         if components:
             kernel = np.ones((DILATION_KERNEL_SIZE, DILATION_KERNEL_SIZE), np.uint8)
 
@@ -529,36 +583,55 @@ def main():
                 seg_dilated = (seg_dilated > 0)
 
                 # Overlap in 2D (normalized + rolled) space:
-                # only color where both dilated seg and rendered silhouette exist
                 overlap_2d = seg_dilated & (final_render_mask > 0)
 
-                # Now push that assignment to 3D
-                idx = np.where(proj_valid)[0]
-                if idx.size > 0:
-                    # For valid points, check overlap_2d at their pixel coordinates
-                    ov = overlap_2d[v_pix[idx], u_pix[idx]]
+                # Restrict to pixels that actually have a visible 3D point
+                mask_visible_overlap = overlap_2d & (visible_index >= 0)
 
-                    # Choose color for this component (convert BGR -> float RGB-ish)
-                    c_bgr = np.array(get_color_for_component(component_id), dtype=np.float32)
-                    c_rgb = c_bgr[::-1] / 255.0  # reverse to approx RGB, then normalize
+                # If there is no intersection between this mask and the visible surface,
+                # skip labeling any 3D points for this component.
+                if not np.any(mask_visible_overlap):
+                    base_label = parse_base_label(component_id)
+                    print(f"   - Skipping component {component_id} (base label: {base_label}) "
+                          f"because it does not intersect visible surface.")
+                    continue
 
-                    colors[idx[ov]] = c_rgb
+                # ---- Surface seeds: visible 3D points for this component in this view ----
+                visible_point_indices = visible_index[mask_visible_overlap]
+                visible_point_indices = np.unique(visible_point_indices)
+
+                # ---- Relaxation in 3D: sphere neighborhood around each visible seed ----
+                neighbor_indices_set = set()
+                for idx0 in visible_point_indices:
+                    # KD-tree radius search
+                    query_pt = pts_np[int(idx0)]
+                    _, idxs, _ = kd_tree.search_radius_vector_3d(query_pt, relax_radius)
+                    for j in idxs:
+                        neighbor_indices_set.add(int(j))
+
+                neighbor_indices = np.array(list(neighbor_indices_set), dtype=np.int32)
+
+                # Choose color for this component (BGR -> RGB, normalized)
+                c_bgr = np.array(get_color_for_component(component_id), dtype=np.float32)
+                c_rgb = c_bgr[::-1] / 255.0
+
+                colors[neighbor_indices] = c_rgb
 
         # 7. Save colored 3D geometry for this view
         if isinstance(geom, o3d.geometry.PointCloud):
             geom_colored = o3d.geometry.PointCloud(geom)
             geom_colored.colors = o3d.utility.Vector3dVector(colors)
-            out_ply = OUTPUT_DIR / f"{view_name}_overlap3d.ply"
+            out_ply = OUTPUT_DIR / f"{view_name}_overlap3d_relaxed.ply"
             o3d.io.write_point_cloud(str(out_ply), geom_colored)
         else:
             geom_colored = o3d.geometry.TriangleMesh(geom)
             geom_colored.vertex_colors = o3d.utility.Vector3dVector(colors)
-            out_ply = OUTPUT_DIR / f"{view_name}_overlap3d_mesh.ply"
+            out_ply = OUTPUT_DIR / f"{view_name}_overlap3d_mesh_relaxed.ply"
             o3d.io.write_triangle_mesh(str(out_ply), geom_colored)
 
-        print(f"   3D overlap saved to: {out_ply.name}")
+        print(f"   3D overlap (surface-relaxed) saved to: {out_ply.name}")
 
-    print(f"\n✅ Success! 2D images + 3D overlaps saved to: {OUTPUT_DIR.resolve()}")
+    print(f"\n✅ Success! 2D images + relaxed 3D overlaps saved to: {OUTPUT_DIR.resolve()}")
 
 if __name__ == "__main__":
     main()

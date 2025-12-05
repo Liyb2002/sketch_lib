@@ -26,7 +26,7 @@ VIEWS_DIR   = Path("views")        # Where input sketches are
 OUT_DIR     = Path("independent_view_fits") # Output folder
 
 IMG_SIZE    = 160
-TOP_K_CANDIDATES = 1 # Only refine the single best coarse match for speed
+TOP_K_CANDIDATES = 2 # Only refine the single best coarse match for speed
 
 # ---------------- HELPER FUNCTIONS ----------------
 
