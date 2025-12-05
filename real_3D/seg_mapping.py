@@ -7,7 +7,9 @@ verify_and_overlay.py
 3. Looks for "./segmentations/view_{x}/" relative to where this script is run.
 4. Overlays masks (e.g., "backrest_1_mask.png") with unique colors in 2D.
 5. Projects the 2D overlap (rendered silhouette ∩ segmentation) back to 3D and
-   saves per-view colored .ply/.ply mesh files highlighting those regions.
+   saves per-view colored .ply/.ply mesh files, with
+   - each component having its own color (even if labels repeat),
+   - slight tolerance via 2D dilation to color more neighboring points.
 """
 
 import json
@@ -32,33 +34,44 @@ IMG_SIZE       = 160
 FOV_DEG = 40.0
 ASPECT  = 1.0  # square images
 
+# Tolerance for mask → 3D mapping
+DILATION_KERNEL_SIZE = 3     # 3x3 kernel
+DILATION_ITERATIONS  = 1     # expand slightly
+
 # ---------------- COLOR MANAGEMENT ----------------
 
-# Explicit bright colors for visibility
+# Explicit bright colors for visibility (B, G, R)
 DISTINCT_COLORS = [
-    (0, 0, 255),   # Red
-    (0, 255, 0),   # Green
-    (255, 0, 0),   # Blue
-    (0, 255, 255), # Yellow
-    (255, 0, 255), # Magenta
-    (255, 255, 0), # Cyan
-    (0, 165, 255), # Orange
-    (128, 0, 128), # Purple
-    (0, 128, 128), # Teal
-    (128, 128, 0), # Olive
+    (0, 0, 255),    # Red
+    (0, 255, 0),    # Green
+    (255, 0, 0),    # Blue
+    (0, 255, 255),  # Yellow
+    (255, 0, 255),  # Magenta
+    (255, 255, 0),  # Cyan
+    (0, 165, 255),  # Orange
+    (128, 0, 128),  # Purple
+    (0, 128, 128),  # Teal
+    (128, 128, 0),  # Olive
     (128, 128, 128) # Grey
 ]
 
-object_color_map = {}
-color_index = 0
+component_color_map = {}
+component_color_index = 0
 
-def get_color_for_object(obj_name):
-    """Assigns a consistent color to an object name (e.g., 'backrest')."""
-    global color_index
-    if obj_name not in object_color_map:
-        object_color_map[obj_name] = DISTINCT_COLORS[color_index % len(DISTINCT_COLORS)]
-        color_index += 1
-    return object_color_map[obj_name]
+def get_color_for_component(component_id: str):
+    """
+    Assigns a consistent color to a specific component instance, keyed by
+    its full mask stem (e.g., 'leg_0_mask' or 'backrest_2_mask').
+
+    This guarantees that:
+    - Different components get different colors.
+    - Even same label (e.g., leg_0 vs leg_1) get different colors.
+    """
+    global component_color_index
+    if component_id not in component_color_map:
+        component_color_map[component_id] = DISTINCT_COLORS[component_color_index % len(DISTINCT_COLORS)]
+        component_color_index += 1
+    return component_color_map[component_id]
 
 # ---------------- HELPER FUNCTIONS (Rendering) ----------------
 
@@ -307,14 +320,14 @@ def raw_to_normalized_pixels(u_raw, v_raw, norm_params, img_size):
 
     return u_norm, v_norm
 
-def backproject_overlap_to_3d(geom, center, radius, az, el, roll,
-                              overlap_mask, img_size, norm_params):
+def precompute_projection(geom, center, radius, az, el, roll, img_size, norm_params):
     """
-    Backproject overlap pixels (in final normalized + rolled space) to 3D.
+    For a given view, project all 3D points once into final 2D (normalized + rolled)
+    coordinates. Returns:
 
-    Returns:
-      - colors: (N,3) float32 in [0,1] for each point/vertex
-      - overlapped: boolean mask of size N indicating overlap
+      - pts: (N,3) array of 3D points
+      - valid_mask: (N,) bool, True where projection is valid & in-bounds
+      - u_pix, v_pix: (N,) int pixel coords in [0, img_size)
     """
     # 1. Extract geometry points
     if isinstance(geom, o3d.geometry.PointCloud):
@@ -326,9 +339,9 @@ def backproject_overlap_to_3d(geom, center, radius, az, el, roll,
 
     N = len(pts)
     if N == 0:
-        return np.zeros((0, 3), dtype=np.float32), np.zeros(0, dtype=bool)
+        return pts, np.zeros(0, dtype=bool), np.zeros(0, dtype=int), np.zeros(0, dtype=int)
 
-    # 2. Camera basis (same as renderer)
+    # 2. Camera basis
     eye, forward, right, up_cam = compute_camera_basis(center, radius, az, el)
 
     # 3. Project to raw render-space pixels
@@ -337,108 +350,88 @@ def backproject_overlap_to_3d(geom, center, radius, az, el, roll,
         img_size, img_size, fov_deg=FOV_DEG, aspect=ASPECT
     )
 
-    # 4. Map raw -> normalized space (same as normalize_mask)
+    # 4. Map raw -> normalized space
     u_norm, v_norm = raw_to_normalized_pixels(u_raw, v_raw, norm_params, img_size)
 
     # 5. Apply roll on normalized pixels
     u_final, v_final = apply_roll_to_pixels(u_norm, v_norm, roll, img_size, img_size)
 
-    # 6. Check overlap mask
-    H, W = overlap_mask.shape
+    # 6. Round & in-bounds
     u_pix = np.round(u_final).astype(np.int32)
     v_pix = np.round(v_final).astype(np.int32)
 
+    H = W = img_size
     in_bounds = (u_pix >= 0) & (u_pix < W) & (v_pix >= 0) & (v_pix < H)
 
-    overlapped = np.zeros(N, dtype=bool)
-    idx = np.where(valid & in_bounds)[0]
-    if len(idx) > 0:
-        overlapped[idx] = overlap_mask[v_pix[idx], u_pix[idx]]
+    valid_mask = valid & in_bounds
 
-    # 7. Build colors: overlapped = red, others = gray
-    colors = np.zeros((N, 3), dtype=np.float32)
-    colors[:] = np.array([0.6, 0.6, 0.6], dtype=np.float32)  # base gray
-    colors[overlapped] = np.array([1.0, 0.0, 0.0], dtype=np.float32)  # red
-
-    return colors, overlapped
+    return pts, valid_mask, u_pix, v_pix
 
 # ---------------- SEGMENTATION & OVERLAY ----------------
 
-def parse_filename(filename):
+def parse_base_label(filename_stem: str):
     """
-    Input: "backrest_1_mask" (no extension)
+    Input: "backrest_1_mask"
     Output: "backrest"
-
-    Logic:
-    1. Remove '_mask' suffix.
-    2. Split by last underscore to remove the count.
+    (for logging only)
     """
-    if filename.endswith("_mask"):
-        base = filename[:-5]
+    if filename_stem.endswith("_mask"):
+        base = filename_stem[:-5]
     else:
-        return None
+        return filename_stem
 
-    parts = base.rsplit('_', 1)  # Split from right, max 1 split
+    parts = base.rsplit('_', 1)
     if len(parts) == 2:
         return parts[0]
-    return base  # Fallback
+    return base
 
-def apply_segmentation_overlays(base_render_bgr, view_name):
+def load_component_masks(view_name):
     """
-    Colorize the base_render_bgr using segmentation masks
-    under SEG_DIR / view_name.
+    Load all component masks for this view.
+
+    Returns a list of tuples:
+        [(component_id, seg_mask), ...]
+    where component_id is mask_path.stem (e.g., 'backrest_0_mask') and
+    seg_mask is a binary mask of shape (IMG_SIZE, IMG_SIZE).
     """
     current_seg_dir = SEG_DIR / view_name
+    components = []
 
     if not current_seg_dir.exists():
-        print(f"   ⚠️ Warning: Folder not found: {current_seg_dir}")
-        return base_render_bgr
-
-    overlay_accum = base_render_bgr.copy()
+        return components
 
     mask_files = sorted(list(current_seg_dir.glob("*_mask.png")))
-    if not mask_files:
-        print(f"   ℹ️ No masks in {current_seg_dir}")
-        return base_render_bgr
-
     for mask_path in mask_files:
-        obj_name = parse_filename(mask_path.stem)
-        if not obj_name:
-            continue
-
-        color = get_color_for_object(obj_name)
-
-        seg_mask = cv2.imread(str(mask_path), cv2.IMREAD_GRAYSCALE)
-        if seg_mask is None:
-            continue
-
-        if seg_mask.shape[:2] != (IMG_SIZE, IMG_SIZE):
-            seg_mask = cv2.resize(seg_mask, (IMG_SIZE, IMG_SIZE), interpolation=cv2.INTER_NEAREST)
-
-        overlay_accum[seg_mask > 0] = color
-        print(f"   + Applied {obj_name} ({mask_path.name})")
-
-    return overlay_accum
-
-def get_seg_union(view_name):
-    """
-    Build a union mask of all segmentations for this view (IMG_SIZE x IMG_SIZE, 0/1).
-    """
-    current_seg_dir = SEG_DIR / view_name
-    seg_union = np.zeros((IMG_SIZE, IMG_SIZE), dtype=np.uint8)
-
-    if not current_seg_dir.exists():
-        return seg_union
-
-    for mask_path in current_seg_dir.glob("*_mask.png"):
+        component_id = mask_path.stem  # full stem, e.g., 'leg_0_mask'
         seg = cv2.imread(str(mask_path), cv2.IMREAD_GRAYSCALE)
         if seg is None:
             continue
         if seg.shape[:2] != (IMG_SIZE, IMG_SIZE):
             seg = cv2.resize(seg, (IMG_SIZE, IMG_SIZE), interpolation=cv2.INTER_NEAREST)
-        seg_union[seg > 0] = 1
+        seg_mask = (seg > 0).astype(np.uint8)
+        components.append((component_id, seg_mask))
 
-    return seg_union
+    return components
+
+def apply_segmentation_overlays(base_render_bgr, components):
+    """
+    Colorize the base_render_bgr using component masks.
+
+    Each component (mask file) gets its own color, even if labels repeat.
+    """
+    overlay_accum = base_render_bgr.copy()
+
+    if not components:
+        return base_render_bgr
+
+    for component_id, seg_mask in components:
+        color_bgr = get_color_for_component(component_id)
+        overlay_accum[seg_mask > 0] = color_bgr
+        # For logging, also show base label
+        base_label = parse_base_label(component_id)
+        print(f"   + Applied component {component_id} (base label: {base_label})")
+
+    return overlay_accum
 
 # ---------------- MAIN ----------------
 
@@ -504,26 +497,54 @@ def main():
         base_img = np.ones((IMG_SIZE, IMG_SIZE, 3), dtype=np.uint8) * 255
         base_img[final_render_mask > 0] = [60, 60, 60]
 
-        # 2. 2D Overlay
-        final_img = apply_segmentation_overlays(base_img, view_name)
+        # 2. Load component masks for this view
+        components = load_component_masks(view_name)
+
+        # 3. 2D Overlay (per-component colors)
+        final_img = apply_segmentation_overlays(base_img, components)
 
         # Save 2D overlay
         out_path = OUTPUT_DIR / f"{view_name}_overlaid.png"
         cv2.imwrite(str(out_path), final_img)
 
-        # 3. Build segmentation union mask (for overlap in 2D)
-        seg_union = get_seg_union(view_name)
-
-        # Overlap in normalized + rolled 2D space
-        overlap_mask = (final_render_mask > 0) & (seg_union > 0)
-
-        # 4. Backproject overlap to 3D and color points
-        colors, overlapped = backproject_overlap_to_3d(
-            geom, center, radius, az, el, roll,
-            overlap_mask, IMG_SIZE, norm_params
+        # 4. Precompute projection of all 3D points for this view
+        pts, proj_valid, u_pix, v_pix = precompute_projection(
+            geom, center, radius, az, el, roll, IMG_SIZE, norm_params
         )
 
-        # 5. Save colored 3D geometry for this view
+        # 5. Initialize 3D colors: default gray everywhere
+        N = len(pts)
+        colors = np.zeros((N, 3), dtype=np.float32)
+        colors[:] = np.array([0.6, 0.6, 0.6], dtype=np.float32)
+
+        # 6. For each component, build a slightly dilated overlap mask,
+        #    then color corresponding 3D points with that component's color.
+        if components:
+            kernel = np.ones((DILATION_KERNEL_SIZE, DILATION_KERNEL_SIZE), np.uint8)
+
+            for component_id, seg_mask in components:
+                # Dilate segmentation mask to be tolerant wrt misalignment
+                seg_dilated = cv2.dilate(seg_mask.astype(np.uint8), kernel,
+                                         iterations=DILATION_ITERATIONS)
+                seg_dilated = (seg_dilated > 0)
+
+                # Overlap in 2D (normalized + rolled) space:
+                # only color where both dilated seg and rendered silhouette exist
+                overlap_2d = seg_dilated & (final_render_mask > 0)
+
+                # Now push that assignment to 3D
+                idx = np.where(proj_valid)[0]
+                if idx.size > 0:
+                    # For valid points, check overlap_2d at their pixel coordinates
+                    ov = overlap_2d[v_pix[idx], u_pix[idx]]
+
+                    # Choose color for this component (convert BGR -> float RGB-ish)
+                    c_bgr = np.array(get_color_for_component(component_id), dtype=np.float32)
+                    c_rgb = c_bgr[::-1] / 255.0  # reverse to approx RGB, then normalize
+
+                    colors[idx[ov]] = c_rgb
+
+        # 7. Save colored 3D geometry for this view
         if isinstance(geom, o3d.geometry.PointCloud):
             geom_colored = o3d.geometry.PointCloud(geom)
             geom_colored.colors = o3d.utility.Vector3dVector(colors)
@@ -535,7 +556,7 @@ def main():
             out_ply = OUTPUT_DIR / f"{view_name}_overlap3d_mesh.ply"
             o3d.io.write_triangle_mesh(str(out_ply), geom_colored)
 
-        print(f"   3D overlap saved to: {out_ply.name} (overlapped points: {overlapped.sum()})")
+        print(f"   3D overlap saved to: {out_ply.name}")
 
     print(f"\n✅ Success! 2D images + 3D overlaps saved to: {OUTPUT_DIR.resolve()}")
 
