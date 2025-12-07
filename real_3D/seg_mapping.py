@@ -46,7 +46,7 @@ DILATION_ITERATIONS  = 1     # expand slightly in 2D for robustness
 
 # 3D relaxation: radius around visible labeled points
 # RELAX_RADIUS = RELAX_RADIUS_FACTOR * max(bbox_extent)
-RELAX_RADIUS_FACTOR = 0.2   # tune this (0.05 = 5% of max extent)
+RELAX_RADIUS_FACTOR = 0.05   # tune this (0.05 = 5% of max extent)
 
 # ---------------- COLOR MANAGEMENT ----------------
 
