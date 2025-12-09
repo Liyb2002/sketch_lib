@@ -1,198 +1,126 @@
-#!/usr/bin/env python3
-"""
-render_vggt_reprojections.py
-
-Given:
-  - vggt_scene/extrinsics.npy  (N, 3, 4)  # camera-from-world, OpenCV convention
-  - vggt_scene/intrinsics.npy  (N, 3, 3)
-  - vggt_scene/point_cloud_object_only_10k.ply  (world-space points)
-  - view/view_0.png ... view/view_5.png  (original input images)
-
-This script reprojects the 3D point cloud into each camera and renders a
-binary silhouette for each view:
-
-  vggt_scene/reproj_view_0.png
-  ...
-  vggt_scene/reproj_view_{N-1}.png
-
-Each silhouette:
-  - white background (255)
-  - black object pixels (0)
-
-You can overlay these on the original sketches to see how well the
-inferred cameras line up.
-"""
-
 import os
-from pathlib import Path
-
+import json
 import numpy as np
-from PIL import Image
-import open3d as o3d
+import cv2
 
-# ----------------- hard-coded paths -----------------
+# -----------------------------------------------------------------------------
+# CONFIGURATION
+# -----------------------------------------------------------------------------
+THIS_DIR = os.path.dirname(os.path.abspath(__file__))
+VIEWS_DIR = os.path.join(THIS_DIR, "views")
+INPUT_DIR = os.path.join(THIS_DIR, "outputs")
+RENDER_DIR = os.path.join(THIS_DIR, "renders")
 
-SCENE_DIR       = Path("vggt_scene")
-INPUT_VIEWS_DIR = Path("view")
+def save_ply(points, colors, filename):
+    print(f"Saving {filename} ({len(points)} points)...")
+    header = f"""ply
+format ascii 1.0
+element vertex {len(points)}
+property float x
+property float y
+property float z
+property uchar red
+property uchar green
+property uchar blue
+end_header
+"""
+    with open(filename, 'w') as f:
+        f.write(header)
+        for p, c in zip(points, colors):
+            f.write(f"{p[0]:.4f} {p[1]:.4f} {p[2]:.4f} {int(c[0])} {int(c[1])} {int(c[2])}\n")
 
-EXTRINSICS_PATH = SCENE_DIR / "extrinsics.npy"
-INTRINSICS_PATH = SCENE_DIR / "intrinsics.npy"
-POINTCLOUD_PATH = SCENE_DIR / "point_cloud_object_only_10k.ply"
+def get_local_points(depth_map, rgb_img, K):
+    """Generates 3D points in the Camera's local space (OpenCV convention)."""
+    H, W = depth_map.shape
+    u, v = np.meshgrid(np.arange(W), np.arange(H))
+    u, v = u.flatten(), v.flatten()
+    depth = depth_map.flatten()
+    
+    valid_mask = ~np.isnan(depth) & (depth > 0)
+    u, v, depth = u[valid_mask], v[valid_mask], depth[valid_mask]
+    colors = rgb_img.reshape(-1, 3)[valid_mask]
 
-OUTPUT_DIR      = SCENE_DIR  # save images next to the scene files
+    fx, fy, cx, cy = K[0, 0], K[1, 1], K[0, 2], K[1, 2]
+    
+    # OpenCV: +X Right, +Y Down, +Z Forward
+    x_cam = (u - cx) * depth / fx
+    y_cam = (v - cy) * depth / fy
+    z_cam = depth
+    
+    return np.stack([x_cam, y_cam, z_cam], axis=1), colors
 
-
-def load_cameras():
-    if not EXTRINSICS_PATH.is_file():
-        raise FileNotFoundError(f"Missing {EXTRINSICS_PATH}")
-    if not INTRINSICS_PATH.is_file():
-        raise FileNotFoundError(f"Missing {INTRINSICS_PATH}")
-
-    extrinsics = np.load(EXTRINSICS_PATH)  # (N, 3, 4)
-    intrinsics = np.load(INTRINSICS_PATH)  # (N, 3, 3)
-
-    if extrinsics.ndim != 3 or extrinsics.shape[1:] != (3, 4):
-        raise ValueError(f"extrinsics.npy has unexpected shape {extrinsics.shape}")
-    if intrinsics.ndim != 3 or intrinsics.shape[1:] != (3, 3):
-        raise ValueError(f"intrinsics.npy has unexpected shape {intrinsics.shape}")
-
-    if extrinsics.shape[0] != intrinsics.shape[0]:
-        raise ValueError(
-            f"Number of extrinsics ({extrinsics.shape[0]}) != "
-            f"number of intrinsics ({intrinsics.shape[0]})"
-        )
-
-    print(f"[INFO] Loaded cameras for {extrinsics.shape[0]} views.")
-    return extrinsics, intrinsics
-
-
-def load_point_cloud():
-    if not POINTCLOUD_PATH.is_file():
-        raise FileNotFoundError(f"Missing point cloud: {POINTCLOUD_PATH}")
-
-    pcd = o3d.io.read_point_cloud(str(POINTCLOUD_PATH))
-    pts = np.asarray(pcd.points, dtype=np.float32)
-    if pts.size == 0:
-        raise RuntimeError("Point cloud has zero points.")
-
-    print(f"[INFO] Loaded point cloud: {pts.shape[0]} points from {POINTCLOUD_PATH.name}")
-    return pts
-
-
-def get_image_size():
-    """
-    Infer the image size (H, W) from view_0.png in INPUT_VIEWS_DIR.
-    This should match the size used when running VGGT.
-    """
-    candidates = sorted(INPUT_VIEWS_DIR.glob("view_*.png"))
-    if not candidates:
-        raise FileNotFoundError(f"No view_*.png found in {INPUT_VIEWS_DIR}")
-
-    img0 = Image.open(candidates[0]).convert("RGB")
-    W, H = img0.size
-    print(f"[INFO] Using image size H={H}, W={W} (from {candidates[0].name})")
-    return H, W
-
-
-def project_points_to_image(
-    points_world: np.ndarray,
-    extrinsic: np.ndarray,
-    intrinsic: np.ndarray,
-    H: int,
-    W: int,
-):
-    """
-    Project world-space points into an image using OpenCV-style camera matrices.
-
-    extrinsic: (3, 4) camera-from-world: X_cam = R X_world + t
-    intrinsic: (3, 3)
-    Returns a binary mask (H, W) with z-buffering:
-      True where at least one 3D point projects, False otherwise.
-    """
-    R = extrinsic[:, :3]  # (3,3)
-    t = extrinsic[:, 3]   # (3,)
-
-    # World → camera
-    # points_world: (N, 3)
-    Xw = points_world.T   # (3, N)
-    Xc = R @ Xw + t[:, None]  # (3, N)
-
-    x = Xc[0, :]
-    y = Xc[1, :]
-    z = Xc[2, :]
-
-    # Keep only points in front of the camera
-    eps = 1e-6
-    valid = z > eps
-    if not np.any(valid):
-        # No visible points
-        return np.zeros((H, W), dtype=bool)
-
-    x = x[valid]
-    y = y[valid]
-    z = z[valid]
-
-    # Intrinsic projection
-    fx = intrinsic[0, 0]
-    fy = intrinsic[1, 1]
-    cx = intrinsic[0, 2]
-    cy = intrinsic[1, 2]
-
-    u = fx * (x / z) + cx
-    v = fy * (y / z) + cy
-
-    # Pixel coords
-    u_pix = np.round(u).astype(np.int32)
-    v_pix = np.round(v).astype(np.int32)
-
-    # In-bounds mask
-    in_bounds = (
-        (u_pix >= 0) & (u_pix < W) &
-        (v_pix >= 0) & (v_pix < H)
-    )
-    if not np.any(in_bounds):
-        return np.zeros((H, W), dtype=bool)
-
-    u_pix = u_pix[in_bounds]
-    v_pix = v_pix[in_bounds]
-    z = z[in_bounds]
-
-    # Z-buffer: keep the closest point per pixel
-    depth_img = np.full((H, W), np.inf, dtype=np.float32)
-    mask = np.zeros((H, W), dtype=bool)
-
-    for uu, vv, zz in zip(u_pix, v_pix, z):
-        if zz < depth_img[vv, uu]:
-            depth_img[vv, uu] = zz
-            mask[vv, uu] = True
-
-    return mask
-
+def apply_transform(points, matrix):
+    """Applies 4x4 matrix to Nx3 points."""
+    ones = np.ones((len(points), 1))
+    pts_hom = np.hstack([points, ones])
+    return (matrix @ pts_hom.T).T[:, :3]
 
 def main():
-    extrinsics, intrinsics = load_cameras()
-    points_world = load_point_cloud()
-    H, W = get_image_size()
+    if not os.path.exists(RENDER_DIR): os.makedirs(RENDER_DIR)
 
-    num_views = extrinsics.shape[0]
+    image_files = sorted([f for f in os.listdir(VIEWS_DIR) if f.lower().endswith(('.png', '.jpg'))])
+    
+    # We will collect points for 3 different hypothesis modes
+    points_A, colors_A = [], [] # Mode A: Standard Inverse (W2C -> C2W)
+    points_B, colors_B = [], [] # Mode B: OpenGL Conversion (Flip Y/Z)
+    points_C, colors_C = [], [] # Mode C: Direct Multiply (C2W assumption)
 
-    for i in range(num_views):
-        print(f"[INFO] Reprojecting view {i} ...")
-        E = extrinsics[i]  # (3,4)
-        K = intrinsics[i]  # (3,3)
+    print("Processing views...")
+    for f in image_files:
+        name = os.path.splitext(f)[0]
+        depth_path = os.path.join(INPUT_DIR, f"{name}_depth.npy")
+        cam_path = os.path.join(INPUT_DIR, f"{name}_cam.json")
+        
+        if not (os.path.exists(depth_path) and os.path.exists(cam_path)): continue
+        
+        # Load Data
+        img = cv2.cvtColor(cv2.imread(os.path.join(VIEWS_DIR, f)), cv2.COLOR_BGR2RGB)
+        depth = np.load(depth_path)
+        
+        with open(cam_path) as json_file:
+            cam_data = json.load(json_file)
+        
+        extrinsic = np.array(cam_data['extrinsics']) # 4x4 or 3x4
+        if extrinsic.shape == (3, 4):
+            extrinsic = np.vstack([extrinsic, [0,0,0,1]])
+            
+        K = np.array(cam_data['intrinsics'])
+        
+        # 1. Get Local Points (OpenCV Style: +Z forward, +Y down)
+        local_pts, cols = get_local_points(depth, img, K)
+        
+        # --- MODE A: Standard W2C Inverse ---
+        # Assumes extrinsic is World-to-Camera. We invert to get Camera-to-World.
+        c2w_A = np.linalg.inv(extrinsic)
+        pts_A = apply_transform(local_pts, c2w_A)
+        points_A.append(pts_A); colors_A.append(cols)
+        
+        # --- MODE B: OpenGL Fix (Flip Y and Z) ---
+        # Many research models expect cameras to look down -Z with +Y up.
+        # We transform our OpenCV points to that system before applying matrix.
+        local_pts_gl = local_pts.copy()
+        local_pts_gl[:, 1] *= -1 # Flip Y
+        local_pts_gl[:, 2] *= -1 # Flip Z
+        
+        c2w_B = np.linalg.inv(extrinsic)
+        pts_B = apply_transform(local_pts_gl, c2w_B)
+        points_B.append(pts_B); colors_B.append(cols)
 
-        mask = project_points_to_image(points_world, E, K, H, W)
+        # --- MODE C: Direct C2W ---
+        # Assumes extrinsic is ALREADY Camera-to-World.
+        pts_C = apply_transform(local_pts, extrinsic)
+        points_C.append(pts_C); colors_C.append(cols)
 
-        # Render as white background, black object
-        img = np.ones((H, W), dtype=np.uint8) * 255
-        img[mask] = 0
-
-        out_path = OUTPUT_DIR / f"reproj_view_{i}.png"
-        Image.fromarray(img).save(out_path)
-        print(f"  -> saved {out_path}")
-
-    print("\n[DONE] Reprojected views saved in", OUTPUT_DIR.resolve())
-
+    # Save Results
+    print("Saving PLY files...")
+    save_ply(np.vstack(points_A), np.vstack(colors_A), os.path.join(RENDER_DIR, "fused_mode_A.ply"))
+    save_ply(np.vstack(points_B), np.vstack(colors_B), os.path.join(RENDER_DIR, "fused_mode_B.ply"))
+    save_ply(np.vstack(points_C), np.vstack(colors_C), os.path.join(RENDER_DIR, "fused_mode_C.ply"))
+    
+    print("\nDONE!")
+    print("1. Open MeshLab.")
+    print("2. Import 'fused_mode_A.ply', 'fused_mode_B.ply', and 'fused_mode_C.ply'.")
+    print("3. One of them will look like a single solid object. The others will be scattered.")
 
 if __name__ == "__main__":
     main()
