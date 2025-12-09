@@ -1,5 +1,5 @@
 {
-    "extrinsics_c2w": [
+    "extrinsics_w2c": [
         [
             1.0,
             -3.817096512648277e-05,
