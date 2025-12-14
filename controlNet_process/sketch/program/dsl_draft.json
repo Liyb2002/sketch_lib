@@ -1,0 +1,184 @@
+{
+  "dsl_version": "1.0",
+  "root_part": "ROOT_ID",
+  "parts": [
+    {
+      "id": "component_0",
+      "semantic": "Front Wheel",
+      "primitive": "cuboid"
+    },
+    {
+      "id": "component_1",
+      "semantic": "Rear Wheel",
+      "primitive": "cuboid"
+    },
+    {
+      "id": "component_2",
+      "semantic": "Front Fender",
+      "primitive": "cuboid"
+    },
+    {
+      "id": "component_3",
+      "semantic": "Rear Fender",
+      "primitive": "cuboid"
+    },
+    {
+      "id": "component_4",
+      "semantic": "Seat",
+      "primitive": "cuboid"
+    },
+    {
+      "id": "component_5",
+      "semantic": "Headlight",
+      "primitive": "cuboid"
+    },
+    {
+      "id": "component_6",
+      "semantic": "Handlebars",
+      "primitive": "cuboid"
+    },
+    {
+      "id": "component_7",
+      "semantic": "Engine",
+      "primitive": "cuboid"
+    },
+    {
+      "id": "component_8",
+      "semantic": "Exhaust Pipe",
+      "primitive": "cuboid"
+    },
+    {
+      "id": "component_9",
+      "semantic": "Brakes",
+      "primitive": "cuboid"
+    },
+    {
+      "id": "component_10",
+      "semantic": "Suspension",
+      "primitive": "cuboid"
+    },
+    {
+      "id": "component_11",
+      "semantic": "Frame",
+      "primitive": "cuboid"
+    },
+    {
+      "id": "component_12",
+      "semantic": "Body Panels",
+      "primitive": "cuboid"
+    },
+    {
+      "id": "component_13",
+      "semantic": "Tires",
+      "primitive": "cuboid"
+    }
+  ],
+  "symmetry_groups": [
+    {
+      "name": "Front Wheel and Rear Wheel",
+      "members": [
+        "component_0",
+        "component_1"
+      ],
+      "type": "reflective"
+    },
+    {
+      "name": "Front Fender and Rear Fender",
+      "members": [
+        "component_2",
+        "component_3"
+      ],
+      "type": "reflective"
+    },
+    {
+      "name": "Seat and Handlebars",
+      "members": [
+        "component_4",
+        "component_6"
+      ],
+      "type": "reflective"
+    },
+    {
+      "name": "Engine and Exhaust Pipe",
+      "members": [
+        "component_7",
+        "component_8"
+      ],
+      "type": "reflective"
+    },
+    {
+      "name": "Brakes and Suspension",
+      "members": [
+        "component_9",
+        "component_10"
+      ],
+      "type": "reflective"
+    },
+    {
+      "name": "Frame and Body Panels",
+      "members": [
+        "component_11",
+        "component_12"
+      ],
+      "type": "reflective"
+    },
+    {
+      "name": "Tires",
+      "members": [
+        "component_13"
+      ],
+      "type": "reflective"
+    }
+  ],
+  "constraints": [
+    {
+      "type": "attach",
+      "source": "component_1",
+      "source_face": "top",
+      "target": "component_0",
+      "target_face": "bottom"
+    },
+    {
+      "type": "attach",
+      "source": "component_3",
+      "source_face": "top",
+      "target": "component_2",
+      "target_face": "bottom"
+    },
+    {
+      "type": "attach",
+      "source": "component_6",
+      "source_face": "top",
+      "target": "component_4",
+      "target_face": "bottom"
+    },
+    {
+      "type": "attach",
+      "source": "component_8",
+      "source_face": "top",
+      "target": "component_7",
+      "target_face": "bottom"
+    },
+    {
+      "type": "attach",
+      "source": "component_10",
+      "source_face": "top",
+      "target": "component_9",
+      "target_face": "bottom"
+    },
+    {
+      "type": "attach",
+      "source": "component_12",
+      "source_face": "top",
+      "target": "component_11",
+      "target_face": "bottom"
+    },
+    {
+      "type": "attach",
+      "source": "component_13",
+      "source_face": "top",
+      "target": "component_11",
+      "target_face": "bottom"
+    }
+  ]
+}

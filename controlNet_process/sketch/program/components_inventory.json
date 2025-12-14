@@ -1,0 +1,61 @@
+{
+  "object_category": "Scooter",
+  "components": [
+    {
+      "name": "Front Wheel",
+      "count": 1
+    },
+    {
+      "name": "Rear Wheel",
+      "count": 1
+    },
+    {
+      "name": "Front Fender",
+      "count": 1
+    },
+    {
+      "name": "Rear Fender",
+      "count": 1
+    },
+    {
+      "name": "Seat",
+      "count": 1
+    },
+    {
+      "name": "Headlight",
+      "count": 1
+    },
+    {
+      "name": "Handlebars",
+      "count": 1
+    },
+    {
+      "name": "Engine",
+      "count": 1
+    },
+    {
+      "name": "Exhaust Pipe",
+      "count": 1
+    },
+    {
+      "name": "Brakes",
+      "count": 2
+    },
+    {
+      "name": "Suspension",
+      "count": 2
+    },
+    {
+      "name": "Frame",
+      "count": 1
+    },
+    {
+      "name": "Body Panels",
+      "count": 2
+    },
+    {
+      "name": "Tires",
+      "count": 2
+    }
+  ]
+}
