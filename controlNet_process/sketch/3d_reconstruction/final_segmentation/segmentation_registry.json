@@ -1,57 +1,6 @@
 {
     "0": {
-        "label": "front_wheel_0",
-        "type": "semantic_part",
-        "point_count": 11619,
-        "color_rgb": [
-            0.12156862745098039,
-            0.4666666666666667,
-            0.7058823529411765
-        ]
-    },
-    "1": {
-        "label": "handlebars_0",
-        "type": "semantic_part",
-        "point_count": 8189,
-        "color_rgb": [
-            0.6823529411764706,
-            0.7803921568627451,
-            0.9098039215686274
-        ]
-    },
-    "2": {
-        "label": "rear_wheel_0",
-        "type": "semantic_part",
-        "point_count": 2081,
-        "color_rgb": [
-            1.0,
-            0.4980392156862745,
-            0.054901960784313725
-        ]
-    },
-    "3": {
-        "label": "seat_0",
-        "type": "semantic_part",
-        "point_count": 9169,
-        "color_rgb": [
-            1.0,
-            0.7333333333333333,
-            0.47058823529411764
-        ]
-    },
-    "4": {
-        "label": "tires_1",
-        "type": "semantic_part",
-        "point_count": 6718,
-        "color_rgb": [
-            0.596078431372549,
-            0.8745098039215686,
-            0.5411764705882353
-        ]
-    },
-    "5": {
         "label": "unknown",
-        "type": "unknown_fragment",
         "original_cluster_id": 0,
         "point_count": 69241,
         "color_rgb": [
@@ -60,9 +9,8 @@
             0.2
         ]
     },
-    "6": {
+    "1": {
         "label": "unknown",
-        "type": "unknown_fragment",
         "original_cluster_id": 1,
         "point_count": 6156,
         "color_rgb": [
@@ -71,9 +19,28 @@
             0.2
         ]
     },
-    "7": {
+    "2": {
+        "label": "rear_wheel_0",
+        "original_cluster_id": 1,
+        "point_count": 2081,
+        "color_rgb": [
+            1.0,
+            0.4980392156862745,
+            0.054901960784313725
+        ]
+    },
+    "3": {
+        "label": "tires_1",
+        "original_cluster_id": 1,
+        "point_count": 1399,
+        "color_rgb": [
+            0.596078431372549,
+            0.8745098039215686,
+            0.5411764705882353
+        ]
+    },
+    "4": {
         "label": "unknown",
-        "type": "unknown_fragment",
         "original_cluster_id": 2,
         "point_count": 74246,
         "color_rgb": [
@@ -82,9 +49,8 @@
             0.2
         ]
     },
-    "8": {
+    "5": {
         "label": "unknown",
-        "type": "unknown_fragment",
         "original_cluster_id": 3,
         "point_count": 66048,
         "color_rgb": [
@@ -93,9 +59,8 @@
             0.2
         ]
     },
-    "9": {
+    "6": {
         "label": "unknown",
-        "type": "unknown_fragment",
         "original_cluster_id": 4,
         "point_count": 66773,
         "color_rgb": [
@@ -104,9 +69,8 @@
             0.2
         ]
     },
-    "10": {
+    "7": {
         "label": "unknown",
-        "type": "unknown_fragment",
         "original_cluster_id": 5,
         "point_count": 76967,
         "color_rgb": [
@@ -115,9 +79,8 @@
             0.2
         ]
     },
-    "11": {
+    "8": {
         "label": "unknown",
-        "type": "unknown_fragment",
         "original_cluster_id": 6,
         "point_count": 68784,
         "color_rgb": [
@@ -126,9 +89,8 @@
             0.2
         ]
     },
-    "12": {
+    "9": {
         "label": "unknown",
-        "type": "unknown_fragment",
         "original_cluster_id": 7,
         "point_count": 2758,
         "color_rgb": [
@@ -137,9 +99,18 @@
             0.2
         ]
     },
-    "13": {
+    "10": {
+        "label": "handlebars_0",
+        "original_cluster_id": 7,
+        "point_count": 1987,
+        "color_rgb": [
+            0.6823529411764706,
+            0.7803921568627451,
+            0.9098039215686274
+        ]
+    },
+    "11": {
         "label": "unknown",
-        "type": "unknown_fragment",
         "original_cluster_id": 8,
         "point_count": 1290,
         "color_rgb": [
@@ -148,9 +119,18 @@
             0.2
         ]
     },
-    "14": {
+    "12": {
+        "label": "front_wheel_0",
+        "original_cluster_id": 8,
+        "point_count": 4956,
+        "color_rgb": [
+            0.12156862745098039,
+            0.4666666666666667,
+            0.7058823529411765
+        ]
+    },
+    "13": {
         "label": "unknown",
-        "type": "unknown_fragment",
         "original_cluster_id": 9,
         "point_count": 6663,
         "color_rgb": [
@@ -159,9 +139,18 @@
             0.2
         ]
     },
+    "14": {
+        "label": "tires_1",
+        "original_cluster_id": 9,
+        "point_count": 848,
+        "color_rgb": [
+            0.596078431372549,
+            0.8745098039215686,
+            0.5411764705882353
+        ]
+    },
     "15": {
         "label": "unknown",
-        "type": "unknown_fragment",
         "original_cluster_id": 10,
         "point_count": 599,
         "color_rgb": [
@@ -171,8 +160,27 @@
         ]
     },
     "16": {
+        "label": "seat_0",
+        "original_cluster_id": 10,
+        "point_count": 4248,
+        "color_rgb": [
+            1.0,
+            0.7333333333333333,
+            0.47058823529411764
+        ]
+    },
+    "17": {
+        "label": "handlebars_0",
+        "original_cluster_id": 11,
+        "point_count": 5193,
+        "color_rgb": [
+            0.6823529411764706,
+            0.7803921568627451,
+            0.9098039215686274
+        ]
+    },
+    "18": {
         "label": "unknown",
-        "type": "unknown_fragment",
         "original_cluster_id": 12,
         "point_count": 2855,
         "color_rgb": [
@@ -181,9 +189,18 @@
             0.2
         ]
     },
-    "17": {
+    "19": {
+        "label": "seat_0",
+        "original_cluster_id": 12,
+        "point_count": 2784,
+        "color_rgb": [
+            1.0,
+            0.7333333333333333,
+            0.47058823529411764
+        ]
+    },
+    "20": {
         "label": "unknown",
-        "type": "unknown_fragment",
         "original_cluster_id": 13,
         "point_count": 1494,
         "color_rgb": [
@@ -192,9 +209,18 @@
             0.2
         ]
     },
-    "18": {
+    "21": {
+        "label": "tires_1",
+        "original_cluster_id": 13,
+        "point_count": 2904,
+        "color_rgb": [
+            0.596078431372549,
+            0.8745098039215686,
+            0.5411764705882353
+        ]
+    },
+    "22": {
         "label": "unknown",
-        "type": "unknown_fragment",
         "original_cluster_id": 14,
         "point_count": 3394,
         "color_rgb": [
@@ -203,9 +229,18 @@
             0.2
         ]
     },
-    "19": {
+    "23": {
+        "label": "tires_1",
+        "original_cluster_id": 15,
+        "point_count": 1567,
+        "color_rgb": [
+            0.596078431372549,
+            0.8745098039215686,
+            0.5411764705882353
+        ]
+    },
+    "24": {
         "label": "unknown",
-        "type": "unknown_fragment",
         "original_cluster_id": 15,
         "point_count": 4353,
         "color_rgb": [
@@ -214,9 +249,8 @@
             0.2
         ]
     },
-    "20": {
+    "25": {
         "label": "unknown",
-        "type": "unknown_fragment",
         "original_cluster_id": 16,
         "point_count": 4825,
         "color_rgb": [
@@ -225,9 +259,28 @@
             0.2
         ]
     },
-    "21": {
+    "26": {
+        "label": "handlebars_0",
+        "original_cluster_id": 16,
+        "point_count": 1009,
+        "color_rgb": [
+            0.6823529411764706,
+            0.7803921568627451,
+            0.9098039215686274
+        ]
+    },
+    "27": {
+        "label": "front_wheel_0",
+        "original_cluster_id": 16,
+        "point_count": 658,
+        "color_rgb": [
+            0.12156862745098039,
+            0.4666666666666667,
+            0.7058823529411765
+        ]
+    },
+    "28": {
         "label": "unknown",
-        "type": "unknown_fragment",
         "original_cluster_id": 17,
         "point_count": 4862,
         "color_rgb": [
@@ -236,15 +289,34 @@
             0.2
         ]
     },
-    "22": {
+    "29": {
+        "label": "seat_0",
+        "original_cluster_id": 17,
+        "point_count": 2137,
+        "color_rgb": [
+            1.0,
+            0.7333333333333333,
+            0.47058823529411764
+        ]
+    },
+    "30": {
         "label": "unknown",
-        "type": "unknown_fragment",
         "original_cluster_id": 18,
         "point_count": 916,
         "color_rgb": [
             0.2,
             0.2,
             0.2
+        ]
+    },
+    "31": {
+        "label": "front_wheel_0",
+        "original_cluster_id": 18,
+        "point_count": 6005,
+        "color_rgb": [
+            0.12156862745098039,
+            0.4666666666666667,
+            0.7058823529411765
         ]
     }
 }
