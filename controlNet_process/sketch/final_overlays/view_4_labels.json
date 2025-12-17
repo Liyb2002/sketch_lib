@@ -1,0 +1,67 @@
+{
+    "tires_0": {
+        "color_bgr": [
+            0,
+            0,
+            255
+        ],
+        "color_rgb_norm": [
+            1.0,
+            0.0,
+            0.0
+        ],
+        "index": 0
+    },
+    "tires_1": {
+        "color_bgr": [
+            0,
+            255,
+            0
+        ],
+        "color_rgb_norm": [
+            0.0,
+            1.0,
+            0.0
+        ],
+        "index": 1
+    },
+    "seat_0": {
+        "color_bgr": [
+            255,
+            0,
+            0
+        ],
+        "color_rgb_norm": [
+            0.0,
+            0.0,
+            1.0
+        ],
+        "index": 2
+    },
+    "rear_wheel_0": {
+        "color_bgr": [
+            0,
+            255,
+            255
+        ],
+        "color_rgb_norm": [
+            1.0,
+            1.0,
+            0.0
+        ],
+        "index": 3
+    },
+    "front_wheel_0": {
+        "color_bgr": [
+            255,
+            0,
+            255
+        ],
+        "color_rgb_norm": [
+            1.0,
+            0.0,
+            1.0
+        ],
+        "index": 4
+    }
+}

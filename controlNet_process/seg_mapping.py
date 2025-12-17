@@ -13,21 +13,15 @@ THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 SKETCH_ROOT = os.path.join(THIS_DIR, "sketch")
 
 # Input Folders
-# 1. Previous output (3D model + cameras)
 SCENE_DIR = os.path.join(SKETCH_ROOT, "3d_reconstruction")
-
-# 2. 2D Segmentations (User specified: /sketch/segmentation)
-# Inside here should be folders like 'view_0', 'view_1', etc.
 SEG_DIR = os.path.join(SKETCH_ROOT, "segmentation")
 
-# 3. Output
+# Output
 OUTPUT_DIR = os.path.join(SKETCH_ROOT, "final_overlays")
 PLY_PATH = os.path.join(SCENE_DIR, "fused_model.ply")
 
-# 1. Mask Expansion (Pixels) - How lenient we are with the 2D mask edges
+# Settings
 TOLERANCE = 1
-
-# 2. Occlusion Threshold (Depth Units)
 OCCLUSION_THRESHOLD = 0.05
 
 COLORS = [
@@ -94,25 +88,16 @@ def render_painter_algo(u, v, z, valid_mask, colors, H, W):
     return canvas
 
 def compute_depth_buffer(u, v, z, valid_mask, H, W):
-    """
-    Creates a Z-Buffer (Depth Map) of the scene.
-    Stores the MINIMUM depth at every pixel.
-    """
-    # Initialize with Infinity
     depth_buffer = np.full((H, W), np.inf, dtype=np.float32)
-    
     u_valid = u[valid_mask]
     v_valid = v[valid_mask]
     z_valid = z[valid_mask]
-    
-    # Efficiently compute min depth per pixel using numpy
     np.minimum.at(depth_buffer, (v_valid, u_valid), z_valid)
-    
     return depth_buffer
 
-def save_labeled_ply(points, u, v, z, valid_mask, mask_paths, view_id, H, W):
+def save_labeled_ply_and_json(points, u, v, z, valid_mask, mask_paths, view_id, H, W):
     """
-    Saves FULL cloud. Checks Mask AND Depth Buffer to handle occlusion.
+    Saves FULL cloud AND a JSON file mapping colors to semantic labels.
     """
     cloud_colors = np.zeros((len(points), 3), dtype=np.float64)
 
@@ -121,31 +106,32 @@ def save_labeled_ply(points, u, v, z, valid_mask, mask_paths, view_id, H, W):
 
     # Indices of points that land on screen
     valid_indices = np.where(valid_mask)[0]
-    
-    # Extract data for valid points
     u_val = u[valid_indices]
     v_val = v[valid_indices]
     z_val = z[valid_indices]
 
     # 2. Compute Visibility Mask (Occlusion Check)
-    # Get the "surface depth" at the pixel each point projects to
     surface_z = depth_buffer[v_val, u_val]
-    
-    # A point is visible if its depth is close to the surface depth
-    # z <= surface + threshold
     is_visible = z_val <= (surface_z + OCCLUSION_THRESHOLD)
 
-    # Filter our working set to ONLY visible points
+    # Filter working set to visible points
     visible_indices = valid_indices[is_visible]
     u_vis = u_val[is_visible]
     v_vis = v_val[is_visible]
     
-    # 3. Iterate Masks and Paint (Only Visible Points)
+    # Metadata dictionary to store semantic mapping
+    semantic_metadata = {}
+
+    # 3. Iterate Masks and Paint
     for i, mpath in enumerate(mask_paths):
         mask = cv2.imread(mpath, cv2.IMREAD_GRAYSCALE)
         if mask is None: continue
         
-        # Dilate mask (Tolerance)
+        # --- Extract Semantic Name ---
+        # "chair_leg_mask.png" -> "chair_leg"
+        filename = os.path.basename(mpath)
+        semantic_name = filename.replace("_mask.png", "")
+        
         if TOLERANCE > 0:
             kernel = np.ones((TOLERANCE*2+1, TOLERANCE*2+1), np.uint8)
             mask = cv2.dilate(mask, kernel, iterations=1)
@@ -153,22 +139,35 @@ def save_labeled_ply(points, u, v, z, valid_mask, mask_paths, view_id, H, W):
         b, g, r = COLORS[i % len(COLORS)]
         rgb_color = np.array([r, g, b]) / 255.0
 
+        # Store in metadata
+        semantic_metadata[semantic_name] = {
+            "color_bgr": [int(b), int(g), int(r)],
+            "color_rgb_norm": [float(r/255.0), float(g/255.0), float(b/255.0)],
+            "index": i
+        }
+
         # Check mask only at visible pixels
         mask_vals = mask[v_vis, u_vis]
         mask_hits = mask_vals > 0
         
         if np.any(mask_hits):
-            # Update colors of original points
             final_hit_indices = visible_indices[mask_hits]
             cloud_colors[final_hit_indices] = rgb_color
 
-    # 4. Save
+    # 4. Save PLY
     pcd_out = o3d.geometry.PointCloud()
     pcd_out.points = o3d.utility.Vector3dVector(points)
     pcd_out.colors = o3d.utility.Vector3dVector(cloud_colors)
     
-    save_path = os.path.join(OUTPUT_DIR, f"{view_id}_labeled.ply")
-    o3d.io.write_point_cloud(save_path, pcd_out)
+    ply_save_path = os.path.join(OUTPUT_DIR, f"{view_id}_labeled.ply")
+    o3d.io.write_point_cloud(ply_save_path, pcd_out)
+    
+    # 5. Save JSON
+    json_save_path = os.path.join(OUTPUT_DIR, f"{view_id}_labels.json")
+    with open(json_save_path, 'w') as f:
+        json.dump(semantic_metadata, f, indent=4)
+        
+    print(f"   -> Saved: {os.path.basename(ply_save_path)} and {os.path.basename(json_save_path)}")
 
 def overlay_masks(base_img, mask_paths):
     overlay = base_img.copy()
@@ -204,7 +203,7 @@ def main():
     points = np.asarray(pcd.points)
     orig_colors = np.asarray(pcd.colors) 
 
-    # Look for cameras in the 3d_reconstruction folder
+    # Look for cameras
     cam_files = glob.glob(os.path.join(SCENE_DIR, "*_cam.json"))
     if not cam_files: 
         print(f"Error: No camera JSON files found in {SCENE_DIR}")
@@ -216,7 +215,7 @@ def main():
         if not match: continue
         view_id = match.group(1)
 
-        # Look for view folder inside segmentation directory
+        # Look for view folder
         seg_folder = os.path.join(SEG_DIR, view_id)
         if not os.path.exists(seg_folder): 
             print(f"Warning: No segmentation folder found for {view_id} at {seg_folder}")
@@ -258,8 +257,8 @@ def main():
         final_comp = overlay_masks(render_img, mask_paths)
         cv2.imwrite(os.path.join(OUTPUT_DIR, f"{view_id}_overlay.png"), final_comp)
 
-        # 3. Save Labeled PLY (With Occlusion Check)
-        save_labeled_ply(points, u, v, z, valid_mask, mask_paths, view_id, target_h, target_w)
+        # 3. Save Labeled PLY + JSON
+        save_labeled_ply_and_json(points, u, v, z, valid_mask, mask_paths, view_id, target_h, target_w)
 
 if __name__ == "__main__":
     main()
