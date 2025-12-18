@@ -43,7 +43,7 @@ except ImportError:
 ROOT_SKETCH_FOLDER = Path(THIS_DIR) / "sketch"
 
 # 1. INPUT PATH (Views generated from input_realistic.png)
-INPUT_VIEWS_DIR = ROOT_SKETCH_FOLDER / "views" 
+INPUT_VIEWS_DIR = ROOT_SKETCH_FOLDER / "views_realistic" 
 
 # 2. OUTPUT PATH
 OUTPUT_DIR = ROOT_SKETCH_FOLDER / "3d_reconstruction" 

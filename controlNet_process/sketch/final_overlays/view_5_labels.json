@@ -1,0 +1,93 @@
+{
+    "handlebar_0": {
+        "color_bgr": [
+            0,
+            0,
+            255
+        ],
+        "color_rgb_norm": [
+            1.0,
+            0.0,
+            0.0
+        ],
+        "index": 0
+    },
+    "rear_wheel_0": {
+        "color_bgr": [
+            0,
+            255,
+            0
+        ],
+        "color_rgb_norm": [
+            0.0,
+            1.0,
+            0.0
+        ],
+        "index": 1
+    },
+    "headlight_0": {
+        "color_bgr": [
+            255,
+            0,
+            0
+        ],
+        "color_rgb_norm": [
+            0.0,
+            0.0,
+            1.0
+        ],
+        "index": 2
+    },
+    "fuel_tank_0": {
+        "color_bgr": [
+            0,
+            255,
+            255
+        ],
+        "color_rgb_norm": [
+            1.0,
+            1.0,
+            0.0
+        ],
+        "index": 3
+    },
+    "front_wheel_0": {
+        "color_bgr": [
+            255,
+            0,
+            255
+        ],
+        "color_rgb_norm": [
+            1.0,
+            0.0,
+            1.0
+        ],
+        "index": 4
+    },
+    "seat_0": {
+        "color_bgr": [
+            255,
+            255,
+            0
+        ],
+        "color_rgb_norm": [
+            0.0,
+            1.0,
+            1.0
+        ],
+        "index": 5
+    },
+    "front_fender_0": {
+        "color_bgr": [
+            128,
+            0,
+            128
+        ],
+        "color_rgb_norm": [
+            0.5019607843137255,
+            0.0,
+            0.5019607843137255
+        ],
+        "index": 6
+    }
+}
