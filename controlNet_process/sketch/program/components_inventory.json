@@ -1,61 +1,81 @@
 {
-  "object_category": "Scooter",
+  "assembly_name": "Scooter",
+  "decomposition_strategy": "The scooter is divided into its major structural components, ensuring no overlap and covering all parts of the scooter.",
   "components": [
     {
+      "component_id": "C01",
       "name": "Front Wheel",
       "count": 1
     },
     {
-      "name": "Rear Wheel",
+      "component_id": "C02",
+      "name": "Front Fork",
       "count": 1
     },
     {
+      "component_id": "C03",
       "name": "Front Fender",
       "count": 1
     },
     {
-      "name": "Rear Fender",
-      "count": 1
-    },
-    {
-      "name": "Seat",
-      "count": 1
-    },
-    {
+      "component_id": "C04",
       "name": "Headlight",
       "count": 1
     },
     {
-      "name": "Handlebars",
+      "component_id": "C05",
+      "name": "Handlebar",
       "count": 1
     },
     {
-      "name": "Engine",
+      "component_id": "C06",
+      "name": "Seat",
       "count": 1
     },
     {
+      "component_id": "C07",
+      "name": "Rear Wheel",
+      "count": 1
+    },
+    {
+      "component_id": "C08",
+      "name": "Rear Fender",
+      "count": 1
+    },
+    {
+      "component_id": "C09",
       "name": "Exhaust Pipe",
       "count": 1
     },
     {
-      "name": "Brakes",
-      "count": 2
-    },
-    {
-      "name": "Suspension",
-      "count": 2
-    },
-    {
-      "name": "Frame",
+      "component_id": "C10",
+      "name": "Engine",
       "count": 1
     },
     {
-      "name": "Body Panels",
+      "component_id": "C11",
+      "name": "Brake System",
+      "count": 1
+    },
+    {
+      "component_id": "C12",
+      "name": "Fuel Tank",
+      "count": 1
+    },
+    {
+      "component_id": "C13",
+      "name": "Brake Pads",
       "count": 2
     },
     {
-      "name": "Tires",
-      "count": 2
+      "component_id": "C14",
+      "name": "Chain",
+      "count": 1
+    },
+    {
+      "component_id": "C15",
+      "name": "Chain Guard",
+      "count": 1
     }
   ]
 }

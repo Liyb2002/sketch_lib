@@ -1,184 +1,192 @@
 {
-  "dsl_version": "1.0",
-  "root_part": "ROOT_ID",
-  "parts": [
-    {
-      "id": "component_0",
-      "semantic": "Front Wheel",
-      "primitive": "cuboid"
-    },
-    {
-      "id": "component_1",
-      "semantic": "Rear Wheel",
-      "primitive": "cuboid"
-    },
-    {
-      "id": "component_2",
-      "semantic": "Front Fender",
-      "primitive": "cuboid"
-    },
-    {
-      "id": "component_3",
-      "semantic": "Rear Fender",
-      "primitive": "cuboid"
-    },
-    {
-      "id": "component_4",
-      "semantic": "Seat",
-      "primitive": "cuboid"
-    },
-    {
-      "id": "component_5",
-      "semantic": "Headlight",
-      "primitive": "cuboid"
-    },
-    {
-      "id": "component_6",
-      "semantic": "Handlebars",
-      "primitive": "cuboid"
-    },
-    {
-      "id": "component_7",
-      "semantic": "Engine",
-      "primitive": "cuboid"
-    },
-    {
-      "id": "component_8",
-      "semantic": "Exhaust Pipe",
-      "primitive": "cuboid"
-    },
-    {
-      "id": "component_9",
-      "semantic": "Brakes",
-      "primitive": "cuboid"
-    },
-    {
-      "id": "component_10",
-      "semantic": "Suspension",
-      "primitive": "cuboid"
-    },
-    {
-      "id": "component_11",
-      "semantic": "Frame",
-      "primitive": "cuboid"
-    },
-    {
-      "id": "component_12",
-      "semantic": "Body Panels",
-      "primitive": "cuboid"
-    },
-    {
-      "id": "component_13",
-      "semantic": "Tires",
-      "primitive": "cuboid"
-    }
-  ],
-  "symmetry_groups": [
-    {
-      "name": "Front Wheel and Rear Wheel",
-      "members": [
-        "component_0",
-        "component_1"
-      ],
-      "type": "reflective"
-    },
-    {
-      "name": "Front Fender and Rear Fender",
-      "members": [
-        "component_2",
-        "component_3"
-      ],
-      "type": "reflective"
-    },
-    {
-      "name": "Seat and Handlebars",
-      "members": [
-        "component_4",
-        "component_6"
-      ],
-      "type": "reflective"
-    },
-    {
-      "name": "Engine and Exhaust Pipe",
-      "members": [
-        "component_7",
-        "component_8"
-      ],
-      "type": "reflective"
-    },
-    {
-      "name": "Brakes and Suspension",
-      "members": [
-        "component_9",
-        "component_10"
-      ],
-      "type": "reflective"
-    },
-    {
-      "name": "Frame and Body Panels",
-      "members": [
-        "component_11",
-        "component_12"
-      ],
-      "type": "reflective"
-    },
-    {
-      "name": "Tires",
-      "members": [
-        "component_13"
-      ],
-      "type": "reflective"
-    }
-  ],
-  "constraints": [
-    {
-      "type": "attach",
-      "source": "component_1",
-      "source_face": "top",
-      "target": "component_0",
-      "target_face": "bottom"
-    },
-    {
-      "type": "attach",
-      "source": "component_3",
-      "source_face": "top",
-      "target": "component_2",
-      "target_face": "bottom"
-    },
-    {
-      "type": "attach",
-      "source": "component_6",
-      "source_face": "top",
-      "target": "component_4",
-      "target_face": "bottom"
-    },
-    {
-      "type": "attach",
-      "source": "component_8",
-      "source_face": "top",
-      "target": "component_7",
-      "target_face": "bottom"
-    },
-    {
-      "type": "attach",
-      "source": "component_10",
-      "source_face": "top",
-      "target": "component_9",
-      "target_face": "bottom"
-    },
-    {
-      "type": "attach",
-      "source": "component_12",
-      "source_face": "top",
-      "target": "component_11",
-      "target_face": "bottom"
-    },
-    {
-      "type": "attach",
-      "source": "component_13",
-      "source_face": "top",
-      "target": "component_11",
-      "target_face": "bottom"
-    }
-  ]
+  "reasoning": {
+    "neighbor_logic": "The front wheel (C01) is adjacent to the front fork (C02), front fender (C03), and handlebar (C05). The rear wheel (C07) is adjacent to the rear fender (C08). The seat (C06) is adjacent to the handlebar (C05). The exhaust pipe (C09) is adjacent to the engine (C10). The brake system (C11) is adjacent to the brake pads (C13). The fuel tank (C12) is adjacent to the chain (C14) and chain guard (C15).",
+    "equivalence_logic": "The front wheel (C01) and rear wheel (C07) are instances of the same part type, as are the front fork (C02) and rear fender (C08). The handlebar (C05) and seat (C06) are instances of the same part type. The brake system (C11) and brake pads (C13) are instances of the same part type. The fuel tank (C12) and chain (C14) are instances of the same part type. The chain guard (C15) is a unique part."
+  },
+  "assembly": {
+    "instances": [
+      {
+        "id": "C01",
+        "type": "Front Wheel"
+      },
+      {
+        "id": "C02",
+        "type": "Front Fork"
+      },
+      {
+        "id": "C03",
+        "type": "Front Fender"
+      },
+      {
+        "id": "C04",
+        "type": "Headlight"
+      },
+      {
+        "id": "C05",
+        "type": "Handlebar"
+      },
+      {
+        "id": "C06",
+        "type": "Seat"
+      },
+      {
+        "id": "C07",
+        "type": "Rear Wheel"
+      },
+      {
+        "id": "C08",
+        "type": "Rear Fender"
+      },
+      {
+        "id": "C09",
+        "type": "Exhaust Pipe"
+      },
+      {
+        "id": "C10",
+        "type": "Engine"
+      },
+      {
+        "id": "C11",
+        "type": "Brake System"
+      },
+      {
+        "id": "C12",
+        "type": "Fuel Tank"
+      },
+      {
+        "id": "C13",
+        "type": "Brake Pads"
+      },
+      {
+        "id": "C14",
+        "type": "Chain"
+      },
+      {
+        "id": "C15",
+        "type": "Chain Guard"
+      }
+    ],
+    "connectivity_graph": [
+      {
+        "source": "C01",
+        "target": "C02",
+        "connection_type": "adjacent"
+      },
+      {
+        "source": "C01",
+        "target": "C03",
+        "connection_type": "adjacent"
+      },
+      {
+        "source": "C01",
+        "target": "C05",
+        "connection_type": "adjacent"
+      },
+      {
+        "source": "C07",
+        "target": "C08",
+        "connection_type": "adjacent"
+      },
+      {
+        "source": "C05",
+        "target": "C06",
+        "connection_type": "adjacent"
+      },
+      {
+        "source": "C09",
+        "target": "C10",
+        "connection_type": "adjacent"
+      },
+      {
+        "source": "C11",
+        "target": "C13",
+        "connection_type": "adjacent"
+      },
+      {
+        "source": "C12",
+        "target": "C14",
+        "connection_type": "adjacent"
+      },
+      {
+        "source": "C12",
+        "target": "C15",
+        "connection_type": "adjacent"
+      }
+    ],
+    "equivalence_groups": [
+      {
+        "type_name": "Front Wheel",
+        "member_ids": [
+          "C01",
+          "C07"
+        ]
+      },
+      {
+        "type_name": "Front Fork",
+        "member_ids": [
+          "C02"
+        ]
+      },
+      {
+        "type_name": "Front Fender",
+        "member_ids": [
+          "C03"
+        ]
+      },
+      {
+        "type_name": "Handlebar",
+        "member_ids": [
+          "C05"
+        ]
+      },
+      {
+        "type_name": "Seat",
+        "member_ids": [
+          "C06"
+        ]
+      },
+      {
+        "type_name": "Rear Fork",
+        "member_ids": [
+          "C08"
+        ]
+      },
+      {
+        "type_name": "Exhaust Pipe",
+        "member_ids": [
+          "C09"
+        ]
+      },
+      {
+        "type_name": "Engine",
+        "member_ids": [
+          "C10"
+        ]
+      },
+      {
+        "type_name": "Brake System",
+        "member_ids": [
+          "C11"
+        ]
+      },
+      {
+        "type_name": "Brake Pads",
+        "member_ids": [
+          "C13"
+        ]
+      },
+      {
+        "type_name": "Chain",
+        "member_ids": [
+          "C14"
+        ]
+      },
+      {
+        "type_name": "Chain Guard",
+        "member_ids": [
+          "C15"
+        ]
+      }
+    ]
+  }
 }

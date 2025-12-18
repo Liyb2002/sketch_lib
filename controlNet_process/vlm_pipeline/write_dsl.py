@@ -6,24 +6,21 @@ from PIL import Image
 
 def run_dsl_generation(base_path="."):
     print("\n" + "="*40)
-    print("STEP 2: Generating ParSEL DSL Draft")
+    print("STEP 2: Spatial & Symmetry Reasoning")
     print("="*40)
 
     # --- PATH SETUP ---
     program_dir = os.path.join(base_path, "sketch", "program")
+    # Using the decomposition file from the previous step
     inventory_path = os.path.join(program_dir, "components_inventory.json")
-    views_path = os.path.join(base_path, "sketch", "views")
+    master_sketch_path = os.path.join(base_path, "sketch", "input.png")
     output_file = os.path.join(program_dir, "dsl_draft.json")
 
     # --- LOAD MODEL ---
-    # Note: In a production script, you'd pass the model object to avoid reloading 
-    # but for simplicity, we load again or rely on OS caching.
     model_path = "Qwen/Qwen2-VL-7B-Instruct" 
     device = "cuda" if torch.cuda.is_available() else "cpu"
     
-    # Check if we can reuse a global model if you merge this logic, 
-    # but strictly following the request for modular files:
-    print(f"Loading {model_path} on {device}...")
+    print(f"Loading {model_path}...")
     model = Qwen2VLForConditionalGeneration.from_pretrained(
         model_path, torch_dtype="auto", device_map="auto"
     )
@@ -31,60 +28,70 @@ def run_dsl_generation(base_path="."):
 
     # --- LOAD DATA ---
     if not os.path.exists(inventory_path):
-        raise FileNotFoundError(f"Inventory not found at {inventory_path}. Run Step 1 first.")
+        raise FileNotFoundError(f"components_inventory JSON not found at {inventory_path}.")
+    if not os.path.exists(master_sketch_path):
+        raise FileNotFoundError(f"Master sketch not found at {master_sketch_path}.")
 
     with open(inventory_path, "r") as f:
-        inventory_context = f.read()
+        inventory_data = json.load(f)
+        inventory_context = json.dumps(inventory_data, indent=2)
 
-    image_paths = sorted([os.path.join(views_path, f) for f in os.listdir(views_path) if f.endswith(('.png', '.jpg'))])[:6]
-    images = [Image.open(p) for p in image_paths]
+    # Use the Master Sketch as the primary visual for spatial reasoning
+    master_img = Image.open(master_sketch_path)
 
-    # --- PROMPT ---
+    # --- PROMPT: REASONING TASKS ---
     dsl_prompt = f"""
-    You are a Geometric Architect. 
-    INPUT CONTEXT: The user has verified the following component inventory:
+    You are a Geometric Logic Engine. Your task is to analyze the Master Sketch (input.png) and the provided JSON Inventory to build a relational model of the assembly.
+
+    INPUT CONTEXT (Component Inventory):
     {inventory_context}
 
-    YOUR TASK:
-    Convert this inventory into a hierarchical ParSEL DSL Graph.
+    TASK:
+    1. **Neighboring Relations (Connectivity):** Identify which parts are physically connected or touching in the sketch.
+    2. **Equivalence Relations (Type Identity):** Identify distinct part IDs that are the same component type (e.g., if there are 2 wheels, 'wheel_0' and 'wheel_1' are Equivalent).
 
     CRITICAL RULES:
-    1. **Strict Vocabulary:** You must ONLY use the component names listed in the INPUT CONTEXT.
-    2. **Instantiation:** If the inventory says "count: 4", you must generate 4 distinct IDs (e.g., "component_0", "component_1").
-    4. **Symmetry:** Group identical parts into "symmetry_groups".
-    5. **Connectivity:** Infer logical attachments using abstract faces: top, bottom, left, right, front, back.
+    - **Strict Vocabulary:** Use ONLY names from the INPUT CONTEXT.
+    - **Unique Instantiation:** Generate unique IDs for every individual part based on the "count" (e.g., 'Leg' count 2 becomes 'leg_0' and 'leg_1').
+    - **Logical Flow:** Reason Neighboring FIRST, then Equivalence.
 
     OUTPUT FORMAT (JSON ONLY):
     {{
-      "dsl_version": "1.0",
-      "root_part": "ROOT_ID",
-      "parts": [
-        {{ "id": "name_0", "semantic": "name_from_inventory", "primitive": "cuboid" }}
-      ],
-      "symmetry_groups": [
-        {{ "name": "group_name", "members": ["name_0", "name_1"], "type": "reflective" }}
-      ],
-      "constraints": [
-        {{ "type": "attach", "source": "name_1", "source_face": "top", "target": "name_0", "target_face": "bottom" }}
-      ]
+      "reasoning": {{
+        "neighbor_logic": "Explain which parts are touching based on the sketch.",
+        "equivalence_logic": "Explain which IDs are instances of the same part type."
+      }},
+      "assembly": {{
+        "instances": [
+          {{ "id": "part_id_0", "type": "original_name_from_json" }}
+        ],
+        "connectivity_graph": [
+          {{ "source": "part_id_0", "target": "part_id_1", "connection_type": "adjacent" }}
+        ],
+        "equivalence_groups": [
+          {{ "type_name": "original_name", "member_ids": ["part_id_0", "part_id_1"] }}
+        ]
+      }}
     }}
     """
 
     # --- INFERENCE ---
-    content_list = [{"type": "image", "image": img} for img in images]
-    content_list.append({"type": "text", "text": dsl_prompt})
+    # We focus specifically on the master sketch for spatial layout
+    content_list = [
+        {"type": "image", "image": master_img},
+        {"type": "text", "text": dsl_prompt}
+    ]
 
     messages = [{"role": "user", "content": content_list}]
-    
     text = processor.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
-    inputs = processor(text=[text], images=images, padding=True, return_tensors="pt").to(device)
+    inputs = processor(text=[text], images=[master_img], padding=True, return_tensors="pt").to(device)
 
-    print("Generating DSL...")
-    generated_ids = model.generate(**inputs, max_new_tokens=1500)
+    print("Reasoning spatial relations...")
+    generated_ids = model.generate(**inputs, max_new_tokens=2000)
     generated_ids_trimmed = [out_ids[len(in_ids):] for in_ids, out_ids in zip(inputs.input_ids, generated_ids)]
     output_dsl = processor.batch_decode(generated_ids_trimmed, skip_special_tokens=True)[0]
 
-    # --- SAVE ---
+    # --- CLEAN & SAVE ---
     clean_dsl = output_dsl.replace("```json", "").replace("```", "").strip()
     if "{" in clean_dsl:
         start = clean_dsl.find("{")
@@ -95,8 +102,8 @@ def run_dsl_generation(base_path="."):
         parsed = json.loads(clean_dsl)
         with open(output_file, "w") as f:
             json.dump(parsed, f, indent=2)
-        print(f"Success! DSL Draft saved to: {output_file}")
+        print(f"Success! Relational Graph saved to: {output_file}")
     except json.JSONDecodeError:
-        print("Warning: Output is not valid JSON. Saving raw text.")
+        print("JSON Error. Saving raw text.")
         with open(output_file.replace(".json", ".txt"), "w") as f:
             f.write(clean_dsl)
