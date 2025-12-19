@@ -1,0 +1,292 @@
+{
+  "0": {
+    "label": "fuel_tank_0",
+    "original_cluster_id": 5,
+    "point_count": 1369,
+    "color_rgb": [
+      1.0,
+      0.4980392156862745,
+      0.054901960784313725
+    ]
+  },
+  "1": {
+    "label": "seat_0",
+    "original_cluster_id": 5,
+    "point_count": 2778,
+    "color_rgb": [
+      0.8392156862745098,
+      0.15294117647058825,
+      0.1568627450980392
+    ]
+  },
+  "2": {
+    "label": "front_fender_0",
+    "original_cluster_id": 7,
+    "point_count": 3161,
+    "color_rgb": [
+      0.12156862745098039,
+      0.4666666666666667,
+      0.7058823529411765
+    ]
+  },
+  "3": {
+    "label": "fuel_tank_0",
+    "original_cluster_id": 7,
+    "point_count": 636,
+    "color_rgb": [
+      1.0,
+      0.4980392156862745,
+      0.054901960784313725
+    ]
+  },
+  "4": {
+    "label": "front_wheel_0",
+    "original_cluster_id": 8,
+    "point_count": 4734,
+    "color_rgb": [
+      0.6823529411764706,
+      0.7803921568627451,
+      0.9098039215686274
+    ]
+  },
+  "5": {
+    "label": "fuel_tank_0",
+    "original_cluster_id": 8,
+    "point_count": 769,
+    "color_rgb": [
+      1.0,
+      0.4980392156862745,
+      0.054901960784313725
+    ]
+  },
+  "6": {
+    "label": "fuel_tank_0",
+    "original_cluster_id": 9,
+    "point_count": 2120,
+    "color_rgb": [
+      1.0,
+      0.4980392156862745,
+      0.054901960784313725
+    ]
+  },
+  "7": {
+    "label": "front_wheel_0",
+    "original_cluster_id": 10,
+    "point_count": 3924,
+    "color_rgb": [
+      0.6823529411764706,
+      0.7803921568627451,
+      0.9098039215686274
+    ]
+  },
+  "8": {
+    "label": "rear_wheel_0",
+    "original_cluster_id": 10,
+    "point_count": 3677,
+    "color_rgb": [
+      0.596078431372549,
+      0.8745098039215686,
+      0.5411764705882353
+    ]
+  },
+  "9": {
+    "label": "front_fender_0",
+    "original_cluster_id": 11,
+    "point_count": 2185,
+    "color_rgb": [
+      0.12156862745098039,
+      0.4666666666666667,
+      0.7058823529411765
+    ]
+  },
+  "10": {
+    "label": "handlebar_0",
+    "original_cluster_id": 11,
+    "point_count": 1822,
+    "color_rgb": [
+      1.0,
+      0.7333333333333333,
+      0.47058823529411764
+    ]
+  },
+  "11": {
+    "label": "headlight_0",
+    "original_cluster_id": 11,
+    "point_count": 927,
+    "color_rgb": [
+      0.17254901960784313,
+      0.6274509803921569,
+      0.17254901960784313
+    ]
+  },
+  "12": {
+    "label": "front_wheel_0",
+    "original_cluster_id": 12,
+    "point_count": 695,
+    "color_rgb": [
+      0.6823529411764706,
+      0.7803921568627451,
+      0.9098039215686274
+    ]
+  },
+  "13": {
+    "label": "fuel_tank_0",
+    "original_cluster_id": 12,
+    "point_count": 5199,
+    "color_rgb": [
+      1.0,
+      0.4980392156862745,
+      0.054901960784313725
+    ]
+  },
+  "14": {
+    "label": "front_wheel_0",
+    "original_cluster_id": 13,
+    "point_count": 836,
+    "color_rgb": [
+      0.6823529411764706,
+      0.7803921568627451,
+      0.9098039215686274
+    ]
+  },
+  "15": {
+    "label": "fuel_tank_0",
+    "original_cluster_id": 13,
+    "point_count": 1597,
+    "color_rgb": [
+      1.0,
+      0.4980392156862745,
+      0.054901960784313725
+    ]
+  },
+  "16": {
+    "label": "front_fender_0",
+    "original_cluster_id": 14,
+    "point_count": 1341,
+    "color_rgb": [
+      0.12156862745098039,
+      0.4666666666666667,
+      0.7058823529411765
+    ]
+  },
+  "17": {
+    "label": "handlebar_0",
+    "original_cluster_id": 14,
+    "point_count": 2886,
+    "color_rgb": [
+      1.0,
+      0.7333333333333333,
+      0.47058823529411764
+    ]
+  },
+  "18": {
+    "label": "front_fender_0",
+    "original_cluster_id": 15,
+    "point_count": 1708,
+    "color_rgb": [
+      0.12156862745098039,
+      0.4666666666666667,
+      0.7058823529411765
+    ]
+  },
+  "19": {
+    "label": "front_wheel_0",
+    "original_cluster_id": 15,
+    "point_count": 967,
+    "color_rgb": [
+      0.6823529411764706,
+      0.7803921568627451,
+      0.9098039215686274
+    ]
+  },
+  "20": {
+    "label": "fuel_tank_0",
+    "original_cluster_id": 16,
+    "point_count": 4750,
+    "color_rgb": [
+      1.0,
+      0.4980392156862745,
+      0.054901960784313725
+    ]
+  },
+  "21": {
+    "label": "seat_0",
+    "original_cluster_id": 16,
+    "point_count": 2091,
+    "color_rgb": [
+      0.8392156862745098,
+      0.15294117647058825,
+      0.1568627450980392
+    ]
+  },
+  "22": {
+    "label": "front_fender_0",
+    "original_cluster_id": 17,
+    "point_count": 699,
+    "color_rgb": [
+      0.12156862745098039,
+      0.4666666666666667,
+      0.7058823529411765
+    ]
+  },
+  "23": {
+    "label": "front_wheel_0",
+    "original_cluster_id": 17,
+    "point_count": 2112,
+    "color_rgb": [
+      0.6823529411764706,
+      0.7803921568627451,
+      0.9098039215686274
+    ]
+  },
+  "24": {
+    "label": "rear_wheel_0",
+    "original_cluster_id": 17,
+    "point_count": 1572,
+    "color_rgb": [
+      0.596078431372549,
+      0.8745098039215686,
+      0.5411764705882353
+    ]
+  },
+  "25": {
+    "label": "front_wheel_0",
+    "original_cluster_id": 18,
+    "point_count": 1596,
+    "color_rgb": [
+      0.6823529411764706,
+      0.7803921568627451,
+      0.9098039215686274
+    ]
+  },
+  "26": {
+    "label": "fuel_tank_0",
+    "original_cluster_id": 18,
+    "point_count": 1006,
+    "color_rgb": [
+      1.0,
+      0.4980392156862745,
+      0.054901960784313725
+    ]
+  },
+  "27": {
+    "label": "fuel_tank_0",
+    "original_cluster_id": 19,
+    "point_count": 1513,
+    "color_rgb": [
+      1.0,
+      0.4980392156862745,
+      0.054901960784313725
+    ]
+  },
+  "28": {
+    "label": "seat_0",
+    "original_cluster_id": 19,
+    "point_count": 2693,
+    "color_rgb": [
+      0.8392156862745098,
+      0.15294117647058825,
+      0.1568627450980392
+    ]
+  }
+}

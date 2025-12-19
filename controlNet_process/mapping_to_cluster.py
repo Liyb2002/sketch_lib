@@ -212,9 +212,10 @@ def main():
     print(f"Loading 3D model: {PLY_PATH}")
     pcd = o3d.io.read_point_cloud(PLY_PATH)
     points = np.asarray(pcd.points)
-    orig_colors = np.asarray(pcd.colors)
-    if orig_colors.size == 0:
-        orig_colors = np.zeros((len(points), 3), dtype=np.float64)
+
+    # Treat input PLY as all-black; colors come only from our mapping step.
+    orig_colors = np.zeros((len(points), 3), dtype=np.float64)
+
 
     # Cameras
     cam_files = sorted(glob.glob(os.path.join(SCENE_DIR, "*_cam.json")))

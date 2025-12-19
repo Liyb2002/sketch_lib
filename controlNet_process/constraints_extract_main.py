@@ -12,7 +12,7 @@ from constraints_extraction.vis_pca_bbx import run_visualization
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 SKETCH_ROOT = os.path.join(THIS_DIR, "sketch")
 
-FINAL_DIR = os.path.join(SKETCH_ROOT, "final_overlays")
+FINAL_DIR = os.path.join(SKETCH_ROOT, "clusters")
 DSL_DIR   = os.path.join(SKETCH_ROOT, "dsl_optimize")
 
 MERGED_PLY = os.path.join(FINAL_DIR, "merged_labeled.ply")
