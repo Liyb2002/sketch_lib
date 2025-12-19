@@ -1,53 +1,49 @@
+#!/usr/bin/env python3
 import os
-import sys
 
-# Ensure local imports work
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+from constraints_extraction.pca_analysis import (
+    build_registry_from_label_map,
+    run_pca_analysis,
+    save_primitives_to_json,
+)
+from constraints_extraction.vis_pca_bbx import run_visualization
 
-from constraints_extraction import pca_analysis, vis_pca_bbx
 
-# --- PATH CONFIG ---
-ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
-SCENE_DIR = os.path.join(ROOT_DIR, "sketch", "3d_reconstruction", "final_segmentation")
+THIS_DIR = os.path.dirname(os.path.abspath(__file__))
+SKETCH_ROOT = os.path.join(THIS_DIR, "sketch")
 
-# Inputs
-INPUT_PLY = os.path.join(SCENE_DIR, "semantic_fused_model.ply")
-INPUT_REGISTRY = os.path.join(SCENE_DIR, "segmentation_registry.json")
+FINAL_DIR = os.path.join(SKETCH_ROOT, "final_overlays")
+DSL_DIR   = os.path.join(SKETCH_ROOT, "dsl_optimize")
 
-# Outputs
-OUTPUT_DIR = os.path.join(ROOT_DIR, "sketch", "program", "dsl_extraction")
-os.makedirs(OUTPUT_DIR, exist_ok=True)
+MERGED_PLY = os.path.join(FINAL_DIR, "merged_labeled.ply")
+LABEL_MAP  = os.path.join(FINAL_DIR, "label_color_map.json")
+
+REGISTRY_JSON   = os.path.join(DSL_DIR, "registry.json")
+PRIMITIVES_JSON = os.path.join(DSL_DIR, "pca_primitives.json")
+
 
 def main():
-    print("="*60)
-    print("STARTING PARSEL EXTRACTION PIPELINE")
-    print("="*60)
+    os.makedirs(DSL_DIR, exist_ok=True)
 
-    # -------------------------------------
-    # STEP 1: PCA Analysis (Box Fitting)
-    # -------------------------------------
-    try:
-        parts_db = pca_analysis.run_pca_analysis(
-            ply_path=INPUT_PLY, 
-            registry_path=INPUT_REGISTRY
-        )
-        
-        # Save output
-        step1_json = os.path.join(OUTPUT_DIR, "step1_pca_primitives.json")
-        pca_analysis.save_primitives_to_json(parts_db, step1_json)
-        
-    except Exception as e:
-        print(f"[CRITICAL ERROR] PCA Analysis failed: {e}")
-        return
+    if not os.path.exists(MERGED_PLY):
+        raise FileNotFoundError(f"Missing merged ply: {MERGED_PLY}")
+    if not os.path.exists(LABEL_MAP):
+        raise FileNotFoundError(f"Missing label map json: {LABEL_MAP}")
 
-    # -------------------------------------
-    # DEBUG: Visualization
-    # -------------------------------------
-    # Comment this out later if running in batch mode
-    vis_pca_bbx.run_visualization(step1_json)
+    # 1) Build registry
+    build_registry_from_label_map(LABEL_MAP, REGISTRY_JSON)
 
-    print("="*60)
-    print("Done.")
+    # 2) PCA → OBB per semantic part
+    parts_db = run_pca_analysis(MERGED_PLY, REGISTRY_JSON)
+
+    # 3) Save primitives
+    save_primitives_to_json(parts_db, PRIMITIVES_JSON)
+
+    print("\n[MAIN] PCA extraction done. Launching visualization...")
+
+    # 4) Visualize (interactive)
+    run_visualization(PRIMITIVES_JSON)
+
 
 if __name__ == "__main__":
     main()
