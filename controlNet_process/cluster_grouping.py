@@ -5,6 +5,9 @@ import numpy as np
 import open3d as o3d
 import matplotlib.pyplot as plt
 
+# This code maps each cluster to a semantic label.
+# clusters can be split in this code
+
 # -----------------------------------------------------------------------------
 # CONFIG
 # -----------------------------------------------------------------------------
@@ -28,6 +31,9 @@ os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 FINAL_PLY_PATH  = os.path.join(OUTPUT_DIR, "labeled_clusters.ply")
 FINAL_JSON_PATH = os.path.join(OUTPUT_DIR, "cluster_to_label.json")
+
+# NEW: per-point cluster ids aligned to labeled_clusters.ply
+FINAL_NPY_PATH  = os.path.join(OUTPUT_DIR, "final_cluster_ids.npy")
 
 # Thresholds (requested)
 MERGE_THRESHOLD  = 0.90
@@ -232,11 +238,15 @@ def main():
             new_id += 1
 
     # -------------------------------------------------------------------------
-    # 4) Export labeled shape + json mapping
+    # 4) Export labeled shape + json mapping + NEW npy cluster ids
     # -------------------------------------------------------------------------
     with open(FINAL_JSON_PATH, "w") as f:
         json.dump(registry, f, indent=2)
     print(f"[SAVE] {FINAL_JSON_PATH}")
+
+    # NEW: save per-point final cluster ids aligned to labeled_clusters.ply
+    np.save(FINAL_NPY_PATH, final_cluster_ids)
+    print(f"[SAVE] {FINAL_NPY_PATH} (shape={final_cluster_ids.shape}, dtype={final_cluster_ids.dtype})")
 
     unknown_color = np.array([0.1, 0.1, 0.1], dtype=np.float32)
     out_colors = np.zeros((num_points, 3), dtype=np.float32)

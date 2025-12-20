@@ -6,6 +6,10 @@ import open3d as o3d
 import glob
 import re
 
+# this code takes the per-view segmentation images and map them to 3D
+# we first produce a 3D segmentation for each view, and then combine them
+# this has nothing to do with the clusters. But we do use partfield output shape as the 3D input
+
 # -----------------------------------------------------------------------------
 # CONFIGURATION
 # -----------------------------------------------------------------------------
