@@ -8,6 +8,8 @@ from constraints_extraction.pca_analysis import (
 )
 from constraints_extraction.vis_pca_bbx import run_visualization
 
+from constraints_extraction.merge_neighbor_clusters import merge_neighboring_clusters_same_label
+
 
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 SKETCH_ROOT = os.path.join(THIS_DIR, "sketch")
@@ -52,11 +54,28 @@ def main():
     # 3) Save primitives
     save_primitives_to_json(parts_db, PRIMITIVES_JSON, source_ply=CLUSTERS_PLY)
 
-    print("\n[MAIN] PCA extraction done. Launching visualization...")
+    # print("\n[MAIN] PCA extraction done. Launching visualization...")
 
     # 4) Visualize (interactive)
-    run_visualization(PRIMITIVES_JSON, ply_path=CLUSTERS_PLY)
+    # run_visualization(PRIMITIVES_JSON, ply_path=CLUSTERS_PLY)
 
+
+    print("\n[MAIN] PCA extraction done. Building neighbor graph + merging...")
+
+    merge_outputs = merge_neighboring_clusters_same_label(
+        ply_path=CLUSTERS_PLY,
+        cluster_ids_path=CLUSTER_IDS_NPY,
+        registry_path=REGISTRY_JSON,
+        primitives_json_path=PRIMITIVES_JSON,  # not strictly required inside merge, but kept for interface clarity
+        out_dir=DSL_DIR,
+        neighbor_dist_thresh=0.02,
+        min_points_per_cluster=10,
+    )
+
+    print("\n[MAIN] Merge done. Launching visualization of merged primitives...")
+
+    # visualize merged primitives (overlay on the same ply)
+    run_visualization(merge_outputs["merged_primitives_json"], ply_path=merge_outputs["merged_ply"])
 
 if __name__ == "__main__":
     main()
