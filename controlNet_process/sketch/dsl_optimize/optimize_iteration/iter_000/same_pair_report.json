@@ -1,0 +1,102 @@
+{
+  "inputs": {
+    "primitives_json": "/home/yli581/Desktop/sketch_lib/controlNet_process/sketch/dsl_optimize/merged_pca_primitives.json",
+    "relations_json": "/home/yli581/Desktop/sketch_lib/controlNet_process/sketch/dsl_optimize/relations.json"
+  },
+  "params": {
+    "use_pointcount_weights": false,
+    "alpha": 1.0,
+    "min_same_confidence": 0.0,
+    "min_group_members": 2
+  },
+  "same_pairs_total": 1,
+  "same_pairs_used": 1,
+  "same_pairs_skipped": 0,
+  "same_pairs_used_list": [
+    {
+      "a": "front_wheel_0",
+      "b": "rear_wheel_0",
+      "confidence": 0.9,
+      "evidence": "both wheels"
+    }
+  ],
+  "same_pairs_skipped_list": [],
+  "groups": [
+    {
+      "relation_group": [
+        "front_wheel_0",
+        "rear_wheel_0"
+      ],
+      "matched_primitive_count": 2,
+      "skipped": false,
+      "target_sorted_extent_mean": [
+        0.11983916276029757,
+        0.15303226607439252,
+        0.3536193516728159
+      ],
+      "match_details": [
+        {
+          "relation_label": "front_wheel_0",
+          "match_mode": "exact",
+          "matched_primitive_indices": [
+            3
+          ]
+        },
+        {
+          "relation_label": "rear_wheel_0",
+          "match_mode": "exact",
+          "matched_primitive_indices": [
+            4
+          ]
+        }
+      ],
+      "members": [
+        {
+          "cluster_id": 3,
+          "primitive_label": "front_wheel_0",
+          "point_count": 14864,
+          "extent_before": [
+            0.5128970171325817,
+            0.1610162102675134,
+            0.13687844762358461
+          ],
+          "extent_after": [
+            0.3536193516728159,
+            0.15303226607439252,
+            0.11983916276029757
+          ],
+          "extent_before_sorted": [
+            0.13687844762358461,
+            0.1610162102675134,
+            0.5128970171325817
+          ]
+        },
+        {
+          "cluster_id": 4,
+          "primitive_label": "rear_wheel_0",
+          "point_count": 5249,
+          "extent_before": [
+            0.19434168621305006,
+            0.14504832188127165,
+            0.10279987789701055
+          ],
+          "extent_after": [
+            0.3536193516728159,
+            0.15303226607439252,
+            0.11983916276029757
+          ],
+          "extent_before_sorted": [
+            0.10279987789701055,
+            0.14504832188127165,
+            0.19434168621305006
+          ]
+        }
+      ]
+    }
+  ],
+  "unmatched_relation_labels": [],
+  "changed_cluster_ids": [
+    3,
+    4
+  ]
+}

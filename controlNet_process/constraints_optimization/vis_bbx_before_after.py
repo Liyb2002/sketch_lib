@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import os
 import json
-from typing import Optional, List, Dict, Any, Tuple
+from typing import List, Dict, Any, Tuple
 
 import numpy as np
 import open3d as o3d
@@ -25,14 +25,6 @@ def _norm_label(s: str) -> str:
     return " ".join(str(s).strip().lower().split())
 
 
-def _obb_from_part(part: Dict[str, Any]) -> o3d.geometry.OrientedBoundingBox:
-    params = part.get("parameters", {})
-    center = np.array(params.get("center", [0, 0, 0]), dtype=np.float64)
-    extent = np.array(params.get("extent", [0, 0, 0]), dtype=np.float64)
-    rotation = np.array(params.get("rotation", np.eye(3)), dtype=np.float64)
-    return o3d.geometry.OrientedBoundingBox(center, rotation, extent)
-
-
 def _get_params(part: Dict[str, Any]) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
     params = part.get("parameters", {})
     center = np.array(params.get("center", [0, 0, 0]), dtype=np.float64)
@@ -43,9 +35,6 @@ def _get_params(part: Dict[str, Any]) -> Tuple[np.ndarray, np.ndarray, np.ndarra
 
 def _infer_cluster_id_artifacts(ply_path: str) -> Tuple[str, str]:
     """
-    Auto infer:
-      - per-point cluster ids
-      - cluster -> label json
     merged:
       <dsl_optimize>/merged_labeled_clusters.ply
       <dsl_optimize>/merged_cluster_ids.npy
@@ -98,9 +87,8 @@ def run_before_after_vis_per_label(
     after_primitives_json: str,
     ply_path: str,
     *,
-    # display-only: nudge after boxes so you ALWAYS see two boxes
     display_nudge_frac: float = 0.015,  # 1.5% of box diagonal
-    display_min_nudge: float = 1e-4,    # absolute minimum
+    display_min_nudge: float = 1e-4,
 ):
     if not os.path.exists(ply_path):
         raise FileNotFoundError(f"PLY not found: {ply_path}")
@@ -111,7 +99,6 @@ def run_before_after_vis_per_label(
     b_by_cid = {int(p.get("cluster_id", -1)): p for p in before}
     a_by_cid = {int(p.get("cluster_id", -1)): p for p in after}
     common_cids = sorted(set(b_by_cid.keys()).intersection(set(a_by_cid.keys())))
-
     if not common_cids:
         print("[VIS] No matching cluster_id between before/after.")
         return
@@ -142,8 +129,6 @@ def run_before_after_vis_per_label(
         for cid in common_cids
         if _norm_label(b_by_cid[cid].get("label", "unknown")) != "unknown"
     })
-    if not labels_in_primitives:
-        labels_in_primitives = sorted(set(point_labels) - {"unknown"})
 
     before_color = np.array([0.2, 0.6, 1.0], dtype=np.float64)   # blue
     after_color  = np.array([1.0, 0.6, 0.2], dtype=np.float64)   # orange
@@ -158,7 +143,7 @@ def run_before_after_vis_per_label(
             print("[VIS]  (no points for this label; skipping)")
             continue
 
-        out_cols = np.zeros((pts.shape[0], 3), dtype=np.float64)  # others black
+        out_cols = np.zeros((pts.shape[0], 3), dtype=np.float64)
         if cols is not None and cols.shape[0] == pts.shape[0]:
             out_cols[mask] = cols[mask]
         else:
@@ -171,7 +156,6 @@ def run_before_after_vis_per_label(
         geoms = [pcd_lab]
         geoms.append(o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.1, origin=[0, 0, 0]))
 
-        # add only boxes for this label, and PRINT their params
         count_boxes = 0
         any_change_label = False
 
@@ -186,16 +170,15 @@ def run_before_after_vis_per_label(
             cb, eb, Rb = _get_params(pb)
             ca, ea, Ra = _get_params(pa)
 
-            # compute delta
             de = ea - eb
             de_norm = float(np.linalg.norm(de))
-
             changed = de_norm > 1e-9
+
             any_change_label = any_change_label or changed
             any_change_global = any_change_global or changed
 
             print(f"  - cluster_id={cid} label={pb.get('label','unknown')}")
-            print(f"      center:  {_format_vec(cb)}")
+            print(f"      center:          {_format_vec(cb)}")
             print(f"      extent (before): {_format_vec(eb)}")
             print(f"      extent (after) : {_format_vec(ea)}")
             print(f"      extent delta   : {_format_vec(de)}  |delta|={de_norm:.6e}")
@@ -204,8 +187,6 @@ def run_before_after_vis_per_label(
             obb_b.color = before_color
             geoms.append(obb_b)
 
-            # display-only nudge for AFTER so it’s visible even if identical
-            # nudge along the box's x-axis direction (world): R[:,0]
             axis_x = Ra[:, 0] if Ra.shape == (3, 3) else np.array([1.0, 0.0, 0.0], dtype=np.float64)
             diag = float(np.linalg.norm(ea))
             nudge = max(display_min_nudge, display_nudge_frac * diag)
@@ -222,8 +203,8 @@ def run_before_after_vis_per_label(
             continue
 
         if not any_change_label:
-            print("[VIS]  NOTE: No extent changes detected for this label (boxes may overlap perfectly).")
-            print("[VIS]  (I still nudged AFTER boxes slightly for visibility.)")
+            print("[VIS]  NOTE: No extent changes detected for this label.")
+            print("[VIS]  (After boxes are still nudged slightly for visibility.)")
 
         o3d.visualization.draw_geometries(
             geoms,
@@ -232,8 +213,7 @@ def run_before_after_vis_per_label(
 
     if not any_change_global:
         print("\n[VIS] WARNING: No extent changes detected for ANY label.")
-        print("[VIS] Most likely cause: DSL type names do not match primitive labels,")
-        print("[VIS] so no equivalence group was applied. Check optimized_report.json.")
+        print("[VIS] Check same_pair_report.json for unmatched relation labels / groups.")
 
 
 if __name__ == "__main__":

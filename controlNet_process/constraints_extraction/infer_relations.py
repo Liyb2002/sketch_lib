@@ -43,7 +43,7 @@ SKETCH_ROOT = os.path.join(REPO_ROOT, "sketch")
 DSL_DIR = os.path.join(SKETCH_ROOT, "dsl_optimize")
 
 REGISTRY_JSON = os.path.join(DSL_DIR, "registry.json")
-COMPONENTS_INVENTORY_JSON = os.path.join(SKETCH_ROOT, "components_inventory.json")
+COMPONENTS_INVENTORY_JSON = os.path.join(SKETCH_ROOT, "program", "components_inventory.json")
 OUT_RELATIONS_JSON = os.path.join(DSL_DIR, "relations.json")
 
 # Text instruct model for label-only reasoning

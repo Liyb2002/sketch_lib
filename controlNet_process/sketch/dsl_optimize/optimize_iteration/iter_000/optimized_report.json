@@ -1,189 +1,116 @@
 {
   "inputs": {
-    "primitives_json": "/Users/yuanboli/Documents/GitHub/sketch_lib/controlNet_process/sketch/dsl_optimize/merged_pca_primitives.json",
-    "dsl_json": "/Users/yuanboli/Documents/GitHub/sketch_lib/controlNet_process/sketch/program/dsl_draft.json",
-    "ply_path": "/Users/yuanboli/Documents/GitHub/sketch_lib/controlNet_process/sketch/dsl_optimize/merged_labeled_clusters.ply"
+    "primitives_json": "/home/yli581/Desktop/sketch_lib/controlNet_process/sketch/dsl_optimize/merged_pca_primitives.json",
+    "relations_json": "/home/yli581/Desktop/sketch_lib/controlNet_process/sketch/dsl_optimize/relations.json"
   },
   "params": {
     "alpha": 1.0,
     "min_group_members": 2,
     "use_pointcount_weights": true,
-    "canonical_use_median": true
+    "canonical_use_median": true,
+    "min_same_confidence": 0.0
   },
+  "relations_summary": {
+    "labels_in_relations": [
+      "front_fender_0",
+      "front_wheel_0",
+      "fuel_tank_0",
+      "handlebar_0",
+      "headlight_0",
+      "rear_wheel_0",
+      "seat_0"
+    ],
+    "same_pairs_total": 1,
+    "same_pairs_used": 1,
+    "same_pairs_skipped": 0,
+    "neighboring_pairs_total": 6
+  },
+  "same_pairs_used": [
+    {
+      "a": "front_wheel_0",
+      "b": "rear_wheel_0",
+      "confidence": 0.9,
+      "evidence": "both wheels"
+    }
+  ],
+  "same_pairs_skipped": [],
   "groups": [
     {
-      "group_name": "Front Wheel",
-      "member_types": [
-        "front wheel",
-        "rear wheel"
+      "relation_group": [
+        "front_wheel_0",
+        "rear_wheel_0"
       ],
-      "matched_types": [],
-      "matched_primitive_count": 0,
-      "skipped": true,
-      "skip_reason": "matched_primitive_count < 2",
-      "missing_types": [
-        "front wheel",
-        "rear wheel"
-      ]
-    },
-    {
-      "group_name": "Front Fork",
-      "member_types": [
-        "front fork"
+      "matched_primitive_count": 2,
+      "skipped": false,
+      "canonical_sorted_extent": [
+        0.13687844762358461,
+        0.1610162102675134,
+        0.5128970171325817
       ],
-      "matched_types": [],
-      "matched_primitive_count": 0,
-      "skipped": true,
-      "skip_reason": "matched_primitive_count < 2",
-      "missing_types": [
-        "front fork"
-      ]
-    },
-    {
-      "group_name": "Front Fender",
-      "member_types": [
-        "front fender"
+      "match_details": [
+        {
+          "relation_label": "front_wheel_0",
+          "match_mode": "exact",
+          "matched_primitive_indices": [
+            3
+          ]
+        },
+        {
+          "relation_label": "rear_wheel_0",
+          "match_mode": "exact",
+          "matched_primitive_indices": [
+            4
+          ]
+        }
       ],
-      "matched_types": [],
-      "matched_primitive_count": 0,
-      "skipped": true,
-      "skip_reason": "matched_primitive_count < 2",
-      "missing_types": [
-        "front fender"
-      ]
-    },
-    {
-      "group_name": "Handlebar",
-      "member_types": [
-        "handlebar"
-      ],
-      "matched_types": [],
-      "matched_primitive_count": 0,
-      "skipped": true,
-      "skip_reason": "matched_primitive_count < 2",
-      "missing_types": [
-        "handlebar"
-      ]
-    },
-    {
-      "group_name": "Seat",
-      "member_types": [
-        "seat"
-      ],
-      "matched_types": [],
-      "matched_primitive_count": 0,
-      "skipped": true,
-      "skip_reason": "matched_primitive_count < 2",
-      "missing_types": [
-        "seat"
-      ]
-    },
-    {
-      "group_name": "Rear Fork",
-      "member_types": [
-        "rear fender"
-      ],
-      "matched_types": [],
-      "matched_primitive_count": 0,
-      "skipped": true,
-      "skip_reason": "matched_primitive_count < 2",
-      "missing_types": [
-        "rear fender"
-      ]
-    },
-    {
-      "group_name": "Exhaust Pipe",
-      "member_types": [
-        "exhaust pipe"
-      ],
-      "matched_types": [],
-      "matched_primitive_count": 0,
-      "skipped": true,
-      "skip_reason": "matched_primitive_count < 2",
-      "missing_types": [
-        "exhaust pipe"
-      ]
-    },
-    {
-      "group_name": "Engine",
-      "member_types": [
-        "engine"
-      ],
-      "matched_types": [],
-      "matched_primitive_count": 0,
-      "skipped": true,
-      "skip_reason": "matched_primitive_count < 2",
-      "missing_types": [
-        "engine"
-      ]
-    },
-    {
-      "group_name": "Brake System",
-      "member_types": [
-        "brake system"
-      ],
-      "matched_types": [],
-      "matched_primitive_count": 0,
-      "skipped": true,
-      "skip_reason": "matched_primitive_count < 2",
-      "missing_types": [
-        "brake system"
-      ]
-    },
-    {
-      "group_name": "Brake Pads",
-      "member_types": [
-        "brake pads"
-      ],
-      "matched_types": [],
-      "matched_primitive_count": 0,
-      "skipped": true,
-      "skip_reason": "matched_primitive_count < 2",
-      "missing_types": [
-        "brake pads"
-      ]
-    },
-    {
-      "group_name": "Chain",
-      "member_types": [
-        "chain"
-      ],
-      "matched_types": [],
-      "matched_primitive_count": 0,
-      "skipped": true,
-      "skip_reason": "matched_primitive_count < 2",
-      "missing_types": [
-        "chain"
-      ]
-    },
-    {
-      "group_name": "Chain Guard",
-      "member_types": [
-        "chain guard"
-      ],
-      "matched_types": [],
-      "matched_primitive_count": 0,
-      "skipped": true,
-      "skip_reason": "matched_primitive_count < 2",
-      "missing_types": [
-        "chain guard"
+      "members": [
+        {
+          "cluster_id": 3,
+          "primitive_label": "front_wheel_0",
+          "point_count": 14864,
+          "extent_before": [
+            0.5128970171325817,
+            0.1610162102675134,
+            0.13687844762358461
+          ],
+          "extent_after": [
+            0.5128970171325817,
+            0.1610162102675134,
+            0.13687844762358461
+          ],
+          "extent_before_sorted": [
+            0.13687844762358461,
+            0.1610162102675134,
+            0.5128970171325817
+          ]
+        },
+        {
+          "cluster_id": 4,
+          "primitive_label": "rear_wheel_0",
+          "point_count": 5249,
+          "extent_before": [
+            0.19434168621305006,
+            0.14504832188127165,
+            0.10279987789701055
+          ],
+          "extent_after": [
+            0.5128970171325817,
+            0.1610162102675134,
+            0.13687844762358461
+          ],
+          "extent_before_sorted": [
+            0.10279987789701055,
+            0.14504832188127165,
+            0.19434168621305006
+          ]
+        }
       ]
     }
   ],
-  "unmatched_group_types": [
-    "brake pads",
-    "brake system",
-    "chain",
-    "chain guard",
-    "engine",
-    "exhaust pipe",
-    "front fender",
-    "front fork",
-    "front wheel",
-    "handlebar",
-    "rear fender",
-    "rear wheel",
-    "seat"
+  "changed_cluster_ids": [
+    3,
+    4
   ],
-  "changed_clusters": []
+  "unmatched_relation_labels": [],
+  "notes": "Optimization uses relations.json same_pairs only (extent tying). neighboring_pairs loaded but not used in this iteration."
 }

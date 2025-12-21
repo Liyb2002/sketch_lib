@@ -1,6 +1,6 @@
 {
   "model": "Qwen/Qwen2.5-7B-Instruct",
-  "assembly_name": "Unknown",
+  "assembly_name": "Scooter",
   "labels": [
     "front_fender_0",
     "front_wheel_0",
@@ -13,37 +13,37 @@
   "neighboring_pairs": [
     {
       "a": "front_fender_0",
-      "b": "headlight_0",
-      "confidence": 0.6,
-      "evidence": "adjacent components"
-    },
-    {
-      "a": "front_fender_0",
-      "b": "handlebar_0",
+      "b": "front_wheel_0",
       "confidence": 0.6,
       "evidence": "adjacent components"
     },
     {
       "a": "front_wheel_0",
-      "b": "front_fender_0",
-      "confidence": 0.6,
-      "evidence": "adjacent components"
+      "b": "fuel_tank_0",
+      "confidence": 0.4,
+      "evidence": "typical scooter layout"
     },
     {
       "a": "fuel_tank_0",
-      "b": "rear_wheel_0",
+      "b": "handlebar_0",
       "confidence": 0.6,
-      "evidence": "adjacent components"
+      "evidence": "common placement"
     },
     {
       "a": "handlebar_0",
       "b": "headlight_0",
-      "confidence": 0.6,
-      "evidence": "adjacent components"
+      "confidence": 0.7,
+      "evidence": "connected via handlebar"
     },
     {
       "a": "headlight_0",
       "b": "seat_0",
+      "confidence": 0.5,
+      "evidence": "sequential components"
+    },
+    {
+      "a": "seat_0",
+      "b": "rear_wheel_0",
       "confidence": 0.6,
       "evidence": "adjacent components"
     }
@@ -56,6 +56,6 @@
       "evidence": "both wheels"
     }
   ],
-  "notes": "Possible adjacency guesses based on typical motorcycle layout.",
+  "notes": "Some guesses based on typical scooter layout",
   "confidence": 0.6
 }

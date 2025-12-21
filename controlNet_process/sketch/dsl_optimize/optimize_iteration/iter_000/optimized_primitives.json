@@ -147,9 +147,9 @@
           1.0217410464413954
         ],
         "extent": [
-          0.5128970171325817,
-          0.1610162102675134,
-          0.13687844762358461
+          0.3536193516728159,
+          0.15303226607439252,
+          0.11983916276029757
         ],
         "rotation": [
           [
@@ -167,6 +167,11 @@
             0.20694048521525435,
             0.050620716290915455
           ]
+        ],
+        "extent_before_opt": [
+          0.5128970171325817,
+          0.1610162102675134,
+          0.13687844762358461
         ]
       },
       "point_count": 14864
@@ -185,9 +190,9 @@
           0.8673210227322324
         ],
         "extent": [
-          0.19434168621305006,
-          0.14504832188127165,
-          0.10279987789701055
+          0.3536193516728159,
+          0.15303226607439252,
+          0.11983916276029757
         ],
         "rotation": [
           [
@@ -205,6 +210,11 @@
             -0.14488392723111584,
             -0.013867104377507378
           ]
+        ],
+        "extent_before_opt": [
+          0.19434168621305006,
+          0.14504832188127165,
+          0.10279987789701055
         ]
       },
       "point_count": 5249
@@ -286,9 +296,10 @@
     }
   ],
   "optimization": {
-    "method": "extent_tying_from_dsl_equivalence",
+    "method": "same_pairs_mean_extent",
     "alpha": 1.0,
-    "dsl_json": "/Users/yuanboli/Documents/GitHub/sketch_lib/controlNet_process/sketch/program/dsl_draft.json",
-    "source_primitives_json": "/Users/yuanboli/Documents/GitHub/sketch_lib/controlNet_process/sketch/dsl_optimize/merged_pca_primitives.json"
+    "use_pointcount_weights": false,
+    "relations_json": "/home/yli581/Desktop/sketch_lib/controlNet_process/sketch/dsl_optimize/relations.json",
+    "source_primitives_json": "/home/yli581/Desktop/sketch_lib/controlNet_process/sketch/dsl_optimize/merged_pca_primitives.json"
   }
 }
