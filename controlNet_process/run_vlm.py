@@ -21,13 +21,6 @@ def main():
         # 2. Run Step 1: Inventory
         infer_components.run_inference(base_path)
         
-        # 3. Run Step 2: DSL Draft
-        write_dsl.run_dsl_generation(base_path)
-        
-        print("\n" + "="*40)
-        print("PIPELINE COMPLETE")
-        print("Check 'sketch/program/' for the generated files.")
-        print("="*40)
         
     except Exception as e:
         print(f"\nCRITICAL ERROR: {e}")

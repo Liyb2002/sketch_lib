@@ -9,6 +9,7 @@ from constraints_extraction.pca_analysis import (
 from constraints_extraction.vis_pca_bbx import run_visualization
 
 from constraints_extraction.merge_neighbor_clusters import merge_neighboring_clusters_same_label
+from constraints_extraction.infer_relations import main as infer_relations_main
 
 
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -75,7 +76,10 @@ def main():
     print("\n[MAIN] Merge done. Launching visualization of merged primitives...")
 
     # visualize merged primitives (overlay on the same ply)
-    run_visualization(merge_outputs["merged_primitives_json"], ply_path=merge_outputs["merged_ply"])
+    # run_visualization(merge_outputs["merged_primitives_json"], ply_path=merge_outputs["merged_ply"])
+
+    print("\n[MAIN] Visualization done. Inferring label relations from sketch...")
+    infer_relations_main()
 
 if __name__ == "__main__":
     main()
