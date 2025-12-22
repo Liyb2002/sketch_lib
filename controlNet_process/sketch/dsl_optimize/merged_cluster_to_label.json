@@ -1,73 +1,72 @@
 {
   "0": {
-    "label": "fuel_tank_0",
-    "members": [
-      0,
-      3,
-      5,
-      6,
-      13,
-      15,
-      20,
-      26,
-      27
-    ],
-    "point_count": 18959
-  },
-  "1": {
     "label": "seat_0",
     "members": [
-      1,
-      21,
-      28
+      0,
+      7
     ],
-    "point_count": 7562
+    "point_count": 8521
+  },
+  "1": {
+    "label": "fender_0",
+    "members": [
+      1,
+      4,
+      6,
+      9,
+      14,
+      17,
+      20
+    ],
+    "point_count": 17173
   },
   "2": {
-    "label": "front_fender_0",
+    "label": "fender_0",
     "members": [
-      2,
-      9,
-      16,
-      18,
-      22
+      3,
+      11
     ],
-    "point_count": 9094
+    "point_count": 2023
   },
   "3": {
-    "label": "front_wheel_0",
+    "label": "wheel_0",
     "members": [
-      4,
-      7,
-      12,
-      14,
-      19,
-      23,
-      25
+      2,
+      10,
+      15,
+      21
     ],
-    "point_count": 14864
+    "point_count": 11596
   },
   "4": {
-    "label": "rear_wheel_0",
+    "label": "wheel_0",
     "members": [
-      8,
-      24
+      12
     ],
-    "point_count": 5249
+    "point_count": 1209
   },
   "5": {
     "label": "handlebar_0",
     "members": [
-      10,
-      17
+      5,
+      18
     ],
-    "point_count": 4708
+    "point_count": 3830
   },
   "6": {
+    "label": "wheel_1",
+    "members": [
+      8,
+      13,
+      16
+    ],
+    "point_count": 8822
+  },
+  "7": {
     "label": "headlight_0",
     "members": [
-      11
+      19
     ],
-    "point_count": 927
+    "point_count": 852
   }
 }

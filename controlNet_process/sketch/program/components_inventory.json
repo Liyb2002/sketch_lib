@@ -4,18 +4,18 @@
   "components": [
     {
       "component_id": "C01",
-      "name": "Front Wheel",
-      "count": 1
+      "name": "Wheel",
+      "count": 2
     },
     {
       "component_id": "C02",
-      "name": "Front Fork",
+      "name": "Fork",
       "count": 1
     },
     {
       "component_id": "C03",
-      "name": "Front Fender",
-      "count": 1
+      "name": "Fender",
+      "count": 2
     },
     {
       "component_id": "C04",
@@ -34,47 +34,37 @@
     },
     {
       "component_id": "C07",
-      "name": "Rear Wheel",
+      "name": "Exhaust",
       "count": 1
     },
     {
       "component_id": "C08",
-      "name": "Rear Fender",
-      "count": 1
-    },
-    {
-      "component_id": "C09",
-      "name": "Exhaust Pipe",
-      "count": 1
-    },
-    {
-      "component_id": "C10",
       "name": "Engine",
       "count": 1
     },
     {
-      "component_id": "C11",
-      "name": "Brake System",
-      "count": 1
-    },
-    {
-      "component_id": "C12",
-      "name": "Fuel Tank",
-      "count": 1
-    },
-    {
-      "component_id": "C13",
-      "name": "Brake Pads",
+      "component_id": "C09",
+      "name": "Pad",
       "count": 2
     },
     {
-      "component_id": "C14",
+      "component_id": "C10",
+      "name": "Disc",
+      "count": 2
+    },
+    {
+      "component_id": "C11",
       "name": "Chain",
       "count": 1
     },
     {
-      "component_id": "C15",
-      "name": "Chain Guard",
+      "component_id": "C12",
+      "name": "Guard",
+      "count": 1
+    },
+    {
+      "component_id": "C13",
+      "name": "Tank",
       "count": 1
     }
   ]

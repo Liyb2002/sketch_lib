@@ -2,60 +2,47 @@
   "model": "Qwen/Qwen2.5-7B-Instruct",
   "assembly_name": "Scooter",
   "labels": [
-    "front_fender_0",
-    "front_wheel_0",
-    "fuel_tank_0",
+    "fender_0",
     "handlebar_0",
     "headlight_0",
-    "rear_wheel_0",
-    "seat_0"
+    "seat_0",
+    "wheel_0",
+    "wheel_1"
   ],
   "neighboring_pairs": [
     {
-      "a": "front_fender_0",
-      "b": "front_wheel_0",
+      "a": "fender_0",
+      "b": "headlight_0",
       "confidence": 0.6,
-      "evidence": "adjacent components"
-    },
-    {
-      "a": "front_wheel_0",
-      "b": "fuel_tank_0",
-      "confidence": 0.4,
-      "evidence": "typical scooter layout"
-    },
-    {
-      "a": "fuel_tank_0",
-      "b": "handlebar_0",
-      "confidence": 0.6,
-      "evidence": "common placement"
+      "evidence": "commonly near each other"
     },
     {
       "a": "handlebar_0",
       "b": "headlight_0",
-      "confidence": 0.7,
-      "evidence": "connected via handlebar"
-    },
-    {
-      "a": "headlight_0",
-      "b": "seat_0",
-      "confidence": 0.5,
-      "evidence": "sequential components"
+      "confidence": 0.6,
+      "evidence": "commonly near each other"
     },
     {
       "a": "seat_0",
-      "b": "rear_wheel_0",
+      "b": "fender_0",
       "confidence": 0.6,
-      "evidence": "adjacent components"
+      "evidence": "typically behind the fender"
+    },
+    {
+      "a": "wheel_0",
+      "b": "wheel_1",
+      "confidence": 0.85,
+      "evidence": "both wheels"
     }
   ],
   "same_pairs": [
     {
-      "a": "front_wheel_0",
-      "b": "rear_wheel_0",
-      "confidence": 0.9,
+      "a": "wheel_0",
+      "b": "wheel_1",
+      "confidence": 1.0,
       "evidence": "both wheels"
     }
   ],
-  "notes": "Some guesses based on typical scooter layout",
+  "notes": "No strong adjacency cues, but plausible guesses made.",
   "confidence": 0.6
 }
