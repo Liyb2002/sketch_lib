@@ -25,7 +25,7 @@ def _load_registry(registry_path: str):
     for k, v in reg.items():
         try:
             cid = int(k)
-        except:
+        except Exception:
             continue
         reg_int[cid] = v
     return reg_int
@@ -165,6 +165,11 @@ def merge_neighboring_clusters_same_label(
        - merged_cluster_to_label.json (new merged id -> label + members)
        - merged_pca_primitives.json (OBB recomputed per merged cluster)
        - neighbor_graph.json (debug)
+
+    NOTE (edit requested):
+      If the same semantic label appears in multiple disconnected components, output
+      labels as x_0, x_1, ... instead of repeating x twice.
+      Everything else remains unchanged.
     """
     os.makedirs(out_dir, exist_ok=True)
 
@@ -199,7 +204,7 @@ def merge_neighboring_clusters_same_label(
         label_to_cids[lab].append(cid)
 
     # --- within each label, merge by connectivity in adjacency graph
-    merged_groups = []  # list of lists of old cluster ids
+    merged_groups = []  # list of (label, [old_cluster_ids])
     visited = set()
 
     for lab, cids in label_to_cids.items():
@@ -237,6 +242,9 @@ def merge_neighboring_clusters_same_label(
     merged_registry = {}
     merged_id = 0
 
+    # --- NEW: label instance counter so disconnected components become x_0, x_1, ...
+    label_instance_counter = defaultdict(int)
+
     for lab, group in merged_groups:
         # gather point indices
         all_idxs = []
@@ -252,9 +260,14 @@ def merge_neighboring_clusters_same_label(
         if all_idxs.shape[0] < min_points_after_merge:
             continue
 
+        # --- NEW: output label with instance suffix
+        inst = label_instance_counter[lab]
+        label_instance_counter[lab] += 1
+        lab_out = f"{lab}_{inst}"
+
         merged_cluster_ids[all_idxs] = merged_id
         merged_registry[str(merged_id)] = {
-            "label": lab,
+            "label": lab_out,
             "members": [int(x) for x in group],
             "point_count": int(all_idxs.shape[0]),
         }
@@ -283,17 +296,19 @@ def merge_neighboring_clusters_same_label(
         temp.points = o3d.utility.Vector3dVector(points[idxs])
         obb = temp.get_oriented_bounding_box()
 
-        merged_primitives.append({
-            "cluster_id": mid,
-            "label": info["label"],
-            "members": info["members"],
-            "parameters": {
-                "center": obb.center.tolist(),
-                "extent": obb.extent.tolist(),
-                "rotation": obb.R.tolist(),
-            },
-            "point_count": int(idxs.shape[0]),
-        })
+        merged_primitives.append(
+            {
+                "cluster_id": mid,
+                "label": info["label"],
+                "members": info["members"],
+                "parameters": {
+                    "center": obb.center.tolist(),
+                    "extent": obb.extent.tolist(),
+                    "rotation": obb.R.tolist(),
+                },
+                "point_count": int(idxs.shape[0]),
+            }
+        )
 
     merged_primitives_path = os.path.join(out_dir, "merged_pca_primitives.json")
     with open(merged_primitives_path, "w") as f:
@@ -317,6 +332,7 @@ def merge_neighboring_clusters_same_label(
         h = abs(hash(label)) % 360
         # simple hsv->rgb
         import colorsys
+
         r, g, b = colorsys.hsv_to_rgb(h / 360.0, 0.8, 1.0)
         return np.array([r, g, b], dtype=np.float64)
 

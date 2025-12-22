@@ -5,7 +5,7 @@
   "primitives": [
     {
       "cluster_id": 0,
-      "label": "seat_0",
+      "label": "seat_0_0",
       "members": [
         0,
         7
@@ -43,7 +43,7 @@
     },
     {
       "cluster_id": 1,
-      "label": "fender_0",
+      "label": "fender_0_0",
       "members": [
         1,
         4,
@@ -86,7 +86,7 @@
     },
     {
       "cluster_id": 2,
-      "label": "fender_0",
+      "label": "fender_0_1",
       "members": [
         3,
         11
@@ -124,7 +124,7 @@
     },
     {
       "cluster_id": 3,
-      "label": "wheel_0",
+      "label": "wheel_0_0",
       "members": [
         2,
         10,
@@ -164,7 +164,7 @@
     },
     {
       "cluster_id": 4,
-      "label": "wheel_0",
+      "label": "wheel_0_1",
       "members": [
         12
       ],
@@ -201,7 +201,7 @@
     },
     {
       "cluster_id": 5,
-      "label": "handlebar_0",
+      "label": "handlebar_0_0",
       "members": [
         5,
         18
@@ -239,7 +239,7 @@
     },
     {
       "cluster_id": 6,
-      "label": "wheel_1",
+      "label": "wheel_1_0",
       "members": [
         8,
         13,
@@ -278,7 +278,7 @@
     },
     {
       "cluster_id": 7,
-      "label": "headlight_0",
+      "label": "headlight_0_0",
       "members": [
         19
       ],
