@@ -7,7 +7,7 @@ from collections import defaultdict, deque
 
 try:
     from scipy.spatial import cKDTree
-except Exception as e:
+except Exception:
     cKDTree = None
 
 
@@ -166,10 +166,13 @@ def merge_neighboring_clusters_same_label(
        - merged_pca_primitives.json (OBB recomputed per merged cluster)
        - neighbor_graph.json (debug)
 
-    NOTE (edit requested):
-      If the same semantic label appears in multiple disconnected components, output
-      labels as x_0, x_1, ... instead of repeating x twice.
-      Everything else remains unchanged.
+    Existing behavior kept:
+      - disconnected components of same label become x_0, x_1, ...
+
+    NEW (Problem 1 / Heuristic A):
+      - for each base label x, keep only the largest instance (by point_count),
+        delete all other disconnected instances entirely (set their points to -1 and
+        remove them from merged outputs).
     """
     os.makedirs(out_dir, exist_ok=True)
 
@@ -231,10 +234,6 @@ def merge_neighboring_clusters_same_label(
 
             merged_groups.append((lab, sorted(comp)))
 
-    # clusters that are eligible but unknown or isolated label groups still appear as singletons
-    # (unknown clusters are left as -1 in merged ids)
-    # Note: if you want to keep unknown clusters as their own groups later, we can add that.
-
     # --- construct per-point merged ids
     cluster_to_indices = _cluster_points(points, cluster_ids)
     merged_cluster_ids = np.full_like(cluster_ids, -1, dtype=np.int32)
@@ -242,7 +241,7 @@ def merge_neighboring_clusters_same_label(
     merged_registry = {}
     merged_id = 0
 
-    # --- NEW: label instance counter so disconnected components become x_0, x_1, ...
+    # disconnected components become x_0, x_1, ...
     label_instance_counter = defaultdict(int)
 
     for lab, group in merged_groups:
@@ -260,7 +259,6 @@ def merge_neighboring_clusters_same_label(
         if all_idxs.shape[0] < min_points_after_merge:
             continue
 
-        # --- NEW: output label with instance suffix
         inst = label_instance_counter[lab]
         label_instance_counter[lab] += 1
         lab_out = f"{lab}_{inst}"
@@ -273,10 +271,59 @@ def merge_neighboring_clusters_same_label(
         }
         merged_id += 1
 
+    # -------------------------------------------------------------------------
+    # NEW: Problem 1 / Heuristic A — keep only the largest instance per base label
+    # -------------------------------------------------------------------------
+    def _base_label_from_instance(label_with_suffix: str) -> str:
+        """
+        Expected: "x_0", "x_1", ...
+        Only strips the last "_<int>" if it exists.
+        """
+        s = str(label_with_suffix)
+        if "_" not in s:
+            return s
+        base, tail = s.rsplit("_", 1)
+        try:
+            int(tail)
+            return base
+        except Exception:
+            return s
+
+    base_to_mids = defaultdict(list)
+    for mid_str, info in merged_registry.items():
+        base = _base_label_from_instance(info.get("label", "unknown"))
+        base_to_mids[base].append(int(mid_str))
+
+    mids_to_delete = set()
+    for base, mids in base_to_mids.items():
+        if len(mids) <= 1:
+            continue
+
+        best_mid = max(
+            mids,
+            key=lambda m: int(merged_registry[str(m)].get("point_count", 0)),
+        )
+        for m in mids:
+            if m != best_mid:
+                mids_to_delete.add(m)
+
+    if mids_to_delete:
+        for m in mids_to_delete:
+            merged_cluster_ids[merged_cluster_ids == m] = -1
+        for m in sorted(mids_to_delete):
+            merged_registry.pop(str(m), None)
+
+        print(
+            f"[PRUNE] Heuristic A: pruned {len(mids_to_delete)} disconnected instances "
+            f"(kept largest per base label)"
+        )
+
     # --- save merged ids
     merged_ids_path = os.path.join(out_dir, "merged_cluster_ids.npy")
     np.save(merged_ids_path, merged_cluster_ids)
-    print(f"[MERGE] Saved: {merged_ids_path} (merged clusters: {merged_id})")
+    print(
+        f"[MERGE] Saved: {merged_ids_path} (kept merged clusters: {len(merged_registry)})"
+    )
 
     # --- save merged cluster_to_label mapping json
     merged_map_path = os.path.join(out_dir, "merged_cluster_to_label.json")
@@ -325,12 +372,9 @@ def merge_neighboring_clusters_same_label(
     print(f"[MERGE] Saved: {merged_primitives_path}")
 
     # --- write a merged visualization PLY (color by semantic label)
-    # If your registry from cluster_map had colors, you can reuse them.
-    # Here we just generate stable colors by label hashing for now.
     def _label_to_rgb01(label: str):
         # deterministic pseudo-color
         h = abs(hash(label)) % 360
-        # simple hsv->rgb
         import colorsys
 
         r, g, b = colorsys.hsv_to_rgb(h / 360.0, 0.8, 1.0)
