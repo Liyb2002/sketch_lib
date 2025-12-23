@@ -1,0 +1,97 @@
+{
+  "inputs": {
+    "primitives_json": "/home/yli581/Desktop/sketch_lib/controlNet_process/sketch/dsl_optimize/merged_pca_primitives.json",
+    "ply_path": "/home/yli581/Desktop/sketch_lib/controlNet_process/sketch/dsl_optimize/merged_labeled_clusters.ply",
+    "cluster_ids_path": "/home/yli581/Desktop/sketch_lib/controlNet_process/sketch/dsl_optimize/merged_cluster_ids.npy"
+  },
+  "voxel_size": 0.008589088916778564,
+  "voxel_size_scale": 0.5,
+  "min_points_per_label": 200,
+  "labels": [
+    {
+      "label": "unknown",
+      "label_point_count": 449206,
+      "voxel_size": 0.008589088916778564,
+      "voxels_total": 7291,
+      "voxels_with_label": 3277,
+      "voxels_full_label": 1976,
+      "heat_point_mean": 0.8984119296073914,
+      "heat_point_p95": 1.0,
+      "heat_point_max": 1.0,
+      "heat_ply": "/home/yli581/Desktop/sketch_lib/controlNet_process/sketch/dsl_optimize/optimize_iteration/iter_000/heat_map/heatmaps/unknown/heat_map_unknown.ply"
+    },
+    {
+      "label": "fender_0_0",
+      "label_point_count": 17173,
+      "voxel_size": 0.008589088916778564,
+      "voxels_total": 7291,
+      "voxels_with_label": 1970,
+      "voxels_full_label": 1300,
+      "heat_point_mean": 0.03434600308537483,
+      "heat_point_p95": 0.0,
+      "heat_point_max": 1.0,
+      "heat_ply": "/home/yli581/Desktop/sketch_lib/controlNet_process/sketch/dsl_optimize/optimize_iteration/iter_000/heat_map/heatmaps/fender_0_0/heat_map_fender_0_0.ply"
+    },
+    {
+      "label": "wheel_0_0",
+      "label_point_count": 11596,
+      "voxel_size": 0.008589088916778564,
+      "voxels_total": 7291,
+      "voxels_with_label": 1156,
+      "voxels_full_label": 866,
+      "heat_point_mean": 0.02319199964404106,
+      "heat_point_p95": 0.0,
+      "heat_point_max": 1.0,
+      "heat_ply": "/home/yli581/Desktop/sketch_lib/controlNet_process/sketch/dsl_optimize/optimize_iteration/iter_000/heat_map/heatmaps/wheel_0_0/heat_map_wheel_0_0.ply"
+    },
+    {
+      "label": "wheel_1_0",
+      "label_point_count": 8822,
+      "voxel_size": 0.008589088916778564,
+      "voxels_total": 7291,
+      "voxels_with_label": 991,
+      "voxels_full_label": 706,
+      "heat_point_mean": 0.017643999308347702,
+      "heat_point_p95": 0.0,
+      "heat_point_max": 1.0,
+      "heat_ply": "/home/yli581/Desktop/sketch_lib/controlNet_process/sketch/dsl_optimize/optimize_iteration/iter_000/heat_map/heatmaps/wheel_1_0/heat_map_wheel_1_0.ply"
+    },
+    {
+      "label": "seat_0_0",
+      "label_point_count": 8521,
+      "voxel_size": 0.008589088916778564,
+      "voxels_total": 7291,
+      "voxels_with_label": 1028,
+      "voxels_full_label": 688,
+      "heat_point_mean": 0.017041997984051704,
+      "heat_point_p95": 0.0,
+      "heat_point_max": 1.0,
+      "heat_ply": "/home/yli581/Desktop/sketch_lib/controlNet_process/sketch/dsl_optimize/optimize_iteration/iter_000/heat_map/heatmaps/seat_0_0/heat_map_seat_0_0.ply"
+    },
+    {
+      "label": "handlebar_0_0",
+      "label_point_count": 3830,
+      "voxel_size": 0.008589088916778564,
+      "voxels_total": 7291,
+      "voxels_with_label": 426,
+      "voxels_full_label": 218,
+      "heat_point_mean": 0.007659999653697014,
+      "heat_point_p95": 0.0,
+      "heat_point_max": 1.0,
+      "heat_ply": "/home/yli581/Desktop/sketch_lib/controlNet_process/sketch/dsl_optimize/optimize_iteration/iter_000/heat_map/heatmaps/handlebar_0_0/heat_map_handlebar_0_0.ply"
+    },
+    {
+      "label": "headlight_0_0",
+      "label_point_count": 852,
+      "voxel_size": 0.008589088916778564,
+      "voxels_total": 7291,
+      "voxels_with_label": 111,
+      "voxels_full_label": 28,
+      "heat_point_mean": 0.0017040001694113016,
+      "heat_point_p95": 0.0,
+      "heat_point_max": 1.0,
+      "heat_ply": "/home/yli581/Desktop/sketch_lib/controlNet_process/sketch/dsl_optimize/optimize_iteration/iter_000/heat_map/heatmaps/headlight_0_0/heat_map_headlight_0_0.ply"
+    }
+  ],
+  "note": "Per-label heatmap: heat(voxel)=#label_points/#total_points. Colors: 1->red, 0.5->green, 0->black."
+}

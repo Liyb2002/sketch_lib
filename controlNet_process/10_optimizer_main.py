@@ -1,12 +1,7 @@
 #!/usr/bin/env python3
 import os
 
-from constraints_optimization.no_overlapping import apply_no_overlapping_shrink_only
-from constraints_optimization.vis_bbx_before_after import (
-    run_before_after_vis_per_label,
-    run_global_vis_all_boxes,
-)
-
+from constraints_optimization.heat_map import build_label_heatmaps
 
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 SKETCH_ROOT = os.path.join(THIS_DIR, "sketch")
@@ -33,11 +28,11 @@ OUT_DIR = os.path.join(DSL_DIR, "optimize_iteration", f"iter_{ITER_ID:03d}")
 
 
 def main():
-    print("\n[OPT] === Shrink-only no-overlap + maximize size (tolerant, nonlinear) ===")
-    print("[OPT] primitives:", PRIMITIVES_JSON)
-    print("[OPT] ply       :", PLY_PATH)
+    print("\n[OPT] === Step 1: voxel heat maps per label (label fraction per voxel) ===")
+    print("[OPT] primitives :", PRIMITIVES_JSON)
+    print("[OPT] ply        :", PLY_PATH)
     print("[OPT] cluster_ids:", CLUSTER_IDS_NPY)
-    print("[OPT] out_dir   :", OUT_DIR)
+    print("[OPT] out_dir    :", OUT_DIR)
 
     if not os.path.exists(PRIMITIVES_JSON):
         raise FileNotFoundError(f"Missing primitives json: {PRIMITIVES_JSON}")
@@ -46,43 +41,22 @@ def main():
     if not os.path.exists(CLUSTER_IDS_NPY):
         raise FileNotFoundError(f"Missing cluster ids npy: {CLUSTER_IDS_NPY}")
 
-    outputs = apply_no_overlapping_shrink_only(
+    heat_dir = os.path.join(OUT_DIR, "heat_map")
+    build_label_heatmaps(
         primitives_json_path=PRIMITIVES_JSON,
-        out_dir=OUT_DIR,
-        steps=1200,
-        lr=1e-2,
-        overlap_tol_ratio=0.02,
-        overlap_scale_ratio=0.01,
-        r_min=0.70,
-        w_overlap=1.0,
-        w_cut=50.0,
-        w_size=2.0,
-        w_floor=10.0,
-        extent_floor=1e-3,
-        min_points=10,
-        device="cuda",
-        verbose_every=50,
-    )
-
-    print("\n[OPT] Done.")
-    print("[OPT] optimized_primitives:", outputs["optimized_primitives_json"])
-    print("[OPT] report              :", outputs["report_json"])
-
-    print("\n[VIS] Per-label before/after views...")
-    run_before_after_vis_per_label(
-        before_primitives_json=PRIMITIVES_JSON,
-        after_primitives_json=outputs["optimized_primitives_json"],
         ply_path=PLY_PATH,
         cluster_ids_path=CLUSTER_IDS_NPY,
+        out_dir=heat_dir,
+        voxel_size=None,              # auto
+        min_points_per_label=200,
+        show_windows=True,            # pops Open3D windows per label
+        max_labels_to_show=12,
+        show_combined=True,
     )
 
-    print("\n[VIS] Global view: all optimized boxes together...")
-    run_global_vis_all_boxes(
-        primitives_json=outputs["optimized_primitives_json"],
-        ply_path=PLY_PATH,
-        show_points=True,
-    )
-
+    # --- Optimization intentionally commented out for now ---
+    # from constraints_optimization.no_overlapping import apply_no_overlapping_shrink_only
+    # outputs = apply_no_overlapping_shrink_only(...)
 
 if __name__ == "__main__":
     main()
