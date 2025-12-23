@@ -61,11 +61,25 @@ def _save_json(path: str, obj: Any) -> None:
         json.dump(obj, f, indent=2)
 
 
+def _is_unknown_label(lab: str) -> bool:
+    """
+    Treat anything containing 'unknown' (case-insensitive) as unknown.
+    e.g. 'unknown', 'Unknown', 'unknown_0', 'seat_unknown', etc.
+    """
+    try:
+        return "unknown" in str(lab).lower()
+    except Exception:
+        return False
+
+
 def _extract_labels_from_registry(registry: Dict[str, Any]) -> List[str]:
     """
     registry.json is built by build_registry_from_cluster_map().
     Typical schema: cluster_id -> {"label": "...", "color": ...}
     Sometimes: cluster_id -> "label"
+
+    CHANGE:
+      - ignore anything comes with unknown (case-insensitive substring match)
     """
     labels: List[str] = []
     if isinstance(registry, dict):
@@ -73,9 +87,15 @@ def _extract_labels_from_registry(registry: Dict[str, Any]) -> List[str]:
             if isinstance(v, dict):
                 lab = v.get("label", None)
                 if lab is not None:
-                    labels.append(str(lab))
+                    lab_s = str(lab)
+                    if _is_unknown_label(lab_s):
+                        continue
+                    labels.append(lab_s)
             elif isinstance(v, str):
-                labels.append(str(v))
+                lab_s = str(v)
+                if _is_unknown_label(lab_s):
+                    continue
+                labels.append(lab_s)
     return sorted(set(labels))
 
 

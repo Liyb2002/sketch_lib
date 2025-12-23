@@ -365,8 +365,8 @@ def main():
     print(f"Saved fused 3D point cloud: {ply_path}")
 
     # NEW: build and save a <=5000-face mesh as GLB
-    glb_path = OUTPUT_DIR / GLB_NAME
-    pointcloud_to_glb_mesh(pcd, glb_path)
+    # glb_path = OUTPUT_DIR / GLB_NAME
+    # pointcloud_to_glb_mesh(pcd, glb_path)
 
     print("\nSaving Cameras and Verifying Alignment (W2C)...")
     for i, vp in enumerate(view_paths):

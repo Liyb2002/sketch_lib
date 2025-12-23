@@ -10,14 +10,6 @@ import open3d as o3d
 def build_registry_from_cluster_map(cluster_map_path: str, out_registry_path: str):
     """
     Converts sketch/clusters/cluster_to_label.json into a registry:
-
-    registry = {
-      "0": {"label": "seat", "color_rgb": [r,g,b]},
-      "1": {"label": "leg",  "color_rgb": [r,g,b]},
-      ...
-    }
-
-    NOTE: Keys are cluster_ids (new cluster ids).
     """
     if not os.path.exists(cluster_map_path):
         raise FileNotFoundError(f"Missing cluster_to_label.json: {cluster_map_path}")
@@ -25,8 +17,6 @@ def build_registry_from_cluster_map(cluster_map_path: str, out_registry_path: st
     with open(cluster_map_path, "r") as f:
         cm = json.load(f)
 
-    # Your cluster_to_label.json looks like:
-    # { new_id: { "label": str, "original_cluster_id": int, "point_count": int, "color_rgb": [..] }, ... }
     registry: Dict[str, Dict[str, Any]] = {}
 
     for k, v in cm.items():
@@ -40,7 +30,7 @@ def build_registry_from_cluster_map(cluster_map_path: str, out_registry_path: st
 
         entry = {"label": label}
         if isinstance(color_rgb, (list, tuple)) and len(color_rgb) == 3:
-            entry["color_rgb"] = [float(color_rgb[0]), float(color_rgb[1]), float(color_rgb[2])]
+            entry["color_rgb"] = [float(color_rgb[0]), float(color_rgb[1]), float(color_rgb[1])]
         registry[str(cid)] = entry
 
     os.makedirs(os.path.dirname(out_registry_path), exist_ok=True)
@@ -58,21 +48,7 @@ def run_pca_analysis_on_clusters(
 ) -> List[Dict[str, Any]]:
     """
     Fits PCA OrientedBoundingBoxes (Open3D) per *cluster id* using cluster_ids.npy.
-
-    Inputs:
-      - ply_path: point cloud with N points
-      - cluster_ids_path: npy (N,) int32/int64. -1 means unknown/no cluster.
-      - registry_path: optional JSON mapping cluster_id -> {label, color_rgb}
-      - min_points: skip tiny clusters
-
-    Output format (list):
-      {
-        "cluster_id": int,
-        "label": str,
-        "parameters": {"center": [...], "extent": [...], "rotation": [[...],[...],[...]]},
-        "point_count": int,
-        "members": {... optional ...}
-      }
+    Robust to degenerate clusters (line / plane / near-zero extent).
     """
     print(f"[PCA] Loading point cloud: {ply_path}")
     if not os.path.exists(ply_path):
@@ -104,7 +80,7 @@ def run_pca_analysis_on_clusters(
     parts_db: List[Dict[str, Any]] = []
 
     unique_clusters = np.unique(cluster_ids)
-    unique_clusters = unique_clusters[unique_clusters >= 0]  # drop unknown
+    unique_clusters = unique_clusters[unique_clusters >= 0]
 
     print(f"[PCA] Found {len(unique_clusters)} clusters (excluding unknown).")
 
@@ -113,12 +89,45 @@ def run_pca_analysis_on_clusters(
         if idx.size < min_points:
             continue
 
-        cluster_points = points[idx]
+        pts = points[idx]
 
-        temp = o3d.geometry.PointCloud()
-        temp.points = o3d.utility.Vector3dVector(cluster_points)
+        # ---- sanitize points ----
+        pts = pts[np.isfinite(pts).all(axis=1)]
+        if pts.shape[0] < min_points:
+            continue
 
-        obb = temp.get_oriented_bounding_box()
+        # remove duplicates (critical for qhull)
+        pts_u = np.unique(np.round(pts, 6), axis=0)
+        if pts_u.shape[0] < 3:
+            continue
+
+        pcd_cluster = o3d.geometry.PointCloud()
+        pcd_cluster.points = o3d.utility.Vector3dVector(pts_u)
+
+        # ---- detect intrinsic dimension ----
+        X = pts_u - pts_u.mean(axis=0, keepdims=True)
+        s = np.linalg.svd(X, compute_uv=False)
+        rank = int((s > 1e-9).sum())
+
+        # ---- robust OBB ----
+        try:
+            if rank >= 3:
+                obb = pcd_cluster.get_oriented_bounding_box()
+            else:
+                raise RuntimeError("Degenerate cluster (rank < 3)")
+        except Exception:
+            aabb = pcd_cluster.get_axis_aligned_bounding_box()
+            obb = o3d.geometry.OrientedBoundingBox(
+                aabb.get_center(),
+                np.eye(3),
+                aabb.get_extent(),
+            )
+            info = registry.get(str(int(cid)), {})
+            label = info.get("label", "unknown")
+            print(
+                f"[PCA][WARN] Fallback AABB for cluster {cid} "
+                f"(label={label}, points={pts_u.shape[0]}, rank={rank})"
+            )
 
         info = registry.get(str(int(cid)), {})
         label = info.get("label", "unknown")
@@ -134,25 +143,28 @@ def run_pca_analysis_on_clusters(
             },
             "point_count": int(idx.size),
         }
+
         if isinstance(color_rgb, (list, tuple)) and len(color_rgb) == 3:
             record["color_rgb"] = [float(color_rgb[0]), float(color_rgb[1]), float(color_rgb[2])]
 
         parts_db.append(record)
 
-    # Stable ordering by cluster id
     parts_db.sort(key=lambda d: d["cluster_id"])
 
     print(f"[PCA] Processed {len(parts_db)} cluster primitives.")
     return parts_db
 
 
-def save_primitives_to_json(parts_db: List[Dict[str, Any]], output_path: str, source_ply: Optional[str] = None):
+def save_primitives_to_json(
+    parts_db: List[Dict[str, Any]],
+    output_path: str,
+    source_ply: Optional[str] = None,
+):
     """
     Saves primitives to JSON. Optionally stores source_ply for visualization/debug.
     """
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
 
-    payload: Dict[str, Any]
     if source_ply is not None:
         payload = {
             "source_ply": source_ply,
