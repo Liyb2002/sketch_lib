@@ -1,0 +1,76 @@
+{
+  "colors": {
+    "0,0,255": {
+      "bgr": [
+        0,
+        0,
+        255
+      ],
+      "instance": "backrest_0",
+      "base": "backrest"
+    },
+    "0,255,0": {
+      "bgr": [
+        0,
+        255,
+        0
+      ],
+      "instance": "leg_0",
+      "base": "leg"
+    },
+    "255,0,0": {
+      "bgr": [
+        255,
+        0,
+        0
+      ],
+      "instance": "leg_1",
+      "base": "leg"
+    },
+    "0,255,255": {
+      "bgr": [
+        0,
+        255,
+        255
+      ],
+      "instance": "leg_2",
+      "base": "leg"
+    },
+    "255,0,255": {
+      "bgr": [
+        255,
+        0,
+        255
+      ],
+      "instance": "leg_3",
+      "base": "leg"
+    },
+    "255,255,0": {
+      "bgr": [
+        255,
+        255,
+        0
+      ],
+      "instance": "leg_4",
+      "base": "leg"
+    },
+    "0,165,255": {
+      "bgr": [
+        0,
+        165,
+        255
+      ],
+      "instance": "leg_5",
+      "base": "leg"
+    },
+    "128,0,128": {
+      "bgr": [
+        128,
+        0,
+        128
+      ],
+      "instance": "seat_pan_0",
+      "base": "seat_pan"
+    }
+  }
+}
