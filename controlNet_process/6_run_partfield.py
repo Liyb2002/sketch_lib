@@ -113,103 +113,12 @@ def export_colored_points_ply(points_xyz: np.ndarray, labels: np.ndarray, out_pl
     print(f"[SAVE] {out_ply}")
 
 
-def export_mesh_by_face_vote(mesh: trimesh.Trimesh,
-                             points_xyz: np.ndarray,
-                             point_labels: np.ndarray,
-                             out_glb: Path,
-                             out_ply: Path):
-    V = np.asarray(mesh.vertices, dtype=np.float32)
-    F = np.asarray(mesh.faces, dtype=np.int64)
-    point_labels = point_labels.reshape(-1).astype(np.int64)
-    assert points_xyz.shape[0] == point_labels.shape[0]
-
-    prox = trimesh.proximity.ProximityQuery(mesh)
-    closest, dist, face_id = prox.on_surface(points_xyz)
-
-    nF = F.shape[0]
-    face_label = np.full((nF,), -1, dtype=np.int64)
-
-    buckets = [[] for _ in range(nF)]
-    for i in range(points_xyz.shape[0]):
-        fi = int(face_id[i])
-        lab = int(point_labels[i])
-        if lab >= 0:
-            buckets[fi].append(lab)
-
-    for fi in range(nF):
-        if buckets[fi]:
-            labs = np.array(buckets[fi], dtype=np.int64)
-            face_label[fi] = np.bincount(labs).argmax()
-
-    vert_label = np.full((V.shape[0],), -1, dtype=np.int64)
-    incident = [[] for _ in range(V.shape[0])]
-    for fi, tri in enumerate(F):
-        lab = int(face_label[fi])
-        if lab < 0:
-            continue
-        a, b, c = map(int, tri)
-        incident[a].append(lab)
-        incident[b].append(lab)
-        incident[c].append(lab)
-
-    for vi in range(V.shape[0]):
-        if incident[vi]:
-            labs = np.array(incident[vi], dtype=np.int64)
-            vert_label[vi] = np.bincount(labs).argmax()
-
-    lab2rgb = color_map_from_labels(vert_label)
-    colors_rgb = np.zeros((V.shape[0], 3), dtype=np.uint8)
-    for i, lab in enumerate(vert_label):
-        if lab >= 0:
-            colors_rgb[i] = lab2rgb[int(lab)]
-
-    alpha = np.full((colors_rgb.shape[0], 1), 255, dtype=np.uint8)
-    colors_rgba = np.concatenate([colors_rgb, alpha], axis=1)
-
-    out_mesh = trimesh.Trimesh(vertices=V, faces=F, process=False)
-    out_mesh.visual.vertex_colors = colors_rgba
-
-    out_mesh.export(out_glb)
-    print(f"[SAVE] {out_glb}")
-    out_mesh.export(out_ply)
-    print(f"[SAVE] {out_ply}")
-
 
 def main():
     if not IN_GLB.is_file():
         raise RuntimeError(f"Missing input: {IN_GLB}")
 
     geom = load_geometry_any(IN_GLB)
-
-    # ---- Case A: Mesh ----
-    if isinstance(geom, trimesh.Trimesh) and len(geom.faces) > 0:
-        mesh = geom
-        print("[INFO] Loaded MESH:", IN_GLB)
-        print("[INFO] Vertices:", len(mesh.vertices), "Faces:", len(mesh.faces))
-
-        P = int(N_SAMPLE)
-        points_xyz, _ = trimesh.sample.sample_surface(mesh, P)
-        points_xyz = points_xyz.astype(np.float32)
-        print("[INFO] Sampled surface points:", points_xyz.shape[0])
-
-        km = MiniBatchKMeans(
-            n_clusters=K,
-            batch_size=8192,
-            n_init="auto",
-            max_iter=200,
-            random_state=0,
-        )
-        labels = km.fit_predict(points_xyz).astype(np.int64)
-        print("[INFO] Clusters:", len(np.unique(labels)))
-
-        np.save(OUT_LABELS, labels)
-        print(f"[SAVE] {OUT_LABELS}")
-
-        export_colored_points_ply(points_xyz, labels, OUT_POINTS_PLY)
-        export_mesh_by_face_vote(mesh, points_xyz, labels, OUT_MESH_GLB, OUT_MESH_PLY)
-
-        print("\n✅ Done (mesh path).")
-        return
 
     # ---- Case B: Point Cloud ----
     if isinstance(geom, trimesh.points.PointCloud):
