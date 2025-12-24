@@ -1,0 +1,46 @@
+{
+  "note": "AUTO-GENERATED labels-only primitives file. Contains only cluster_id->label mapping. No PCA transforms.",
+  "source_primitives_json": "/home/yli581/Desktop/sketch_lib/controlNet_process/sketch/dsl_optimize/merged_pca_primitives.json",
+  "primitives": [
+    {
+      "cluster_id": 0,
+      "label": "fender_0_0"
+    },
+    {
+      "cluster_id": 2,
+      "label": "wheel_1_0"
+    },
+    {
+      "cluster_id": 3,
+      "label": "seat_0_0"
+    },
+    {
+      "cluster_id": 4,
+      "label": "wheel_0_0"
+    },
+    {
+      "cluster_id": 6,
+      "label": "handlebar_0_0"
+    },
+    {
+      "cluster_id": 7,
+      "label": "headlight_0_0"
+    },
+    {
+      "cluster_id": 14,
+      "label": "unknown_6_0"
+    },
+    {
+      "cluster_id": 15,
+      "label": "unknown_7_0"
+    },
+    {
+      "cluster_id": 16,
+      "label": "unknown_8_0"
+    },
+    {
+      "cluster_id": 17,
+      "label": "unknown_9_0"
+    }
+  ]
+}
