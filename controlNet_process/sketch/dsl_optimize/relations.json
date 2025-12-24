@@ -26,12 +26,12 @@
       "a": "seat_0",
       "b": "fender_0",
       "confidence": 0.6,
-      "evidence": "adjacent components"
+      "evidence": "commonly adjacent"
     },
     {
       "a": "wheel_0",
       "b": "wheel_1",
-      "confidence": 0.9,
+      "confidence": 0.85,
       "evidence": "both wheels"
     }
   ],
@@ -43,6 +43,6 @@
       "evidence": "both wheels"
     }
   ],
-  "notes": "Possible fender family relation",
-  "confidence": 0.7
+  "notes": "Most relationships are based on typical scooter configurations.",
+  "confidence": 0.75
 }

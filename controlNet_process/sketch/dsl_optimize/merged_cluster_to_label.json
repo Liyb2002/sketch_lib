@@ -9,7 +9,8 @@
       12,
       17
     ],
-    "point_count": 16846
+    "point_count": 16846,
+    "source": "merged_known"
   },
   "2": {
     "label": "wheel_1_0",
@@ -18,7 +19,8 @@
       11,
       16
     ],
-    "point_count": 8611
+    "point_count": 8611,
+    "source": "merged_known"
   },
   "3": {
     "label": "seat_0_0",
@@ -27,7 +29,8 @@
       14,
       19
     ],
-    "point_count": 8690
+    "point_count": 8690,
+    "source": "merged_known"
   },
   "4": {
     "label": "wheel_0_0",
@@ -36,7 +39,8 @@
       10,
       13
     ],
-    "point_count": 11391
+    "point_count": 11391,
+    "source": "merged_known"
   },
   "6": {
     "label": "handlebar_0_0",
@@ -44,13 +48,123 @@
       7,
       18
     ],
-    "point_count": 3977
+    "point_count": 3977,
+    "source": "merged_known"
   },
   "7": {
     "label": "headlight_0_0",
     "members": [
       8
     ],
-    "point_count": 1086
+    "point_count": 1086,
+    "source": "merged_known"
+  },
+  "8": {
+    "label": "unknown_0",
+    "members": [
+      26
+    ],
+    "point_count": 1400,
+    "source": "copied_unknown",
+    "original_registry_label": "unknown_6"
+  },
+  "9": {
+    "label": "unknown_1",
+    "members": [
+      27
+    ],
+    "point_count": 1794,
+    "source": "copied_unknown",
+    "original_registry_label": "unknown_7"
+  },
+  "10": {
+    "label": "unknown_2",
+    "members": [
+      28
+    ],
+    "point_count": 4944,
+    "source": "copied_unknown",
+    "original_registry_label": "unknown_8"
+  },
+  "11": {
+    "label": "unknown_3",
+    "members": [
+      29
+    ],
+    "point_count": 4062,
+    "source": "copied_unknown",
+    "original_registry_label": "unknown_9"
+  },
+  "12": {
+    "label": "unknown_4",
+    "members": [
+      30
+    ],
+    "point_count": 585,
+    "source": "copied_unknown",
+    "original_registry_label": "unknown_10"
+  },
+  "13": {
+    "label": "unknown_5",
+    "members": [
+      31
+    ],
+    "point_count": 394,
+    "source": "copied_unknown",
+    "original_registry_label": "unknown_11"
+  },
+  "14": {
+    "label": "unknown_6",
+    "members": [
+      32
+    ],
+    "point_count": 1425,
+    "source": "copied_unknown",
+    "original_registry_label": "unknown_12"
+  },
+  "15": {
+    "label": "unknown_7",
+    "members": [
+      33
+    ],
+    "point_count": 1678,
+    "source": "copied_unknown",
+    "original_registry_label": "unknown_13"
+  },
+  "16": {
+    "label": "unknown_8",
+    "members": [
+      34
+    ],
+    "point_count": 1299,
+    "source": "copied_unknown",
+    "original_registry_label": "unknown_14"
+  },
+  "17": {
+    "label": "unknown_9",
+    "members": [
+      35
+    ],
+    "point_count": 587,
+    "source": "copied_unknown",
+    "original_registry_label": "unknown_15"
+  },
+  "18": {
+    "label": "unknown_10",
+    "members": [
+      36
+    ],
+    "point_count": 1027,
+    "source": "copied_unknown",
+    "original_registry_label": "unknown_16"
+  },
+  "19": {
+    "label": "unknown_11",
+    "members": [
+      37
+    ],
+    "point_count": 5247,
+    "source": "copied_unknown",
+    "original_registry_label": "unknown_17"
   }
 }

@@ -31,7 +31,6 @@ def build_registry_from_cluster_map(cluster_map_path: str, out_registry_path: st
 
         entry = {"label": label}
         if isinstance(color_rgb, (list, tuple)) and len(color_rgb) == 3:
-            # FIX: use (0,1,2) not (0,1,1)
             entry["color_rgb"] = [float(color_rgb[0]), float(color_rgb[1]), float(color_rgb[2])]
 
         registry[str(cid)] = entry
@@ -55,7 +54,29 @@ def run_pca_analysis_on_clusters(
 
     IMPORTANT: runs on ALL clusters INCLUDING unknown_* (which are normal cluster ids >= 0).
     Only excludes negative cluster ids unless include_negative_cluster_ids=True.
+
+    DEBUG ADDITIONS (no signature change):
+      - Prints why registry cluster ids are not considered / not included.
+      - Prints a summary of all skip reasons.
     """
+    def _safe_int(x) -> Optional[int]:
+        try:
+            return int(x)
+        except Exception:
+            return None
+
+    def _label_for(reg: Dict[str, Any], cid: int) -> str:
+        info = reg.get(str(cid), {})
+        return str(info.get("label", "unknown"))
+
+    def _print_examples(title: str, cids: List[int], reg: Dict[str, Any], max_n: int = 25):
+        if not cids:
+            return
+        head = cids[:max_n]
+        pretty = ", ".join(f"{cid}(label={_label_for(reg, cid)})" for cid in head)
+        suffix = "" if len(cids) <= max_n else f" ... (+{len(cids) - max_n} more)"
+        print(f"{title}: {pretty}{suffix}")
+
     print(f"[PCA] Loading point cloud: {ply_path}")
     if not os.path.exists(ply_path):
         raise FileNotFoundError(f"Missing ply: {ply_path}")
@@ -83,34 +104,123 @@ def run_pca_analysis_on_clusters(
         with open(registry_path, "r") as f:
             registry = json.load(f)
 
-    parts_db: List[Dict[str, Any]] = []
+    # ---------------------------
+    # DEBUG: registry ids vs npy ids
+    # ---------------------------
+    registry_ids: List[int] = []
+    bad_registry_keys: List[str] = []
+    for k in registry.keys():
+        cid = _safe_int(k)
+        if cid is None:
+            bad_registry_keys.append(str(k))
+        else:
+            registry_ids.append(cid)
+    registry_ids = sorted(set(registry_ids))
+    reg_set = set(registry_ids)
 
     unique_clusters = np.unique(cluster_ids)
+    unique_clusters = unique_clusters[np.isfinite(unique_clusters)]
+
+    # What will be iterated (post filter)
     if include_negative_cluster_ids:
-        unique_clusters = unique_clusters[np.isfinite(unique_clusters)]
+        unique_iter = unique_clusters
     else:
-        unique_clusters = unique_clusters[unique_clusters >= 0]
+        unique_iter = unique_clusters[unique_clusters >= 0]
 
-    # NOTE: We do NOT exclude "unknown" here. Unknowns are just labels in registry.
-    print(f"[PCA] Found {len(unique_clusters)} clusters (including unknown_* if present).")
+    npy_iter_ids = sorted(set(int(x) for x in unique_iter.tolist()))
+    npy_iter_set = set(npy_iter_ids)
 
-    for cid in unique_clusters:
+    # Registry ids that will never be iterated because missing in npy OR filtered out
+    missing_in_npy = sorted(list(reg_set - set(int(x) for x in unique_clusters.tolist())))
+    excluded_negative = []
+    if not include_negative_cluster_ids:
+        excluded_negative = sorted([cid for cid in registry_ids if cid < 0 and cid in set(int(x) for x in unique_clusters.tolist())])
+
+    # Also helpful: ids in registry that are negative (regardless of npy)
+    registry_negative_all = sorted([cid for cid in registry_ids if cid < 0])
+
+    print(f"[PCA][DIAG] registry entries: {len(registry)} (int_ids={len(registry_ids)}, bad_keys={len(bad_registry_keys)})")
+    if bad_registry_keys:
+        print(f"[PCA][DIAG] Non-int registry keys (ignored): {bad_registry_keys[:25]}{' ...' if len(bad_registry_keys) > 25 else ''}")
+
+    print(f"[PCA][DIAG] unique cluster ids in npy (raw, incl negatives): {len(set(int(x) for x in unique_clusters.tolist()))}")
+    print(f"[PCA][DIAG] unique cluster ids to iterate (post negative filter): {len(npy_iter_ids)}")
+
+    print(f"[PCA][DIAG] registry ids missing from cluster_ids.npy: {len(missing_in_npy)}")
+    _print_examples("[PCA][DIAG] Examples missing_from_npy", missing_in_npy, registry)
+
+    if registry_negative_all:
+        print(f"[PCA][DIAG] registry ids that are negative: {len(registry_negative_all)}")
+        _print_examples("[PCA][DIAG] Examples registry_negative", registry_negative_all, registry)
+
+    if excluded_negative:
+        print(f"[PCA][DIAG] registry ids present in npy but excluded due to negative filter: {len(excluded_negative)}")
+        _print_examples("[PCA][DIAG] Examples excluded_negative", excluded_negative, registry)
+
+    # ---------------------------
+    # PCA loop
+    # ---------------------------
+    parts_db: List[Dict[str, Any]] = []
+
+    # Track reasons why an ID that *is in registry* does not produce a primitive.
+    per_registry_reason: Dict[int, str] = {}
+    for cid in registry_ids:
+        if cid in set(int(x) for x in unique_clusters.tolist()):
+            if (not include_negative_cluster_ids) and cid < 0:
+                per_registry_reason[cid] = "NOT_CONSIDERED: excluded negative cluster id by config"
+            else:
+                per_registry_reason[cid] = "CONSIDERED: will attempt processing"
+        else:
+            per_registry_reason[cid] = "NOT_CONSIDERED: cluster id not present in cluster_ids.npy"
+
+    # Counters for skip reasons (for clusters that are iterated)
+    skip_counters = {
+        "skip_min_points_raw": 0,           # idx.size < min_points
+        "skip_all_nonfinite": 0,            # all points non-finite
+        "skip_min_points_after_finite": 0,  # finite pts < min_points
+        "skip_too_few_unique_points": 0,    # pts_u < 3
+    }
+    # Keep examples specifically for registry ids
+    skipped_registry_examples: Dict[str, List[int]] = {k: [] for k in skip_counters.keys()}
+
+    print(f"[PCA] Found {len(npy_iter_ids)} clusters (including unknown_* if present).")
+
+    for cid in unique_iter:
         cid_int = int(cid)
 
         idx = np.where(cluster_ids == cid_int)[0]
         if idx.size < min_points:
+            skip_counters["skip_min_points_raw"] += 1
+            if cid_int in reg_set:
+                per_registry_reason[cid_int] = f"SKIPPED: idx.size={int(idx.size)} < min_points={min_points}"
+                skipped_registry_examples["skip_min_points_raw"].append(cid_int)
             continue
 
         pts = points[idx]
 
-        # ---- sanitize points ----
-        pts = pts[np.isfinite(pts).all(axis=1)]
+        finite_mask = np.isfinite(pts).all(axis=1)
+        if not finite_mask.any():
+            skip_counters["skip_all_nonfinite"] += 1
+            if cid_int in reg_set:
+                per_registry_reason[cid_int] = "SKIPPED: all points are non-finite (NaN/Inf)"
+                skipped_registry_examples["skip_all_nonfinite"].append(cid_int)
+            continue
+
+        pts = pts[finite_mask]
         if pts.shape[0] < min_points:
+            skip_counters["skip_min_points_after_finite"] += 1
+            if cid_int in reg_set:
+                per_registry_reason[cid_int] = f"SKIPPED: finite_points={int(pts.shape[0])} < min_points={min_points}"
+                skipped_registry_examples["skip_min_points_after_finite"].append(cid_int)
             continue
 
         # remove duplicates (critical for qhull)
         pts_u = np.unique(np.round(pts, 6), axis=0)
         if pts_u.shape[0] < 3:
+            skip_counters["skip_too_few_unique_points"] += 1
+            if cid_int in reg_set:
+                per_registry_reason[cid_int] = f"SKIPPED: unique_points={int(pts_u.shape[0])} < 3 after dedup"
+                skipped_registry_examples["skip_too_few_unique_points"].append(cid_int)
             continue
 
         pcd_cluster = o3d.geometry.PointCloud()
@@ -165,9 +275,31 @@ def run_pca_analysis_on_clusters(
 
         parts_db.append(record)
 
+        if cid_int in reg_set:
+            per_registry_reason[cid_int] = "INCLUDED: primitive created successfully"
+
     parts_db.sort(key=lambda d: d["cluster_id"])
 
     print(f"[PCA] Processed {len(parts_db)} cluster primitives.")
+
+    # ---------------------------
+    # DEBUG: print reasons for registry clusters not included
+    # ---------------------------
+    included_ids = set(d["cluster_id"] for d in parts_db)
+    registry_not_included = [cid for cid in registry_ids if cid not in included_ids]
+
+    print("[PCA][DIAG] Registry clusters NOT included in primitives:", len(registry_not_included))
+    if registry_not_included:
+        # Print detailed reasons (cap at 500 to avoid spam)
+        for cid in registry_not_included[:500]:
+            print(f"  - {cid} label={_label_for(registry, cid)} => {per_registry_reason.get(cid, 'UNKNOWN_REASON')}")
+        if len(registry_not_included) > 500:
+            print(f"  ... (+{len(registry_not_included) - 500} more)")
+
+    print(f"[PCA][DIAG] Skip counters (over iterated clusters): {skip_counters}")
+    for k, ids in skipped_registry_examples.items():
+        _print_examples(f"[PCA][DIAG] Registry examples for {k}", sorted(set(ids)), registry)
+
     return parts_db
 
 
@@ -222,7 +354,7 @@ def main():
         cluster_ids_path=cluster_ids_path,
         registry_path=registry_path,
         min_points=10,
-        include_negative_cluster_ids=False,  # should already be none if your mapping fixed -1
+        include_negative_cluster_ids=False,
     )
 
     save_primitives_to_json(
