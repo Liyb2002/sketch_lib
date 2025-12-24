@@ -5,17 +5,17 @@ import numpy as np
 import open3d as o3d
 from collections import defaultdict, deque
 
-
+# -----------------------------------------------------------------------------
+# Helpers
+# -----------------------------------------------------------------------------
 def _load_registry(registry_path: str):
     """
-    registry.json produced by build_registry_from_cluster_map().
-    Expected keys: "0","1","2"... (cluster_id as string), with fields like:
+    registry.json: keys are cluster_id as string, values contain at least:
       {"label": "...", "color_rgb": [r,g,b] (optional)}
     """
     with open(registry_path, "r") as f:
         reg = json.load(f)
 
-    # normalize keys to int
     reg_int = {}
     for k, v in reg.items():
         try:
@@ -27,21 +27,18 @@ def _load_registry(registry_path: str):
 
 
 def _cluster_points(points: np.ndarray, cluster_ids: np.ndarray):
-    """
-    Returns dict cluster_id -> np.ndarray point indices
-    """
+    """Returns dict cluster_id -> np.ndarray point indices"""
     clusters = defaultdict(list)
     for i, cid in enumerate(cluster_ids):
+        cid = int(cid)
         if cid < 0:
             continue
-        clusters[int(cid)].append(i)
+        clusters[cid].append(i)
     return {cid: np.array(idxs, dtype=np.int64) for cid, idxs in clusters.items()}
 
 
 def _aabb_from_points(pts: np.ndarray):
-    """
-    Returns (mn, mx) each shape (3,)
-    """
+    """Returns (mn, mx) each shape (3,)"""
     mn = np.min(pts, axis=0)
     mx = np.max(pts, axis=0)
     return mn, mx
@@ -52,13 +49,39 @@ def _aabb_min_distance(a_min: np.ndarray, a_max: np.ndarray, b_min: np.ndarray, 
     Euclidean distance between two axis-aligned bounding boxes in 3D.
     If they intersect, distance = 0.
     """
-    # gap per axis: if overlapping => 0
     dx = max(0.0, float(b_min[0] - a_max[0]), float(a_min[0] - b_max[0]))
     dy = max(0.0, float(b_min[1] - a_max[1]), float(a_min[1] - b_max[1]))
     dz = max(0.0, float(b_min[2] - a_max[2]), float(a_min[2] - b_max[2]))
     return float(np.sqrt(dx * dx + dy * dy + dz * dz))
 
 
+def _is_unknown_label(lab: str) -> bool:
+    """
+    Ignore ALL unknown_{x} labels (and also plain "unknown" just in case).
+    """
+    s = str(lab).strip().lower()
+    return s == "unknown" or s.startswith("unknown_")
+
+
+def _base_label(label: str) -> str:
+    """
+    For heuristic "keep only largest instance per base label".
+    If label ends with _<int>, strip it once.
+    """
+    s = str(label)
+    if "_" not in s:
+        return s
+    a, b = s.rsplit("_", 1)
+    try:
+        int(b)
+        return a
+    except Exception:
+        return s
+
+
+# -----------------------------------------------------------------------------
+# Graph building
+# -----------------------------------------------------------------------------
 def build_neighbor_graph(
     ply_path: str,
     cluster_ids_path: str,
@@ -68,12 +91,12 @@ def build_neighbor_graph(
     min_points_per_cluster: int = 10,
 ):
     """
-    Build an APPROXIMATE adjacency graph between clusters based on AABB-to-AABB distance.
-    This is fast and sufficient for merging.
+    Build approximate adjacency graph between clusters using AABB distance.
 
-    Only includes clusters that:
-      - appear in registry
-      - have >= min_points_per_cluster points
+    IMPORTANT:
+      - clusters are identified ONLY by their integer cluster_id values in cluster_ids.npy
+      - label comes from registry[cluster_id]["label"]
+      - ignore any cluster whose label is unknown / unknown_{x}
     """
     if not os.path.exists(ply_path):
         raise FileNotFoundError(f"Missing ply: {ply_path}")
@@ -92,17 +115,21 @@ def build_neighbor_graph(
     registry = _load_registry(registry_path)
     cluster_to_indices = _cluster_points(points, cluster_ids)
 
-    # eligible clusters
+    # eligible clusters (exclude unknown*)
     eligible = []
     for cid, idxs in cluster_to_indices.items():
-        if cid not in registry:
+        info = registry.get(cid, None)
+        if info is None:
+            continue
+        lab = str(info.get("label", "unknown"))
+        if _is_unknown_label(lab):
             continue
         if idxs.shape[0] < min_points_per_cluster:
             continue
         eligible.append(cid)
     eligible = sorted(eligible)
 
-    # precompute AABBs once (cluster-level)
+    # precompute AABBs once
     aabbs = {}
     for cid in eligible:
         pts = points[cluster_to_indices[cid]]
@@ -115,7 +142,7 @@ def build_neighbor_graph(
     edges = []
     adj = {cid: [] for cid in eligible}
 
-    # pairwise AABB distance (very fast)
+    # pairwise AABB distance
     for i in range(len(eligible)):
         cid_i = eligible[i]
         a_min, a_max = aabbs[cid_i]
@@ -154,51 +181,60 @@ def build_neighbor_graph(
         json.dump(graph, f, indent=2)
 
     print(f"[GRAPH] Saved neighbor graph: {out_graph_json}")
+    print(f"[GRAPH] Nodes kept (non-unknown*): {len(graph['nodes'])}")
     return graph
 
 
+# -----------------------------------------------------------------------------
+# Merging
+# -----------------------------------------------------------------------------
 def merge_neighboring_clusters_same_label(
     ply_path: str,
     cluster_ids_path: str,
     registry_path: str,
-    primitives_json_path: str,
+    primitives_json_path: str,  # kept for compatibility; not required
     out_dir: str,
     neighbor_dist_thresh: float = 0.02,
     min_points_per_cluster: int = 10,
     min_points_after_merge: int = 10,
+    prune_disconnected_instances_keep_largest: bool = True,
 ):
     """
-    1) Build neighbor graph (FAST APPROX via AABBs)
-    2) Merge connected components where all nodes share the same label (and are connected through neighbor edges)
-    3) Produce:
-       - merged_cluster_ids.npy   (per-point merged cluster id, aligned to ply)
-       - merged_labeled_clusters.ply (same geometry colored by label)
-       - merged_cluster_to_label.json (new merged id -> label + members)
-       - merged_pca_primitives.json (OBB recomputed per merged cluster)
-       - neighbor_graph.json (debug)
+    Merge neighboring clusters of the same label.
 
-    Existing behavior kept:
-      - disconnected components of same label become x_0, x_1, ...
+    IMPORTANT BEHAVIOR (per your ask):
+      - We identify clusters ONLY by cluster_id indices from cluster_ids.npy
+      - We ignore ALL unknown labels: "unknown" and "unknown_{x}"
+      - Unknown clusters will NOT be merged, and their points remain -1 in merged_cluster_ids.npy
 
-    Heuristic A (kept):
-      - for each base label x, keep only the largest instance (by point_count),
-        delete all other disconnected instances entirely.
-
-    Additional behavior (per your latest request):
-      - if a merged cluster is invalid/degenerate (OBB fails / rank<3), remove it entirely.
+    Outputs:
+      - neighbor_graph.json
+      - merged_cluster_ids.npy            (per point, -1 for unknown/unmerged)
+      - merged_cluster_to_label.json      (only non-unknown merged clusters)
+      - merged_pca_primitives.json        (OBB per merged cluster)
+      - merged_labeled_clusters.ply       (colored; -1 is dark gray)
     """
     os.makedirs(out_dir, exist_ok=True)
+
+    if not os.path.exists(ply_path):
+        raise FileNotFoundError(f"Missing ply: {ply_path}")
+    if not os.path.exists(cluster_ids_path):
+        raise FileNotFoundError(f"Missing cluster ids npy: {cluster_ids_path}")
+    if not os.path.exists(registry_path):
+        raise FileNotFoundError(f"Missing registry: {registry_path}")
 
     # --- load base data
     pcd = o3d.io.read_point_cloud(ply_path)
     points = np.asarray(pcd.points)
     cluster_ids = np.load(cluster_ids_path).reshape(-1)
+
     if cluster_ids.shape[0] != points.shape[0]:
         raise RuntimeError("cluster_ids.npy must align 1:1 with the PLY point order")
 
     registry = _load_registry(registry_path)
+    cluster_to_indices = _cluster_points(points, cluster_ids)
 
-    # --- build neighbor graph (fast)
+    # --- build neighbor graph (unknown* excluded)
     graph_path = os.path.join(out_dir, "neighbor_graph.json")
     graph = build_neighbor_graph(
         ply_path=ply_path,
@@ -208,14 +244,14 @@ def merge_neighboring_clusters_same_label(
         neighbor_dist_thresh=neighbor_dist_thresh,
         min_points_per_cluster=min_points_per_cluster,
     )
-    adjacency = {int(k): v for k, v in graph["adjacency"].items()}
+    adjacency = {int(k): [int(x) for x in v] for k, v in graph["adjacency"].items()}
 
-    # --- group by label first
+    # --- group by label (unknown excluded already)
     label_to_cids = defaultdict(list)
     for node in graph["nodes"]:
         cid = int(node["cluster_id"])
         lab = str(node["label"])
-        if lab == "unknown":
+        if _is_unknown_label(lab):
             continue
         label_to_cids[lab].append(cid)
 
@@ -225,12 +261,10 @@ def merge_neighboring_clusters_same_label(
 
     for lab, cids in label_to_cids.items():
         cids_set = set(cids)
-
         for start in cids:
             if start in visited:
                 continue
 
-            # BFS within same-label subgraph
             comp = []
             q = deque([start])
             visited.add(start)
@@ -248,9 +282,7 @@ def merge_neighboring_clusters_same_label(
             merged_groups.append((lab, sorted(comp)))
 
     # --- construct per-point merged ids
-    cluster_to_indices = _cluster_points(points, cluster_ids)
     merged_cluster_ids = np.full_like(cluster_ids, -1, dtype=np.int32)
-
     merged_registry = {}
     merged_id = 0
 
@@ -258,17 +290,20 @@ def merge_neighboring_clusters_same_label(
     label_instance_counter = defaultdict(int)
 
     for lab, group in merged_groups:
-        all_idxs = []
+        if _is_unknown_label(lab):
+            continue
+
+        all_idxs_list = []
         for old_cid in group:
             idxs = cluster_to_indices.get(old_cid, None)
             if idxs is None:
                 continue
-            all_idxs.append(idxs)
+            all_idxs_list.append(idxs)
 
-        if not all_idxs:
+        if not all_idxs_list:
             continue
 
-        all_idxs = np.concatenate(all_idxs, axis=0)
+        all_idxs = np.concatenate(all_idxs_list, axis=0)
         if all_idxs.shape[0] < min_points_after_merge:
             continue
 
@@ -285,48 +320,32 @@ def merge_neighboring_clusters_same_label(
         merged_id += 1
 
     # -------------------------------------------------------------------------
-    # Heuristic A — keep only the largest instance per base label
+    # Optional: prune disconnected instances (keep only largest per base label)
     # -------------------------------------------------------------------------
-    def _base_label_from_instance(label_with_suffix: str) -> str:
-        """
-        Expected: "x_0", "x_1", ...
-        Only strips the last "_<int>" if it exists.
-        """
-        s = str(label_with_suffix)
-        if "_" not in s:
-            return s
-        base, tail = s.rsplit("_", 1)
-        try:
-            int(tail)
-            return base
-        except Exception:
-            return s
+    if prune_disconnected_instances_keep_largest and merged_registry:
+        base_to_mids = defaultdict(list)
+        for mid_str, info in merged_registry.items():
+            base_to_mids[_base_label(info.get("label", "unknown"))].append(int(mid_str))
 
-    base_to_mids = defaultdict(list)
-    for mid_str, info in merged_registry.items():
-        base = _base_label_from_instance(info.get("label", "unknown"))
-        base_to_mids[base].append(int(mid_str))
+        mids_to_delete = set()
+        for base, mids in base_to_mids.items():
+            if len(mids) <= 1:
+                continue
+            best_mid = max(mids, key=lambda m: int(merged_registry[str(m)].get("point_count", 0)))
+            for m in mids:
+                if m != best_mid:
+                    mids_to_delete.add(m)
 
-    mids_to_delete = set()
-    for base, mids in base_to_mids.items():
-        if len(mids) <= 1:
-            continue
+        if mids_to_delete:
+            for m in mids_to_delete:
+                merged_cluster_ids[merged_cluster_ids == m] = -1
+            for m in sorted(mids_to_delete):
+                merged_registry.pop(str(m), None)
 
-        best_mid = max(mids, key=lambda m: int(merged_registry[str(m)].get("point_count", 0)))
-        for m in mids:
-            if m != best_mid:
-                mids_to_delete.add(m)
-
-    if mids_to_delete:
-        for m in mids_to_delete:
-            merged_cluster_ids[merged_cluster_ids == m] = -1
-        for m in sorted(mids_to_delete):
-            merged_registry.pop(str(m), None)
-
-        print(
-            f"[PRUNE] Heuristic A: pruned {len(mids_to_delete)} disconnected instances "
-            f"(kept largest per base label)"
-        )
+            print(
+                f"[PRUNE] Heuristic A: pruned {len(mids_to_delete)} disconnected instances "
+                f"(kept largest per base label)"
+            )
 
     # -------------------------------------------------------------------------
     # Drop invalid merged clusters (degenerate / OBB failure)
@@ -334,23 +353,20 @@ def merge_neighboring_clusters_same_label(
     def _is_invalid_cluster_points(pts: np.ndarray) -> bool:
         if pts is None or pts.shape[0] < min_points_after_merge:
             return True
-
         pts = pts[np.isfinite(pts).all(axis=1)]
         if pts.shape[0] < min_points_after_merge:
             return True
-
         pts_u = np.unique(np.round(pts, 6), axis=0)
         if pts_u.shape[0] < 4:
             return True
-
         X = pts_u - pts_u.mean(axis=0, keepdims=True)
         s = np.linalg.svd(X, compute_uv=False)
         rank = int((s > 1e-9).sum())
         return rank < 3
 
     invalid_mids = []
-
     merged_primitives = []
+
     for mid_str, info in list(merged_registry.items()):
         mid = int(mid_str)
         idxs = np.where(merged_cluster_ids == mid)[0]
@@ -424,14 +440,14 @@ def merge_neighboring_clusters_same_label(
         )
     print(f"[MERGE] Saved: {merged_primitives_path}")
 
-    # --- write a merged visualization PLY (color by semantic label)
+    # --- write a merged visualization PLY (color by merged label; -1 is dark gray)
     def _label_to_rgb01(label: str):
-        h = abs(hash(label)) % 360
         import colorsys
+        h = abs(hash(label)) % 360
         r, g, b = colorsys.hsv_to_rgb(h / 360.0, 0.8, 1.0)
         return np.array([r, g, b], dtype=np.float64)
 
-    out_colors = np.zeros((points.shape[0], 3), dtype=np.float64) + 0.1  # unknown = dark gray
+    out_colors = np.zeros((points.shape[0], 3), dtype=np.float64) + 0.1  # unknown/unmerged = dark gray
     for mid_str, info in merged_registry.items():
         mid = int(mid_str)
         rgb = _label_to_rgb01(info["label"])

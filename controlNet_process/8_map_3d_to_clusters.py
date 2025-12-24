@@ -9,6 +9,17 @@ import matplotlib.pyplot as plt
 # clusters can be split in this code
 # NEW: keep unlabeled regions as explicit clusters: unknown_0, unknown_1, ...
 # NEW: merge neighboring unknown clusters at CLUSTER level using AABB distance.
+#
+# IMPORTANT CHANGE (per your note):
+# - BLACK color means "no label at all".
+# - If original cluster A and B are entirely black, they MUST become different unknown labels
+#   (unknown_0, unknown_1, ...) and should NOT be merged.
+# - Different labels => different colors (unknown_* get distinct colors).
+#
+# MINIMAL FIX (per your last request):
+# - Do NOT leave any point with final_cluster_id = -1.
+# - Any leftover -1 points get assigned to ONE explicit unknown_* cluster (single bucket),
+#   so we do NOT explode the number of clusters.
 
 # -----------------------------------------------------------------------------
 # CONFIG
@@ -37,34 +48,37 @@ FINAL_NPY_PATH  = os.path.join(OUTPUT_DIR, "final_cluster_ids.npy")
 MERGE_THRESHOLD  = 0.90
 IGNORE_THRESHOLD = 0.10
 
-# NEW: unknown cluster merging threshold (AABB gap)
-# If two unknown entities' AABBs are within this gap, merge them.
+# Unknown cluster merging threshold (AABB gap)
 UNKNOWN_MERGE_GAP_AUTO = True          # recommended
 UNKNOWN_MERGE_GAP_FRAC = 0.01          # gap = bbox_diagonal * frac
 UNKNOWN_MERGE_GAP_ABS  = 0.02          # used if AUTO=False (units of your point cloud)
+
+# Color threshold for "BLACK means no label at all"
+BLACK_SUM_THRESH = 0.05
 
 # -----------------------------------------------------------------------------
 # HELPERS
 # -----------------------------------------------------------------------------
 def generate_palette(unique_labels):
-    """Stable palette for labels."""
+    """
+    Stable palette for labels, including unknown_*.
+    Different labels => different colors.
+    """
     palette = {}
     cmap = plt.get_cmap("tab20")
-    sorted_labels = sorted(list(unique_labels))
+    sorted_labels = sorted([str(x) for x in unique_labels])
+
     for i, label in enumerate(sorted_labels):
-        if label.startswith("unknown"):
-            palette[label] = [0.2, 0.2, 0.2]
-        else:
-            palette[label] = list(cmap(i % 20)[:3])  # RGB in [0,1]
+        palette[label] = list(cmap(i % 20)[:3])  # RGB in [0,1]
+
     return palette
 
 def parse_label_color_map(path):
     """
-    Expects label_color_map.json created by your voting script, containing:
+    Expects label_color_map.json containing:
       - labels_in_order
       - label_to_color_rgb (0-255 ints in RGB order)
       - color_bgr_to_label (string key "b,g,r")
-    We'll mainly use color_bgr_to_label for exact matching.
     """
     with open(path, "r") as f:
         m = json.load(f)
@@ -80,38 +94,13 @@ def parse_label_color_map(path):
 
     return color_bgr_to_label, labels_in_order, label_to_rgb01
 
-def label_from_color_rgb01(rgb01, color_bgr_to_label, label_to_rgb01, max_dist=0.05):
-    """
-    Convert a point color (rgb in [0,1]) into a label.
-    Prefer exact match through BGR string if possible, otherwise nearest match.
-    """
-    if float(rgb01.sum()) < 0.05:
-        return "unknown"
-
-    rgb255 = np.clip(np.round(rgb01 * 255.0), 0, 255).astype(np.uint8)
-    r, g, b = int(rgb255[0]), int(rgb255[1]), int(rgb255[2])
-    key = f"{b},{g},{r}"
-    if key in color_bgr_to_label:
-        return color_bgr_to_label[key]
-
-    best = "unknown"
-    best_d = max_dist
-    for lab, ref in label_to_rgb01.items():
-        d = float(np.linalg.norm(rgb01 - ref))
-        if d < best_d:
-            best_d = d
-            best = lab
-    return best
-
 def aabb_of_points(pts):
     mn = pts.min(axis=0)
     mx = pts.max(axis=0)
     return mn, mx
 
 def aabb_gap_distance(a_min, a_max, b_min, b_max):
-    """
-    Euclidean distance between two AABBs (0 if they overlap/touch).
-    """
+    """Euclidean distance between two AABBs (0 if they overlap/touch)."""
     dx = max(0.0, max(b_min[0] - a_max[0], a_min[0] - b_max[0]))
     dy = max(0.0, max(b_min[1] - a_max[1], a_min[1] - b_max[1]))
     dz = max(0.0, max(b_min[2] - a_max[2], a_min[2] - b_max[2]))
@@ -141,6 +130,65 @@ def union_find_init(n):
 
     return find, union, parent
 
+def colors_rgb01_to_labels_fast(merged_colors_rgb01, color_bgr_to_label, label_to_rgb01, max_dist=0.05, black_sum_thresh=0.05):
+    """
+    Fast color->label:
+    - Compute black mask: sum(rgb) < black_sum_thresh => NO LABEL AT ALL.
+    - For non-black points: try exact map via BGR dict; else nearest label color.
+    Returns:
+      labels: (N,) object array (black points are set to "unknown")
+      is_black: (N,) bool array
+    """
+    cols = np.asarray(merged_colors_rgb01, dtype=np.float32)
+    num_points = cols.shape[0]
+    if num_points == 0:
+        return np.array([], dtype=object), np.array([], dtype=bool)
+
+    is_black = (cols.sum(axis=1) < float(black_sum_thresh))
+
+    rgb255 = np.clip(np.rint(cols * 255.0), 0, 255).astype(np.uint8)
+    r = rgb255[:, 0].astype(np.uint32)
+    g = rgb255[:, 1].astype(np.uint32)
+    b = rgb255[:, 2].astype(np.uint32)
+
+    packed = (r << 16) | (g << 8) | b
+
+    uniq_packed, inv = np.unique(packed, return_inverse=True)
+    uniq_labels = np.full((uniq_packed.shape[0],), "unknown", dtype=object)
+
+    ur = ((uniq_packed >> 16) & 255).astype(np.uint8)
+    ug = ((uniq_packed >> 8) & 255).astype(np.uint8)
+    ub = (uniq_packed & 255).astype(np.uint8)
+
+    for k in range(uniq_packed.shape[0]):
+        key = f"{int(ub[k])},{int(ug[k])},{int(ur[k])}"
+        lab = color_bgr_to_label.get(key, None)
+        if lab is not None:
+            uniq_labels[k] = lab
+
+    unknown_mask = (uniq_labels == "unknown")
+    if np.any(unknown_mask) and len(label_to_rgb01) > 0:
+        ref_labels = list(label_to_rgb01.keys())
+        ref_colors = np.stack([label_to_rgb01[l] for l in ref_labels], axis=0).astype(np.float32)
+
+        uniq_rgb01 = np.stack([ur, ug, ub], axis=1).astype(np.float32) / 255.0
+        uq = uniq_rgb01[unknown_mask]
+
+        dists = np.linalg.norm(uq[:, None, :] - ref_colors[None, :, :], axis=2)
+        best_idx = np.argmin(dists, axis=1)
+        best_dist = dists[np.arange(dists.shape[0]), best_idx]
+
+        accepted = best_dist < float(max_dist)
+        fill = np.array(["unknown"] * uq.shape[0], dtype=object)
+        if np.any(accepted):
+            fill[accepted] = np.array([ref_labels[i] for i in best_idx[accepted]], dtype=object)
+
+        uniq_labels[unknown_mask] = fill
+
+    labels = uniq_labels[inv]
+    labels[is_black] = "unknown"
+    return labels, is_black
+
 # -----------------------------------------------------------------------------
 # MAIN
 # -----------------------------------------------------------------------------
@@ -164,9 +212,6 @@ def main():
             "Your clustering must be generated from fused_model.ply in the same point order."
         )
 
-    # -------------------------------------------------------------------------
-    # 1) Load merged labeled point cloud (already voted across views)
-    # -------------------------------------------------------------------------
     print(f"[INFO] Loading merged labeled PLY: {MERGED_LABELED_PLY}")
     if not os.path.exists(MERGED_LABELED_PLY):
         raise RuntimeError(f"Missing merged labeled ply: {MERGED_LABELED_PLY}")
@@ -185,15 +230,13 @@ def main():
 
     color_bgr_to_label, labels_in_order, label_to_rgb01 = parse_label_color_map(LABEL_COLOR_MAP_JSON)
 
-    # Convert per-point color -> label (still per-point, but just a simple loop; no neighborhood ops)
-    raw_point_labels = np.array(["unknown"] * num_points, dtype=object)
-    for i in range(num_points):
-        raw_point_labels[i] = label_from_color_rgb01(
-            merged_colors[i].astype(np.float32),
-            color_bgr_to_label=color_bgr_to_label,
-            label_to_rgb01=label_to_rgb01,
-            max_dist=0.05,
-        )
+    raw_point_labels, is_black = colors_rgb01_to_labels_fast(
+        merged_colors,
+        color_bgr_to_label=color_bgr_to_label,
+        label_to_rgb01=label_to_rgb01,
+        max_dist=0.05,
+        black_sum_thresh=BLACK_SUM_THRESH,
+    )
 
     global_semantic_registry = set(labels_in_order) if labels_in_order else set(raw_point_labels.tolist())
     global_semantic_registry.add("unknown")
@@ -201,7 +244,7 @@ def main():
     # -------------------------------------------------------------------------
     # 2) Apply your 90/10 cluster regrouping rules
     # -------------------------------------------------------------------------
-    print("[INFO] Applying cluster regrouping rules (>=90% merge, 10-90 split, <=10 remove)...")
+    print("[INFO] Applying cluster regrouping rules (>=90% merge, <=10 remove -> unknown; 10-90 kept as-is)...")
 
     refined_labels = raw_point_labels.copy()
     unique_orig_clusters = np.unique(orig_cluster_ids)
@@ -226,12 +269,10 @@ def main():
         dom_label = max(ratios, key=ratios.get)
         dom_ratio = ratios[dom_label]
 
-        # (1) >= 90% => whole cluster becomes dom_label
         if dom_ratio >= MERGE_THRESHOLD:
             refined_labels[idxs] = dom_label
             continue
 
-        # (3) <= 10% fragments of any label get removed -> unknown
         for lab, ratio in ratios.items():
             if ratio <= IGNORE_THRESHOLD:
                 kill = idxs[refined_labels[idxs] == lab]
@@ -246,7 +287,6 @@ def main():
     registry = {}
     new_id = 0
 
-    # We'll build palette later after we know unknown_* labels too.
     for cid in unique_orig_clusters:
         if cid < 0:
             continue
@@ -267,18 +307,16 @@ def main():
                 "label": str(lab),
                 "original_cluster_id": int(cid),
                 "point_count": int(sub.size),
-                # fill color later
                 "color_rgb": None
             }
             new_id += 1
 
     # -------------------------------------------------------------------------
-    # 4) NEW: Unknown clusters at CLUSTER level, then merge neighboring unknown clusters.
-    #     Unknown entity = (original cluster id) restricted to points that remain unknown.
+    # 4) Unknown entities at CLUSTER level, then merge neighboring unknown clusters
     # -------------------------------------------------------------------------
     print("[INFO] Creating unknown entities at cluster level...")
 
-    unknown_entities = []  # list of dicts: {orig_cid, idxs, aabb_min, aabb_max}
+    unknown_entities = []
     for cid in unique_orig_clusters:
         if cid < 0:
             continue
@@ -290,6 +328,8 @@ def main():
         if unk.size == 0:
             continue
 
+        pure_black_cluster = bool(np.all(is_black[idxs]))
+
         pts = points[unk]
         mn, mx = aabb_of_points(pts)
         unknown_entities.append({
@@ -297,11 +337,11 @@ def main():
             "idxs": unk,
             "aabb_min": mn,
             "aabb_max": mx,
+            "pure_black_cluster": pure_black_cluster,
         })
 
     print(f"[INFO] Unknown entities (pre-merge): {len(unknown_entities)}")
 
-    # Determine merge gap
     if UNKNOWN_MERGE_GAP_AUTO:
         mins = points.min(axis=0)
         maxs = points.max(axis=0)
@@ -312,14 +352,17 @@ def main():
 
     print(f"[INFO] Unknown merge gap = {merge_gap:.6f} (auto={UNKNOWN_MERGE_GAP_AUTO})")
 
-    # Merge unknown entities by AABB distance (O(M^2), M is small)
     if len(unknown_entities) > 0:
-        find, union, parent = union_find_init(len(unknown_entities))
+        find, union, _parent = union_find_init(len(unknown_entities))
 
         for i in range(len(unknown_entities)):
             ai = unknown_entities[i]
             for j in range(i + 1, len(unknown_entities)):
                 aj = unknown_entities[j]
+
+                if ai["pure_black_cluster"] and aj["pure_black_cluster"]:
+                    continue
+
                 d = aabb_gap_distance(ai["aabb_min"], ai["aabb_max"], aj["aabb_min"], aj["aabb_max"])
                 if d <= merge_gap:
                     union(i, j)
@@ -334,7 +377,6 @@ def main():
 
         print(f"[INFO] Unknown groups (post-merge): {len(merged_groups)}")
 
-        # Assign unknown_0, unknown_1, ...
         unknown_labels = [f"unknown_{i}" for i in range(len(merged_groups))]
     else:
         merged_groups = []
@@ -344,14 +386,13 @@ def main():
     # 5) Final palette (includes unknown_* labels)
     # -------------------------------------------------------------------------
     palette_labels = set(global_semantic_registry)
-    palette_labels.discard("unknown")  # base unknown won't appear in registry
+    palette_labels.discard("unknown")
     palette_labels.update(unknown_labels)
     for v in registry.values():
         palette_labels.add(v["label"])
 
     palette = generate_palette(palette_labels)
 
-    # Fill colors for labeled clusters
     for cid_out, info in registry.items():
         lab = info["label"]
         info["color_rgb"] = [float(x) for x in palette.get(lab, [0.2, 0.2, 0.2])]
@@ -361,7 +402,6 @@ def main():
     # -------------------------------------------------------------------------
     for ui, members in enumerate(merged_groups):
         lab = f"unknown_{ui}"
-        # union of indices from member unknown entities
         idxs_list = [unknown_entities[m]["idxs"] for m in members]
         sub = np.concatenate(idxs_list, axis=0) if len(idxs_list) > 1 else idxs_list[0]
 
@@ -369,30 +409,45 @@ def main():
         final_cluster_ids[sub] = cid_new
         registry[cid_new] = {
             "label": lab,
-            "original_cluster_id": -1,  # spans multiple original clusters potentially
+            "original_cluster_id": -1,
             "point_count": int(sub.size),
             "color_rgb": [float(x) for x in palette.get(lab, [0.2, 0.2, 0.2])]
         }
         new_id += 1
 
-    # Safety: if any points still -1 (shouldn't happen now), keep as a single unknown_fallback
+    # -------------------------------------------------------------------------
+    # 7) MINIMAL FIX (CHANGED): if any points still -1, assign them ALL to ONE extra unknown_*
+    #     (instead of creating many unknowns by orig_cluster_id)
+    # -------------------------------------------------------------------------
     leftover = np.where(final_cluster_ids < 0)[0]
     if leftover.size > 0:
-        lab = "unknown_fallback"
-        palette[lab] = [0.1, 0.1, 0.1]
+        print(f"[INFO] Assigning ONE explicit unknown_* id for {leftover.size} leftover points...")
+
+        existing_unknown = sum(1 for v in registry.values() if str(v.get("label", "")).startswith("unknown_"))
+        lab = f"unknown_{existing_unknown}"
+
+        # ensure palette has this label
+        if lab not in palette:
+            palette2 = set(palette.keys())
+            palette2.add(lab)
+            palette = generate_palette(palette2)
+
         cid_new = new_id
         final_cluster_ids[leftover] = cid_new
         registry[cid_new] = {
             "label": lab,
             "original_cluster_id": -1,
             "point_count": int(leftover.size),
-            "color_rgb": [float(x) for x in palette[lab]]
+            "color_rgb": [float(x) for x in palette.get(lab, [0.2, 0.2, 0.2])]
         }
         new_id += 1
-        print(f"[WARN] Had {leftover.size} leftover unlabeled points -> {lab}")
+
+        leftover2 = np.where(final_cluster_ids < 0)[0]
+        if leftover2.size > 0:
+            raise RuntimeError(f"[FATAL] Still {leftover2.size} points have cluster_id=-1 after unknown_* assignment.")
 
     # -------------------------------------------------------------------------
-    # 7) Export json + npy + ply
+    # 8) Export json + npy + ply
     # -------------------------------------------------------------------------
     with open(FINAL_JSON_PATH, "w") as f:
         json.dump(registry, f, indent=2)
@@ -401,11 +456,18 @@ def main():
     np.save(FINAL_NPY_PATH, final_cluster_ids)
     print(f"[SAVE] {FINAL_NPY_PATH} (shape={final_cluster_ids.shape}, dtype={final_cluster_ids.dtype})")
 
-    out_colors = np.zeros((num_points, 3), dtype=np.float32)
-    for i in range(num_points):
-        cid = int(final_cluster_ids[i])
-        lab = registry[cid]["label"]
-        out_colors[i] = np.array(palette.get(lab, [0.2, 0.2, 0.2]), dtype=np.float32)
+    max_cid = int(final_cluster_ids.max())
+    if max_cid < 0:
+        raise RuntimeError("No clusters were assigned (final_cluster_ids.max() < 0).")
+
+    color_table = np.zeros((max_cid + 1, 3), dtype=np.float32)
+    for cid_out, info in registry.items():
+        cid_out = int(cid_out)
+        if 0 <= cid_out <= max_cid:
+            lab = info["label"]
+            color_table[cid_out] = np.array(palette.get(lab, [0.2, 0.2, 0.2]), dtype=np.float32)
+
+    out_colors = color_table[final_cluster_ids]
 
     pcd_out = o3d.geometry.PointCloud()
     pcd_out.points = o3d.utility.Vector3dVector(points)
