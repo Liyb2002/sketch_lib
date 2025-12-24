@@ -1,400 +1,132 @@
 {
   "0": {
-    "label": "fender_0",
-    "original_cluster_id": 6,
-    "point_count": 5127,
-    "color_rgb": [
-      0.12156862745098039,
-      0.4666666666666667,
-      0.7058823529411765
-    ]
+    "label": "cluster_0",
+    "type": "orig_cluster",
+    "point_count": 66623
   },
   "1": {
-    "label": "wheel_1",
-    "original_cluster_id": 7,
-    "point_count": 2178,
-    "color_rgb": [
-      1.0,
-      0.7333333333333333,
-      0.47058823529411764
-    ]
+    "label": "cluster_1",
+    "type": "orig_cluster",
+    "point_count": 69004
   },
   "2": {
-    "label": "seat_0",
-    "original_cluster_id": 8,
-    "point_count": 3732,
-    "color_rgb": [
-      1.0,
-      0.7333333333333333,
-      0.47058823529411764
-    ]
+    "label": "cluster_2",
+    "type": "orig_cluster",
+    "point_count": 74297
   },
   "3": {
-    "label": "wheel_0",
-    "original_cluster_id": 9,
-    "point_count": 5151,
-    "color_rgb": [
-      1.0,
-      0.4980392156862745,
-      0.054901960784313725
-    ]
+    "label": "cluster_3",
+    "type": "orig_cluster",
+    "point_count": 77087
   },
   "4": {
-    "label": "fender_0",
-    "original_cluster_id": 10,
-    "point_count": 594,
-    "color_rgb": [
-      0.12156862745098039,
-      0.4666666666666667,
-      0.7058823529411765
-    ]
+    "label": "cluster_4",
+    "type": "orig_cluster",
+    "point_count": 66139
   },
   "5": {
-    "label": "fender_0",
-    "original_cluster_id": 11,
-    "point_count": 1522,
-    "color_rgb": [
-      0.12156862745098039,
-      0.4666666666666667,
-      0.7058823529411765
-    ]
+    "label": "cluster_5",
+    "type": "orig_cluster",
+    "point_count": 69138
   },
   "6": {
-    "label": "fender_0",
-    "original_cluster_id": 12,
-    "point_count": 2715,
-    "color_rgb": [
-      0.12156862745098039,
-      0.4666666666666667,
-      0.7058823529411765
-    ]
+    "label": "cluster_6",
+    "type": "orig_cluster",
+    "point_count": 0
   },
   "7": {
-    "label": "handlebar_0",
-    "original_cluster_id": 12,
-    "point_count": 1893,
-    "color_rgb": [
-      0.6823529411764706,
-      0.7803921568627451,
-      0.9098039215686274
-    ]
+    "label": "cluster_7",
+    "type": "orig_cluster",
+    "point_count": 1400
   },
   "8": {
-    "label": "headlight_0",
-    "original_cluster_id": 12,
-    "point_count": 1086,
-    "color_rgb": [
-      1.0,
-      0.4980392156862745,
-      0.054901960784313725
-    ]
+    "label": "cluster_8",
+    "type": "orig_cluster",
+    "point_count": 1794
   },
   "9": {
-    "label": "fender_0",
-    "original_cluster_id": 13,
-    "point_count": 1763,
-    "color_rgb": [
-      0.12156862745098039,
-      0.4666666666666667,
-      0.7058823529411765
-    ]
+    "label": "cluster_9",
+    "type": "orig_cluster",
+    "point_count": 0
   },
   "10": {
-    "label": "wheel_0",
-    "original_cluster_id": 13,
-    "point_count": 5493,
-    "color_rgb": [
-      1.0,
-      0.4980392156862745,
-      0.054901960784313725
-    ]
+    "label": "cluster_10",
+    "type": "orig_cluster",
+    "point_count": 4944
   },
   "11": {
-    "label": "wheel_1",
-    "original_cluster_id": 14,
-    "point_count": 2831,
-    "color_rgb": [
-      1.0,
-      0.7333333333333333,
-      0.47058823529411764
-    ]
+    "label": "cluster_11",
+    "type": "orig_cluster",
+    "point_count": 4062
   },
   "12": {
-    "label": "fender_0",
-    "original_cluster_id": 15,
-    "point_count": 4710,
-    "color_rgb": [
-      0.12156862745098039,
-      0.4666666666666667,
-      0.7058823529411765
-    ]
+    "label": "cluster_12",
+    "type": "orig_cluster",
+    "point_count": 585
   },
   "13": {
-    "label": "wheel_0",
-    "original_cluster_id": 15,
-    "point_count": 747,
-    "color_rgb": [
-      1.0,
-      0.4980392156862745,
-      0.054901960784313725
-    ]
+    "label": "cluster_13",
+    "type": "orig_cluster",
+    "point_count": 394
   },
   "14": {
-    "label": "seat_0",
-    "original_cluster_id": 16,
-    "point_count": 3385,
-    "color_rgb": [
-      1.0,
-      0.7333333333333333,
-      0.47058823529411764
-    ]
+    "label": "cluster_14",
+    "type": "orig_cluster",
+    "point_count": 1425
   },
   "15": {
-    "label": "wheel_0",
-    "original_cluster_id": 17,
-    "point_count": 1147,
-    "color_rgb": [
-      1.0,
-      0.4980392156862745,
-      0.054901960784313725
-    ]
+    "label": "cluster_15",
+    "type": "orig_cluster",
+    "point_count": 1678
   },
   "16": {
-    "label": "wheel_1",
-    "original_cluster_id": 17,
-    "point_count": 3602,
-    "color_rgb": [
-      1.0,
-      0.7333333333333333,
-      0.47058823529411764
-    ]
+    "label": "cluster_16",
+    "type": "orig_cluster",
+    "point_count": 1299
   },
   "17": {
-    "label": "fender_0",
-    "original_cluster_id": 18,
-    "point_count": 1937,
-    "color_rgb": [
-      0.12156862745098039,
-      0.4666666666666667,
-      0.7058823529411765
-    ]
+    "label": "cluster_17",
+    "type": "orig_cluster",
+    "point_count": 587
   },
   "18": {
-    "label": "handlebar_0",
-    "original_cluster_id": 18,
-    "point_count": 2084,
-    "color_rgb": [
-      0.6823529411764706,
-      0.7803921568627451,
-      0.9098039215686274
-    ]
+    "label": "cluster_18",
+    "type": "orig_cluster",
+    "point_count": 1027
   },
   "19": {
-    "label": "seat_0",
-    "original_cluster_id": 19,
-    "point_count": 1573,
-    "color_rgb": [
-      1.0,
-      0.7333333333333333,
-      0.47058823529411764
-    ]
-  },
-  "20": {
-    "label": "unknown_0",
-    "original_cluster_id": 0,
-    "point_count": 66623,
-    "color_rgb": [
-      0.17254901960784313,
-      0.6274509803921569,
-      0.17254901960784313
-    ],
-    "pure_black_cluster": true
+    "label": "cluster_19",
+    "type": "orig_cluster",
+    "point_count": 5247
   },
   "21": {
-    "label": "unknown_1",
-    "original_cluster_id": 1,
-    "point_count": 69004,
-    "color_rgb": [
-      0.596078431372549,
-      0.8745098039215686,
-      0.5411764705882353
-    ],
-    "pure_black_cluster": true
+    "label": "fender_0",
+    "type": "semantic_label",
+    "point_count": 18368
   },
   "22": {
-    "label": "unknown_2",
-    "original_cluster_id": 2,
-    "point_count": 74297,
-    "color_rgb": [
-      0.4980392156862745,
-      0.4980392156862745,
-      0.4980392156862745
-    ],
-    "pure_black_cluster": true
+    "label": "handlebar_0",
+    "type": "semantic_label",
+    "point_count": 3977
   },
   "23": {
-    "label": "unknown_3",
-    "original_cluster_id": 3,
-    "point_count": 77087,
-    "color_rgb": [
-      0.7803921568627451,
-      0.7803921568627451,
-      0.7803921568627451
-    ],
-    "pure_black_cluster": true
+    "label": "headlight_0",
+    "type": "semantic_label",
+    "point_count": 1086
   },
   "24": {
-    "label": "unknown_4",
-    "original_cluster_id": 4,
-    "point_count": 66139,
-    "color_rgb": [
-      0.7372549019607844,
-      0.7411764705882353,
-      0.13333333333333333
-    ],
-    "pure_black_cluster": true
+    "label": "seat_0",
+    "type": "semantic_label",
+    "point_count": 8690
   },
   "25": {
-    "label": "unknown_5",
-    "original_cluster_id": 5,
-    "point_count": 69138,
-    "color_rgb": [
-      0.8588235294117647,
-      0.8588235294117647,
-      0.5529411764705883
-    ],
-    "pure_black_cluster": true
+    "label": "wheel_0",
+    "type": "semantic_label",
+    "point_count": 12538
   },
   "26": {
-    "label": "unknown_6",
-    "original_cluster_id": 7,
-    "point_count": 1400,
-    "color_rgb": [
-      0.09019607843137255,
-      0.7450980392156863,
-      0.8117647058823529
-    ],
-    "pure_black_cluster": false
-  },
-  "27": {
-    "label": "unknown_7",
-    "original_cluster_id": 8,
-    "point_count": 1794,
-    "color_rgb": [
-      0.6196078431372549,
-      0.8549019607843137,
-      0.8980392156862745
-    ],
-    "pure_black_cluster": false
-  },
-  "28": {
-    "label": "unknown_8",
-    "original_cluster_id": 10,
-    "point_count": 4944,
-    "color_rgb": [
-      0.12156862745098039,
-      0.4666666666666667,
-      0.7058823529411765
-    ],
-    "pure_black_cluster": false
-  },
-  "29": {
-    "label": "unknown_9",
-    "original_cluster_id": 11,
-    "point_count": 4062,
-    "color_rgb": [
-      0.6823529411764706,
-      0.7803921568627451,
-      0.9098039215686274
-    ],
-    "pure_black_cluster": false
-  },
-  "30": {
-    "label": "unknown_10",
-    "original_cluster_id": 12,
-    "point_count": 585,
-    "color_rgb": [
-      0.8392156862745098,
-      0.15294117647058825,
-      0.1568627450980392
-    ],
-    "pure_black_cluster": false
-  },
-  "31": {
-    "label": "unknown_11",
-    "original_cluster_id": 13,
-    "point_count": 394,
-    "color_rgb": [
-      1.0,
-      0.596078431372549,
-      0.5882352941176471
-    ],
-    "pure_black_cluster": false
-  },
-  "32": {
-    "label": "unknown_12",
-    "original_cluster_id": 14,
-    "point_count": 1425,
-    "color_rgb": [
-      0.5803921568627451,
-      0.403921568627451,
-      0.7411764705882353
-    ],
-    "pure_black_cluster": false
-  },
-  "33": {
-    "label": "unknown_13",
-    "original_cluster_id": 15,
-    "point_count": 1678,
-    "color_rgb": [
-      0.7725490196078432,
-      0.6901960784313725,
-      0.8352941176470589
-    ],
-    "pure_black_cluster": false
-  },
-  "34": {
-    "label": "unknown_14",
-    "original_cluster_id": 16,
-    "point_count": 1299,
-    "color_rgb": [
-      0.5490196078431373,
-      0.33725490196078434,
-      0.29411764705882354
-    ],
-    "pure_black_cluster": false
-  },
-  "35": {
-    "label": "unknown_15",
-    "original_cluster_id": 17,
-    "point_count": 587,
-    "color_rgb": [
-      0.7686274509803922,
-      0.611764705882353,
-      0.5803921568627451
-    ],
-    "pure_black_cluster": false
-  },
-  "36": {
-    "label": "unknown_16",
-    "original_cluster_id": 18,
-    "point_count": 1027,
-    "color_rgb": [
-      0.8901960784313725,
-      0.4666666666666667,
-      0.7607843137254902
-    ],
-    "pure_black_cluster": false
-  },
-  "37": {
-    "label": "unknown_17",
-    "original_cluster_id": 19,
-    "point_count": 5247,
-    "color_rgb": [
-      0.9686274509803922,
-      0.7137254901960784,
-      0.8235294117647058
-    ],
-    "pure_black_cluster": false
+    "label": "wheel_1",
+    "type": "semantic_label",
+    "point_count": 8611
   }
 }

@@ -1,0 +1,12 @@
+{
+  "label": "cluster_10_0",
+  "label_point_count": 4944,
+  "voxel_size": 0.008589088916778564,
+  "voxels_total": 7320,
+  "voxels_with_label": 656,
+  "voxels_full_label": 447,
+  "heat_point_mean": 0.0098879998549819,
+  "heat_point_p95": 0.0,
+  "heat_point_max": 1.0,
+  "heat_ply": "/home/yli581/Desktop/sketch_lib/controlNet_process/sketch/dsl_optimize/optimize_iteration/iter_000/heat_map/heatmaps/cluster_10_0/heat_map_cluster_10_0.ply"
+}

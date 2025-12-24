@@ -2,6 +2,26 @@
   "model": "Qwen/Qwen2.5-7B-Instruct",
   "assembly_name": "Scooter",
   "labels": [
+    "cluster_0",
+    "cluster_1",
+    "cluster_10",
+    "cluster_11",
+    "cluster_12",
+    "cluster_13",
+    "cluster_14",
+    "cluster_15",
+    "cluster_16",
+    "cluster_17",
+    "cluster_18",
+    "cluster_19",
+    "cluster_2",
+    "cluster_3",
+    "cluster_4",
+    "cluster_5",
+    "cluster_6",
+    "cluster_7",
+    "cluster_8",
+    "cluster_9",
     "fender_0",
     "handlebar_0",
     "headlight_0",
@@ -11,38 +31,50 @@
   ],
   "neighboring_pairs": [
     {
-      "a": "fender_0",
-      "b": "headlight_0",
+      "a": "wheel_0",
+      "b": "fender_0",
       "confidence": 0.6,
-      "evidence": "commonly adjacent"
+      "evidence": "adjacent parts"
+    },
+    {
+      "a": "wheel_1",
+      "b": "fender_0",
+      "confidence": 0.6,
+      "evidence": "adjacent parts"
     },
     {
       "a": "handlebar_0",
       "b": "headlight_0",
-      "confidence": 0.85,
-      "evidence": "connected to handlebar"
-    },
-    {
-      "a": "seat_0",
-      "b": "fender_0",
       "confidence": 0.6,
-      "evidence": "commonly adjacent"
+      "evidence": "adjacent parts"
     },
     {
-      "a": "wheel_0",
-      "b": "wheel_1",
-      "confidence": 0.85,
-      "evidence": "both wheels"
+      "a": "handlebar_0",
+      "b": "seat_0",
+      "confidence": 0.6,
+      "evidence": "adjacent parts"
+    },
+    {
+      "a": "cluster_0",
+      "b": "cluster_1",
+      "confidence": 0.6,
+      "evidence": "sequential clusters"
     }
   ],
   "same_pairs": [
     {
       "a": "wheel_0",
       "b": "wheel_1",
-      "confidence": 1.0,
+      "confidence": 0.85,
       "evidence": "both wheels"
+    },
+    {
+      "a": "cluster_0",
+      "b": "cluster_1",
+      "confidence": 0.85,
+      "evidence": "similar clusters"
     }
   ],
-  "notes": "Most relationships are based on typical scooter configurations.",
-  "confidence": 0.75
+  "notes": "Plausible adjacency and similarity based on scooter structure.",
+  "confidence": 0.6
 }
