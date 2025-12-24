@@ -66,7 +66,6 @@ def main():
         heat_dir=HEAT_DIR,
         bbox_json=BBOX_JSON,
         max_labels_to_show=12,     # matches your previous style
-        show_combined=True,
     )
 
 

@@ -2,16 +2,16 @@
 """
 constraints_optimization/vis.py
 
-Visualization utilities:
-- For each label: load heatmap PLY (colored points) and overlay the PCA OBB box
-- Optionally show a combined view of all OBBs together on top of one heatmap (max label)
+Visualization:
+- Load heatmap PLY (colored full-shape point cloud)
+- Overlay PCA OBB as THICK BLUE BOUNDARY ONLY
+  (cylinders per edge, using Open3D LineSet connectivity to avoid wrong corner ordering)
 
-Reads pca_bboxes.json produced by pca_analysis.py
+No solid boxes.
 """
 
-import os
 import json
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List
 
 import numpy as np
 
@@ -21,99 +21,146 @@ except Exception:
     o3d = None
 
 
+# ---------------------------------------------------------------------
+# IO
+# ---------------------------------------------------------------------
+
 def _load_json(path: str) -> Any:
     with open(path, "r") as f:
         return json.load(f)
 
-
 def _load_colored_ply(path: str) -> "o3d.geometry.PointCloud":
     if o3d is None:
-        raise RuntimeError("open3d is required. Please `pip install open3d`.")
+        raise RuntimeError("open3d required")
     pcd = o3d.io.read_point_cloud(path)
+    if len(pcd.points) == 0:
+        raise ValueError(f"Empty point cloud: {path}")
     return pcd
 
 
-def _obb_from_dict(obb_dict: Dict[str, Any]) -> "o3d.geometry.OrientedBoundingBox":
+# ---------------------------------------------------------------------
+# OBB restore
+# ---------------------------------------------------------------------
+
+def _obb_from_dict(d: Dict[str, Any]) -> "o3d.geometry.OrientedBoundingBox":
     if o3d is None:
-        raise RuntimeError("open3d is required. Please `pip install open3d`.")
-    center = np.asarray(obb_dict["center"], dtype=np.float64)
-    R = np.asarray(obb_dict["R"], dtype=np.float64)
-    extent = np.asarray(obb_dict["extent"], dtype=np.float64)
-    obb = o3d.geometry.OrientedBoundingBox(center=center, R=R, extent=extent)
-    return obb
+        raise RuntimeError("open3d required")
+    return o3d.geometry.OrientedBoundingBox(
+        center=np.asarray(d["center"], dtype=np.float64),
+        R=np.asarray(d["R"], dtype=np.float64),
+        extent=np.asarray(d["extent"], dtype=np.float64),
+    )
 
 
-def _lineset_from_obb(obb: "o3d.geometry.OrientedBoundingBox") -> "o3d.geometry.LineSet":
+# ---------------------------------------------------------------------
+# Thick boundary rendering (cylinders per *correct* LineSet edge)
+# ---------------------------------------------------------------------
+
+def _cylinder_between(p0: np.ndarray, p1: np.ndarray, radius: float, color) -> "o3d.geometry.TriangleMesh":
     """
-    Create a LineSet for drawing the OBB.
+    Create a cylinder mesh between two 3D points, colored uniformly.
+    Cylinder is aligned from p0 to p1.
     """
-    if o3d is None:
-        raise RuntimeError("open3d is required. Please `pip install open3d`.")
+    v = p1 - p0
+    length = float(np.linalg.norm(v))
+    if length < 1e-10:
+        return None
+
+    cyl = o3d.geometry.TriangleMesh.create_cylinder(radius=float(radius), height=length)
+    cyl.compute_vertex_normals()
+
+    # Open3D cylinder axis is +Z. Rotate Z -> v.
+    z = np.array([0.0, 0.0, 1.0], dtype=np.float64)
+    v_hat = v / length
+
+    axis = np.cross(z, v_hat)
+    axis_norm = float(np.linalg.norm(axis))
+    dot = float(np.clip(np.dot(z, v_hat), -1.0, 1.0))
+    angle = float(np.arccos(dot))
+
+    if axis_norm > 1e-10 and angle > 1e-10:
+        axis = axis / axis_norm
+        R = o3d.geometry.get_rotation_matrix_from_axis_angle(axis * angle)
+        cyl.rotate(R, center=(0.0, 0.0, 0.0))
+
+    # Move cylinder to midpoint of segment
+    cyl.translate((p0 + p1) * 0.5)
+    cyl.paint_uniform_color(color)
+    return cyl
+
+
+def _thick_obb_boundary_from_lineset(
+    obb: "o3d.geometry.OrientedBoundingBox",
+    *,
+    radius: float,
+    color=(0.0, 0.0, 1.0),  # BLUE
+) -> List["o3d.geometry.TriangleMesh"]:
+    """
+    Use Open3D's own LineSet connectivity (guaranteed correct),
+    then replace each line with a thick cylinder.
+    """
     ls = o3d.geometry.LineSet.create_from_oriented_bounding_box(obb)
-    # Use a bright color (yellow-ish) without hardcoding exact style; Open3D needs explicit color
-    ls.colors = o3d.utility.Vector3dVector(np.tile(np.array([[1.0, 1.0, 0.0]]), (len(ls.lines), 1)))
-    return ls
+    pts = np.asarray(ls.points, dtype=np.float64)
+    lines = np.asarray(ls.lines, dtype=np.int64)
 
+    meshes = []
+    for a, b in lines:
+        m = _cylinder_between(pts[a], pts[b], radius=radius, color=color)
+        if m is not None:
+            meshes.append(m)
+    return meshes
+
+
+# ---------------------------------------------------------------------
+# Main visualization
+# ---------------------------------------------------------------------
 
 def visualize_heatmaps_with_bboxes(
     *,
-    heat_dir: str,
+    heat_dir: str,                 # kept for compatibility with your launcher; not used internally
     bbox_json: str,
     max_labels_to_show: int = 12,
-    show_combined: bool = True,
+    darken_heatmap: float = 0.7,
+    bbox_radius: float = 0.003,     # thickness control
 ) -> None:
     """
-    Pops Open3D windows. For each label:
-      - show heatmap PLY (colored)
-      - overlay bbox LineSet
+    For each label:
+      - show heatmap
+      - overlay thick BLUE bbox boundary
 
-    If show_combined:
-      show a single window with multiple bboxes overlaid on top of the largest label heatmap.
+    bbox_radius controls thickness in world units.
     """
     if o3d is None:
-        raise RuntimeError("open3d is required. Please `pip install open3d`.")
-
-    if not os.path.exists(bbox_json):
-        raise FileNotFoundError(f"Missing bbox_json: {bbox_json}")
+        raise RuntimeError("open3d required")
 
     payload = _load_json(bbox_json)
-    labels: List[Dict[str, Any]] = list(payload.get("labels", []))
+    labels = payload.get("labels", [])
     if not labels:
-        print("[VIS] No labels to visualize (bbox_json has empty labels).")
+        print("[VIS] No labels to visualize.")
         return
 
-    # Sort by points_used descending
     labels = sorted(labels, key=lambda r: int(r.get("points_used", 0)), reverse=True)
+    labels = labels[: int(max_labels_to_show)]
 
-    to_show = labels[: int(max_labels_to_show)]
+    for rec in labels:
+        label = rec.get("label", rec.get("sanitized", "unknown"))
+        pcd = _load_colored_ply(rec["heat_ply"])
 
-    # Per-label windows
-    for rec in to_show:
-        label = str(rec.get("label", rec.get("sanitized", "unknown")))
-        heat_ply = str(rec["heat_ply"])
-        obb_dict = rec["obb"]
+        # Darken heatmap so bbox pops
+        if float(darken_heatmap) < 0.999:
+            cols = np.asarray(pcd.colors)
+            cols = np.clip(cols * float(darken_heatmap), 0.0, 1.0)
+            pcd.colors = o3d.utility.Vector3dVector(cols)
 
-        pcd = _load_colored_ply(heat_ply)
-        obb = _obb_from_dict(obb_dict)
-        ls = _lineset_from_obb(obb)
-
-        title = f"HeatMap + PCA-BBox | {label} | points_used={rec.get('points_used')} | min_heat={rec.get('min_heat')}"
-        print("[VIS] opening:", title)
-        o3d.visualization.draw_geometries([pcd, ls], window_name=title)
-
-    if not show_combined:
-        return
-
-    # Combined view: overlay all shown bboxes on top of the largest label heatmap
-    base = to_show[0]
-    base_ply = str(base["heat_ply"])
-    base_pcd = _load_colored_ply(base_ply)
-
-    geoms = [base_pcd]
-    for rec in to_show:
         obb = _obb_from_dict(rec["obb"])
-        geoms.append(_lineset_from_obb(obb))
 
-    title = f"COMBINED | {len(to_show)} bboxes over base heatmap ({base.get('label')})"
-    print("[VIS] opening:", title)
-    o3d.visualization.draw_geometries(geoms, window_name=title)
+        bbox_meshes = _thick_obb_boundary_from_lineset(
+            obb,
+            radius=float(bbox_radius),
+            color=(0.0, 0.0, 1.0),  # BLUE fixed
+        )
+
+        geoms = [pcd] + bbox_meshes
+        title = f"HeatMap + PCA BBox (BLUE) | {label} | used={rec.get('points_used')} | min_heat={rec.get('min_heat')}"
+        print("[VIS] opening:", title)
+        o3d.visualization.draw_geometries(geoms, window_name=title)
