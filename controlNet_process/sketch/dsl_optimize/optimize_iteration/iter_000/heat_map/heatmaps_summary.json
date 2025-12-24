@@ -10,36 +10,48 @@
   "labels": [
     {
       "label": "unknown",
-      "label_point_count": 422288,
+      "label_point_count": 424957,
       "voxel_size": 0.008589088916778564,
       "voxels_total": 7320,
-      "voxels_with_label": 6,
-      "voxels_full_label": 6,
-      "heat_point_mean": 0.8445760011672974,
+      "voxels_with_label": 380,
+      "voxels_full_label": 54,
+      "heat_point_mean": 0.8499140739440918,
       "heat_point_p95": 1.0,
       "heat_point_max": 1.0,
       "heat_ply": "/home/yli581/Desktop/sketch_lib/controlNet_process/sketch/dsl_optimize/optimize_iteration/iter_000/heat_map/heatmaps/unknown/heat_map_unknown.ply"
     },
     {
-      "label": "fender_0_0",
-      "label_point_count": 18368,
+      "label": "unknown_6_0",
+      "label_point_count": 24048,
       "voxel_size": 0.008589088916778564,
       "voxels_total": 7320,
-      "voxels_with_label": 2196,
-      "voxels_full_label": 1319,
-      "heat_point_mean": 0.03673600032925606,
-      "heat_point_p95": 0.0833333358168602,
+      "voxels_with_label": 3100,
+      "voxels_full_label": 1695,
+      "heat_point_mean": 0.04809599742293358,
+      "heat_point_p95": 0.4615384638309479,
+      "heat_point_max": 1.0,
+      "heat_ply": "/home/yli581/Desktop/sketch_lib/controlNet_process/sketch/dsl_optimize/optimize_iteration/iter_000/heat_map/heatmaps/unknown_6_0/heat_map_unknown_6_0.ply"
+    },
+    {
+      "label": "fender_0_0",
+      "label_point_count": 16846,
+      "voxel_size": 0.008589088916778564,
+      "voxels_total": 7320,
+      "voxels_with_label": 1926,
+      "voxels_full_label": 1303,
+      "heat_point_mean": 0.033692002296447754,
+      "heat_point_p95": 0.0,
       "heat_point_max": 1.0,
       "heat_ply": "/home/yli581/Desktop/sketch_lib/controlNet_process/sketch/dsl_optimize/optimize_iteration/iter_000/heat_map/heatmaps/fender_0_0/heat_map_fender_0_0.ply"
     },
     {
       "label": "wheel_0_0",
-      "label_point_count": 12538,
+      "label_point_count": 11391,
       "voxel_size": 0.008589088916778564,
       "voxels_total": 7320,
-      "voxels_with_label": 1214,
-      "voxels_full_label": 919,
-      "heat_point_mean": 0.02507600001990795,
+      "voxels_with_label": 1105,
+      "voxels_full_label": 887,
+      "heat_point_mean": 0.022781996056437492,
       "heat_point_p95": 0.0,
       "heat_point_max": 1.0,
       "heat_ply": "/home/yli581/Desktop/sketch_lib/controlNet_process/sketch/dsl_optimize/optimize_iteration/iter_000/heat_map/heatmaps/wheel_0_0/heat_map_wheel_0_0.ply"
@@ -69,42 +81,6 @@
       "heat_ply": "/home/yli581/Desktop/sketch_lib/controlNet_process/sketch/dsl_optimize/optimize_iteration/iter_000/heat_map/heatmaps/wheel_1_0/heat_map_wheel_1_0.ply"
     },
     {
-      "label": "cluster_19_0",
-      "label_point_count": 5247,
-      "voxel_size": 0.008589088916778564,
-      "voxels_total": 7320,
-      "voxels_with_label": 487,
-      "voxels_full_label": 353,
-      "heat_point_mean": 0.010493999347090721,
-      "heat_point_p95": 0.0,
-      "heat_point_max": 1.0,
-      "heat_ply": "/home/yli581/Desktop/sketch_lib/controlNet_process/sketch/dsl_optimize/optimize_iteration/iter_000/heat_map/heatmaps/cluster_19_0/heat_map_cluster_19_0.ply"
-    },
-    {
-      "label": "cluster_10_0",
-      "label_point_count": 4944,
-      "voxel_size": 0.008589088916778564,
-      "voxels_total": 7320,
-      "voxels_with_label": 656,
-      "voxels_full_label": 447,
-      "heat_point_mean": 0.0098879998549819,
-      "heat_point_p95": 0.0,
-      "heat_point_max": 1.0,
-      "heat_ply": "/home/yli581/Desktop/sketch_lib/controlNet_process/sketch/dsl_optimize/optimize_iteration/iter_000/heat_map/heatmaps/cluster_10_0/heat_map_cluster_10_0.ply"
-    },
-    {
-      "label": "cluster_11_0",
-      "label_point_count": 4062,
-      "voxel_size": 0.008589088916778564,
-      "voxels_total": 7320,
-      "voxels_with_label": 422,
-      "voxels_full_label": 130,
-      "heat_point_mean": 0.008124000392854214,
-      "heat_point_p95": 0.0,
-      "heat_point_max": 1.0,
-      "heat_ply": "/home/yli581/Desktop/sketch_lib/controlNet_process/sketch/dsl_optimize/optimize_iteration/iter_000/heat_map/heatmaps/cluster_11_0/heat_map_cluster_11_0.ply"
-    },
-    {
       "label": "handlebar_0_0",
       "label_point_count": 3977,
       "voxel_size": 0.008589088916778564,
@@ -115,66 +91,6 @@
       "heat_point_p95": 0.0,
       "heat_point_max": 1.0,
       "heat_ply": "/home/yli581/Desktop/sketch_lib/controlNet_process/sketch/dsl_optimize/optimize_iteration/iter_000/heat_map/heatmaps/handlebar_0_0/heat_map_handlebar_0_0.ply"
-    },
-    {
-      "label": "cluster_8_0",
-      "label_point_count": 1794,
-      "voxel_size": 0.008589088916778564,
-      "voxels_total": 7320,
-      "voxels_with_label": 269,
-      "voxels_full_label": 135,
-      "heat_point_mean": 0.0035880007781088352,
-      "heat_point_p95": 0.0,
-      "heat_point_max": 1.0,
-      "heat_ply": "/home/yli581/Desktop/sketch_lib/controlNet_process/sketch/dsl_optimize/optimize_iteration/iter_000/heat_map/heatmaps/cluster_8_0/heat_map_cluster_8_0.ply"
-    },
-    {
-      "label": "cluster_15_0",
-      "label_point_count": 1678,
-      "voxel_size": 0.008589088916778564,
-      "voxels_total": 7320,
-      "voxels_with_label": 312,
-      "voxels_full_label": 108,
-      "heat_point_mean": 0.003355999942868948,
-      "heat_point_p95": 0.0,
-      "heat_point_max": 1.0,
-      "heat_ply": "/home/yli581/Desktop/sketch_lib/controlNet_process/sketch/dsl_optimize/optimize_iteration/iter_000/heat_map/heatmaps/cluster_15_0/heat_map_cluster_15_0.ply"
-    },
-    {
-      "label": "cluster_14_0",
-      "label_point_count": 1425,
-      "voxel_size": 0.008589088916778564,
-      "voxels_total": 7320,
-      "voxels_with_label": 195,
-      "voxels_full_label": 76,
-      "heat_point_mean": 0.002849999815225601,
-      "heat_point_p95": 0.0,
-      "heat_point_max": 1.0,
-      "heat_ply": "/home/yli581/Desktop/sketch_lib/controlNet_process/sketch/dsl_optimize/optimize_iteration/iter_000/heat_map/heatmaps/cluster_14_0/heat_map_cluster_14_0.ply"
-    },
-    {
-      "label": "cluster_7_0",
-      "label_point_count": 1400,
-      "voxel_size": 0.008589088916778564,
-      "voxels_total": 7320,
-      "voxels_with_label": 210,
-      "voxels_full_label": 127,
-      "heat_point_mean": 0.0027999994345009327,
-      "heat_point_p95": 0.0,
-      "heat_point_max": 1.0,
-      "heat_ply": "/home/yli581/Desktop/sketch_lib/controlNet_process/sketch/dsl_optimize/optimize_iteration/iter_000/heat_map/heatmaps/cluster_7_0/heat_map_cluster_7_0.ply"
-    },
-    {
-      "label": "cluster_16_0",
-      "label_point_count": 1299,
-      "voxel_size": 0.008589088916778564,
-      "voxels_total": 7320,
-      "voxels_with_label": 279,
-      "voxels_full_label": 135,
-      "heat_point_mean": 0.0025980002246797085,
-      "heat_point_p95": 0.0,
-      "heat_point_max": 1.0,
-      "heat_ply": "/home/yli581/Desktop/sketch_lib/controlNet_process/sketch/dsl_optimize/optimize_iteration/iter_000/heat_map/heatmaps/cluster_16_0/heat_map_cluster_16_0.ply"
     },
     {
       "label": "headlight_0_0",
@@ -189,43 +105,7 @@
       "heat_ply": "/home/yli581/Desktop/sketch_lib/controlNet_process/sketch/dsl_optimize/optimize_iteration/iter_000/heat_map/heatmaps/headlight_0_0/heat_map_headlight_0_0.ply"
     },
     {
-      "label": "cluster_18_0",
-      "label_point_count": 1027,
-      "voxel_size": 0.008589088916778564,
-      "voxels_total": 7320,
-      "voxels_with_label": 170,
-      "voxels_full_label": 69,
-      "heat_point_mean": 0.0020540000405162573,
-      "heat_point_p95": 0.0,
-      "heat_point_max": 1.0,
-      "heat_ply": "/home/yli581/Desktop/sketch_lib/controlNet_process/sketch/dsl_optimize/optimize_iteration/iter_000/heat_map/heatmaps/cluster_18_0/heat_map_cluster_18_0.ply"
-    },
-    {
-      "label": "cluster_17_0",
-      "label_point_count": 587,
-      "voxel_size": 0.008589088916778564,
-      "voxels_total": 7320,
-      "voxels_with_label": 118,
-      "voxels_full_label": 7,
-      "heat_point_mean": 0.001173999859020114,
-      "heat_point_p95": 0.0,
-      "heat_point_max": 1.0,
-      "heat_ply": "/home/yli581/Desktop/sketch_lib/controlNet_process/sketch/dsl_optimize/optimize_iteration/iter_000/heat_map/heatmaps/cluster_17_0/heat_map_cluster_17_0.ply"
-    },
-    {
-      "label": "cluster_12_0",
-      "label_point_count": 585,
-      "voxel_size": 0.008589088916778564,
-      "voxels_total": 7320,
-      "voxels_with_label": 125,
-      "voxels_full_label": 20,
-      "heat_point_mean": 0.0011700002942234278,
-      "heat_point_p95": 0.0,
-      "heat_point_max": 1.0,
-      "heat_ply": "/home/yli581/Desktop/sketch_lib/controlNet_process/sketch/dsl_optimize/optimize_iteration/iter_000/heat_map/heatmaps/cluster_12_0/heat_map_cluster_12_0.ply"
-    },
-    {
-      "label": "cluster_13_0",
+      "label": "unknown_7_0",
       "label_point_count": 394,
       "voxel_size": 0.008589088916778564,
       "voxels_total": 7320,
@@ -234,7 +114,7 @@
       "heat_point_mean": 0.0007879999466240406,
       "heat_point_p95": 0.0,
       "heat_point_max": 1.0,
-      "heat_ply": "/home/yli581/Desktop/sketch_lib/controlNet_process/sketch/dsl_optimize/optimize_iteration/iter_000/heat_map/heatmaps/cluster_13_0/heat_map_cluster_13_0.ply"
+      "heat_ply": "/home/yli581/Desktop/sketch_lib/controlNet_process/sketch/dsl_optimize/optimize_iteration/iter_000/heat_map/heatmaps/unknown_7_0/heat_map_unknown_7_0.ply"
     }
   ],
   "note": "Per-label heatmap: heat(voxel)=#label_points/#total_points. Colors: 1->red, 0.5->green, 0->black."

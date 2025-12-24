@@ -1,146 +1,70 @@
 {
   "0": {
-    "label": "cluster_7_0",
+    "label": "fender_0_0",
     "members": [
-      7
+      0,
+      4,
+      6,
+      9,
+      12,
+      17
     ],
-    "point_count": 1400,
-    "source": "merged_known"
+    "point_count": 16846
   },
-  "1": {
-    "label": "cluster_8_0",
+  "2": {
+    "label": "wheel_1_0",
+    "members": [
+      1,
+      11,
+      16
+    ],
+    "point_count": 8611
+  },
+  "3": {
+    "label": "seat_0_0",
+    "members": [
+      2,
+      14,
+      19
+    ],
+    "point_count": 8690
+  },
+  "4": {
+    "label": "wheel_0_0",
+    "members": [
+      3,
+      10,
+      13
+    ],
+    "point_count": 11391
+  },
+  "6": {
+    "label": "handlebar_0_0",
+    "members": [
+      7,
+      18
+    ],
+    "point_count": 3977
+  },
+  "7": {
+    "label": "headlight_0_0",
     "members": [
       8
     ],
-    "point_count": 1794,
-    "source": "merged_known"
-  },
-  "2": {
-    "label": "cluster_10_0",
-    "members": [
-      10
-    ],
-    "point_count": 4944,
-    "source": "merged_known"
-  },
-  "3": {
-    "label": "cluster_11_0",
-    "members": [
-      11
-    ],
-    "point_count": 4062,
-    "source": "merged_known"
-  },
-  "4": {
-    "label": "cluster_12_0",
-    "members": [
-      12
-    ],
-    "point_count": 585,
-    "source": "merged_known"
-  },
-  "5": {
-    "label": "cluster_13_0",
-    "members": [
-      13
-    ],
-    "point_count": 394,
-    "source": "merged_known"
-  },
-  "6": {
-    "label": "cluster_14_0",
-    "members": [
-      14
-    ],
-    "point_count": 1425,
-    "source": "merged_known"
-  },
-  "7": {
-    "label": "cluster_15_0",
-    "members": [
-      15
-    ],
-    "point_count": 1678,
-    "source": "merged_known"
-  },
-  "8": {
-    "label": "cluster_16_0",
-    "members": [
-      16
-    ],
-    "point_count": 1299,
-    "source": "merged_known"
-  },
-  "9": {
-    "label": "cluster_17_0",
-    "members": [
-      17
-    ],
-    "point_count": 587,
-    "source": "merged_known"
-  },
-  "10": {
-    "label": "cluster_18_0",
-    "members": [
-      18
-    ],
-    "point_count": 1027,
-    "source": "merged_known"
-  },
-  "11": {
-    "label": "cluster_19_0",
-    "members": [
-      19
-    ],
-    "point_count": 5247,
-    "source": "merged_known"
-  },
-  "12": {
-    "label": "fender_0_0",
-    "members": [
-      21
-    ],
-    "point_count": 18368,
-    "source": "merged_known"
-  },
-  "13": {
-    "label": "handlebar_0_0",
-    "members": [
-      22
-    ],
-    "point_count": 3977,
-    "source": "merged_known"
+    "point_count": 1086
   },
   "14": {
-    "label": "headlight_0_0",
-    "members": [
-      23
-    ],
-    "point_count": 1086,
-    "source": "merged_known"
-  },
-  "15": {
-    "label": "seat_0_0",
-    "members": [
-      24
-    ],
-    "point_count": 8690,
-    "source": "merged_known"
-  },
-  "16": {
-    "label": "wheel_0_0",
-    "members": [
-      25
-    ],
-    "point_count": 12538,
-    "source": "merged_known"
-  },
-  "17": {
-    "label": "wheel_1_0",
+    "label": "unknown_6_0",
     "members": [
       26
     ],
-    "point_count": 8611,
-    "source": "merged_known"
+    "point_count": 24048
+  },
+  "15": {
+    "label": "unknown_7_0",
+    "members": [
+      27
+    ],
+    "point_count": 394
   }
 }

@@ -21,11 +21,6 @@ Outputs:
     heatmaps/<label>/summary.json
 
 Also pops Open3D windows (optional) to visualize each label.
-
-MINIMAL CHANGE:
-- Do NOT merge all unlabeled clusters into one "unknown".
-- Instead, assign unlabeled valid cluster ids (cid>=0) to unknown_0, unknown_1, ...
-- Sentinel/invalid cluster ids (cid<0) stay as plain "unknown" (no unknown_-1).
 """
 
 import os
@@ -194,6 +189,13 @@ def build_label_heatmaps(
 ) -> Dict[str, Any]:
     """
     Build per-label heatmap PLYs and optionally visualize.
+
+    voxel_size:
+      - if None: auto estimated from shape diagonal / target_bins
+      - then multiplied by voxel_size_scale (default 0.5 -> smaller voxels)
+
+    Returns:
+      dict with summary_json, voxel_size, labels_count
     """
     os.makedirs(out_dir, exist_ok=True)
 
@@ -202,25 +204,7 @@ def build_label_heatmaps(
 
     cluster_ids = _load_cluster_ids(cluster_ids_path, expected_n=N)
     c2l = _cluster_to_label_map(primitives_json_path)
-
-    # ---------------- MINIMAL CHANGE (only affects unlabeled clusters) ----------------
-    # Build a stable mapping for unlabeled *valid* clusters -> unknown_0, unknown_1, ...
-    uniq_cids = np.unique(cluster_ids.astype(np.int64))
-    missing_valid = sorted([int(cid) for cid in uniq_cids.tolist() if int(cid) >= 0 and int(cid) not in c2l])
-    unknown_map = {cid: f"unknown_{i}" for i, cid in enumerate(missing_valid)}
-
-    # Per-point labels:
-    # - labeled clusters: their label
-    # - unlabeled valid clusters: unknown_i
-    # - invalid/sentinel (cid<0): "unknown" (no unknown_-1)
-    point_labels = np.array(
-        [
-            c2l[int(cid)] if int(cid) in c2l else (unknown_map.get(int(cid), "unknown"))
-            for cid in cluster_ids
-        ],
-        dtype=object
-    )
-    # -------------------------------------------------------------------------------
+    point_labels = np.array([c2l.get(int(cid), "unknown") for cid in cluster_ids], dtype=object)
 
     if voxel_size is None:
         voxel_size = _auto_voxel_size(pts, target_bins=160)
