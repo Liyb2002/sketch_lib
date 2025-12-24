@@ -23,12 +23,6 @@ import open3d as o3d
 from PIL import Image
 from pathlib import Path
 
-# Optional (fallback GLB writing if Open3D can't write .glb on your version)
-try:
-    import trimesh
-except Exception:
-    trimesh = None
-
 # -----------------------------------------------------------------------------
 # 1. SETUP & IMPORTS
 # -----------------------------------------------------------------------------
@@ -55,13 +49,6 @@ OUTPUT_DIR = ROOT_SKETCH_FOLDER / "3d_reconstruction"
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 BG_THRESHOLD = 0.95  # Brightness threshold for mask (assumes white background)
 MAX_POINTS = 500_000
-
-# Mesh settings
-GLB_NAME = "vggt_shape.glb"
-MAX_FACES = 5_000
-POISSON_DEPTH = 9          # increase for more detail, slower
-NORMAL_KNN = 30            # normal estimation neighborhood
-DENSITY_CROP_Q = 0.02      # remove lowest-density vertices (0.01-0.05 typical)
 
 # -----------------------------------------------------------------------------
 # 2. HELPERS
@@ -163,128 +150,6 @@ def save_overlay(input_img_path, render_img_path, overlay_out_path, alpha=0.55):
     overlay = np.clip(overlay, 0, 255).astype(np.uint8)
     Image.fromarray(overlay).save(overlay_out_path)
 
-def pointcloud_to_glb_mesh(pcd: o3d.geometry.PointCloud, out_glb_path: Path):
-    """
-    Builds a mesh from a point cloud, decimates to <= MAX_FACES, and writes GLB.
-    Strategy:
-      1) Try Poisson
-      2) If Poisson fails, fallback to alpha shape
-    """
-    if len(pcd.points) < 3000:
-        print("[WARN] Too few points for meshing; skipping GLB export.")
-        return
-
-    # --- light voxel downsample for stability/speed ---
-    bbox = pcd.get_axis_aligned_bounding_box()
-    diag = np.linalg.norm(bbox.get_extent())
-    voxel = max(diag / 512.0, 1e-4)
-    pcd_ds = pcd.voxel_down_sample(voxel_size=voxel)
-
-    if len(pcd_ds.points) < 3000:
-        pcd_ds = pcd  # fallback
-
-    # --- normals (required for Poisson) ---
-    try:
-        pcd_ds.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=diag/50.0, max_nn=60))
-        pcd_ds.normalize_normals()
-    except Exception as e:
-        print(f"[WARN] Normal estimation failed: {e}")
-
-    aabb = pcd_ds.get_axis_aligned_bounding_box()
-
-    mesh = None
-
-    # =======================
-    # 1) Poisson attempt
-    # =======================
-    try:
-        print("[MESH] Poisson reconstruction...")
-        mesh_poisson, densities = o3d.geometry.TriangleMesh.create_from_point_cloud_poisson(
-            pcd_ds, depth=POISSON_DEPTH
-        )
-        if mesh_poisson is not None and len(mesh_poisson.triangles) > 0:
-            mesh = mesh_poisson
-
-            # Remove low-density vertices (helps floaters)
-            if densities is not None:
-                dens = np.asarray(densities)
-                if dens.size > 0:
-                    thr = np.quantile(dens, DENSITY_CROP_Q)
-                    keep = dens >= thr
-                    mesh = mesh.remove_vertices_by_mask(~keep)
-
-            # Crop to AABB (only if mesh exists)
-            mesh = mesh.crop(aabb)
-
-    except Exception as e:
-        print(f"[WARN] Poisson failed: {e}")
-        mesh = None
-
-    # =======================
-    # 2) Fallback: Alpha shape
-    # =======================
-    if mesh is None or len(mesh.triangles) == 0:
-        if len(pcd_ds.points) < 5000:
-            print("[WARN] Not enough points for alpha-shape fallback; skipping GLB export.")
-            return
-
-        # alpha heuristic from scale
-        alpha = max(diag / 40.0, 1e-3)
-        try:
-            print(f"[MESH] Fallback alpha-shape (alpha={alpha:.6f})...")
-            mesh = o3d.geometry.TriangleMesh.create_from_point_cloud_alpha_shape(pcd_ds, alpha)
-            if mesh is None or len(mesh.triangles) == 0:
-                print("[WARN] Alpha-shape produced empty mesh; skipping GLB export.")
-                return
-            mesh = mesh.crop(aabb)
-        except Exception as e:
-            print(f"[WARN] Alpha-shape failed: {e}")
-            return
-
-    # --- cleanup ---
-    mesh.remove_degenerate_triangles()
-    mesh.remove_duplicated_triangles()
-    mesh.remove_duplicated_vertices()
-    mesh.remove_non_manifold_edges()
-
-    tri_count = len(mesh.triangles)
-    print(f"[MESH] Triangles before decimation: {tri_count}")
-
-    # --- decimate to <= MAX_FACES ---
-    if tri_count > MAX_FACES:
-        print(f"[MESH] Decimating to <= {MAX_FACES} faces...")
-        mesh = mesh.simplify_quadric_decimation(target_number_of_triangles=MAX_FACES)
-        mesh.remove_degenerate_triangles()
-        mesh.remove_duplicated_triangles()
-        mesh.remove_duplicated_vertices()
-        mesh.remove_non_manifold_edges()
-
-    mesh.compute_vertex_normals()
-    print(f"[MESH] Triangles after decimation:  {len(mesh.triangles)}")
-
-    # --- write GLB ---
-    wrote = False
-    try:
-        wrote = o3d.io.write_triangle_mesh(str(out_glb_path), mesh)
-    except Exception:
-        wrote = False
-
-    if wrote:
-        print(f"[MESH] Saved mesh: {out_glb_path}")
-        return
-
-    # Fallback: trimesh export
-    if trimesh is None:
-        print("[WARN] Open3D couldn't write .glb and trimesh is unavailable; skipping GLB export.")
-        return
-
-    print("[MESH] Open3D couldn't write .glb; using trimesh fallback...")
-    v = np.asarray(mesh.vertices)
-    f = np.asarray(mesh.triangles)
-    tm = trimesh.Trimesh(vertices=v, faces=f, process=False)
-    tm.export(str(out_glb_path))
-    print(f"[MESH] Saved mesh (trimesh): {out_glb_path}")
-
 # -----------------------------------------------------------------------------
 # 3. MAIN PIPELINE
 # -----------------------------------------------------------------------------
@@ -357,16 +222,56 @@ def main():
         colors_final = colors_final[idx_ds]
         print(f"Downsampled to {MAX_POINTS} points")
 
+    # -------------------------------------------------------------------------
+    # NEW: remove weird outlier points (minimal change, before writing fused_model.ply)
+    # Strategy:
+    #   (1) Collapse stacked/duplicate points by rounding xyz (fixes "many points in same place")
+    #   (2) Robust global outlier filter using MAD on distance-to-median (kills far-away floaters)
+    #   (3) Open3D statistical outlier removal (kills isolated sparse points)
+    # -------------------------------------------------------------------------
+    if len(points_final) >= 50:
+        before_clean = len(points_final)
+
+        # (1) Deduplicate/stacked points (keep 1 per quantized position; average color)
+        q = np.round(points_final.astype(np.float64), 6)
+        uniq, inv, counts = np.unique(q, axis=0, return_inverse=True, return_counts=True)
+        if len(uniq) < len(points_final):
+            col_sum = np.zeros((len(uniq), 3), dtype=np.float64)
+            np.add.at(col_sum, inv, colors_final.astype(np.float64))
+            col_avg = col_sum / counts[:, None]
+            points_final = uniq.astype(np.float32)
+            colors_final = np.clip(col_avg.astype(np.float32), 0.0, 1.0)
+
+        # (2) MAD distance outlier filter
+        center = np.median(points_final, axis=0)
+        d = np.linalg.norm(points_final - center, axis=1)
+        med = np.median(d)
+        mad = np.median(np.abs(d - med)) + 1e-12
+        thresh = med + 12.0 * (1.4826 * mad)  # robust, not too aggressive
+        keep = d <= thresh
+        if np.any(~keep):
+            points_final = points_final[keep]
+            colors_final = colors_final[keep]
+
+        # (3) Statistical outlier removal (Open3D)
+        if len(points_final) >= 200:
+            pcd_tmp = o3d.geometry.PointCloud()
+            pcd_tmp.points = o3d.utility.Vector3dVector(points_final.astype(np.float64))
+            pcd_tmp.colors = o3d.utility.Vector3dVector(colors_final.astype(np.float64))
+            pcd_inlier, ind = pcd_tmp.remove_statistical_outlier(nb_neighbors=30, std_ratio=2.0)
+            points_final = np.asarray(pcd_inlier.points).astype(np.float32)
+            colors_final = np.asarray(pcd_inlier.colors).astype(np.float32)
+
+        after_clean = len(points_final)
+        if after_clean != before_clean:
+            print(f"[CLEAN] Removed {before_clean - after_clean} outlier/stacked points (kept {after_clean}).")
+
     ply_path = OUTPUT_DIR / "fused_model.ply"
     pcd = o3d.geometry.PointCloud()
     pcd.points = o3d.utility.Vector3dVector(points_final)
     pcd.colors = o3d.utility.Vector3dVector(colors_final)
     o3d.io.write_point_cloud(str(ply_path), pcd)
     print(f"Saved fused 3D point cloud: {ply_path}")
-
-    # NEW: build and save a <=5000-face mesh as GLB
-    # glb_path = OUTPUT_DIR / GLB_NAME
-    # pointcloud_to_glb_mesh(pcd, glb_path)
 
     print("\nSaving Cameras and Verifying Alignment (W2C)...")
     for i, vp in enumerate(view_paths):
@@ -396,7 +301,6 @@ def main():
 
     print(f"\nSuccess! Check {OUTPUT_DIR} for:")
     print("  - fused_model.ply (3D Shape)")
-    print("  - vggt_shape.glb (Mesh, <= 5000 faces)")
     print("  - *_cam.json (Inferred Camera Positions)")
     print("  - *_verification_render.png (Verification Renders)")
     print("  - *_overlay.png (Input + Render overlay)")

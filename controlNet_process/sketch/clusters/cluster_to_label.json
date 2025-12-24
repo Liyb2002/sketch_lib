@@ -1,8 +1,8 @@
 {
   "0": {
     "label": "fender_0",
-    "original_cluster_id": 6,
-    "point_count": 5127,
+    "original_cluster_id": 0,
+    "point_count": 2951,
     "color_rgb": [
       0.12156862745098039,
       0.4666666666666667,
@@ -10,39 +10,39 @@
     ]
   },
   "1": {
-    "label": "wheel_1",
-    "original_cluster_id": 7,
-    "point_count": 2178,
+    "label": "fender_0",
+    "original_cluster_id": 1,
+    "point_count": 1438,
+    "color_rgb": [
+      0.12156862745098039,
+      0.4666666666666667,
+      0.7058823529411765
+    ]
+  },
+  "2": {
+    "label": "wheel_0",
+    "original_cluster_id": 2,
+    "point_count": 5061,
     "color_rgb": [
       0.7803921568627451,
       0.7803921568627451,
       0.7803921568627451
     ]
   },
-  "2": {
+  "3": {
     "label": "seat_0",
-    "original_cluster_id": 8,
-    "point_count": 3732,
+    "original_cluster_id": 3,
+    "point_count": 2136,
     "color_rgb": [
       1.0,
       0.7333333333333333,
       0.47058823529411764
     ]
   },
-  "3": {
-    "label": "wheel_0",
-    "original_cluster_id": 9,
-    "point_count": 5151,
-    "color_rgb": [
-      0.4980392156862745,
-      0.4980392156862745,
-      0.4980392156862745
-    ]
-  },
   "4": {
     "label": "fender_0",
-    "original_cluster_id": 10,
-    "point_count": 594,
+    "original_cluster_id": 4,
+    "point_count": 1028,
     "color_rgb": [
       0.12156862745098039,
       0.4666666666666667,
@@ -50,49 +50,49 @@
     ]
   },
   "5": {
-    "label": "fender_0",
-    "original_cluster_id": 11,
-    "point_count": 1522,
+    "label": "wheel_1",
+    "original_cluster_id": 5,
+    "point_count": 3327,
     "color_rgb": [
-      0.12156862745098039,
-      0.4666666666666667,
-      0.7058823529411765
+      0.7372549019607844,
+      0.7411764705882353,
+      0.13333333333333333
     ]
   },
   "6": {
-    "label": "fender_0",
-    "original_cluster_id": 12,
-    "point_count": 2715,
+    "label": "seat_0",
+    "original_cluster_id": 6,
+    "point_count": 1865,
     "color_rgb": [
-      0.12156862745098039,
-      0.4666666666666667,
-      0.7058823529411765
+      1.0,
+      0.7333333333333333,
+      0.47058823529411764
     ]
   },
   "7": {
-    "label": "handlebar_0",
-    "original_cluster_id": 12,
-    "point_count": 1893,
+    "label": "wheel_0",
+    "original_cluster_id": 7,
+    "point_count": 509,
     "color_rgb": [
-      0.6823529411764706,
       0.7803921568627451,
-      0.9098039215686274
+      0.7803921568627451,
+      0.7803921568627451
     ]
   },
   "8": {
-    "label": "headlight_0",
-    "original_cluster_id": 12,
-    "point_count": 1086,
+    "label": "wheel_0",
+    "original_cluster_id": 8,
+    "point_count": 3903,
     "color_rgb": [
-      1.0,
-      0.4980392156862745,
-      0.054901960784313725
+      0.7803921568627451,
+      0.7803921568627451,
+      0.7803921568627451
     ]
   },
   "9": {
     "label": "fender_0",
-    "original_cluster_id": 13,
-    "point_count": 1763,
+    "original_cluster_id": 9,
+    "point_count": 401,
     "color_rgb": [
       0.12156862745098039,
       0.4666666666666667,
@@ -100,29 +100,29 @@
     ]
   },
   "10": {
-    "label": "wheel_0",
-    "original_cluster_id": 13,
-    "point_count": 5493,
+    "label": "handlebar_0",
+    "original_cluster_id": 9,
+    "point_count": 1038,
     "color_rgb": [
-      0.4980392156862745,
-      0.4980392156862745,
-      0.4980392156862745
+      0.6823529411764706,
+      0.7803921568627451,
+      0.9098039215686274
     ]
   },
   "11": {
-    "label": "wheel_1",
-    "original_cluster_id": 14,
-    "point_count": 2831,
+    "label": "seat_0",
+    "original_cluster_id": 10,
+    "point_count": 2547,
     "color_rgb": [
-      0.7803921568627451,
-      0.7803921568627451,
-      0.7803921568627451
+      1.0,
+      0.7333333333333333,
+      0.47058823529411764
     ]
   },
   "12": {
     "label": "fender_0",
-    "original_cluster_id": 15,
-    "point_count": 4710,
+    "original_cluster_id": 11,
+    "point_count": 1841,
     "color_rgb": [
       0.12156862745098039,
       0.4666666666666667,
@@ -131,48 +131,48 @@
   },
   "13": {
     "label": "wheel_0",
-    "original_cluster_id": 15,
-    "point_count": 747,
-    "color_rgb": [
-      0.4980392156862745,
-      0.4980392156862745,
-      0.4980392156862745
-    ]
-  },
-  "14": {
-    "label": "seat_0",
-    "original_cluster_id": 16,
-    "point_count": 3385,
-    "color_rgb": [
-      1.0,
-      0.7333333333333333,
-      0.47058823529411764
-    ]
-  },
-  "15": {
-    "label": "wheel_0",
-    "original_cluster_id": 17,
-    "point_count": 1147,
-    "color_rgb": [
-      0.4980392156862745,
-      0.4980392156862745,
-      0.4980392156862745
-    ]
-  },
-  "16": {
-    "label": "wheel_1",
-    "original_cluster_id": 17,
-    "point_count": 3602,
+    "original_cluster_id": 11,
+    "point_count": 1806,
     "color_rgb": [
       0.7803921568627451,
       0.7803921568627451,
       0.7803921568627451
     ]
   },
+  "14": {
+    "label": "fender_0",
+    "original_cluster_id": 12,
+    "point_count": 2840,
+    "color_rgb": [
+      0.12156862745098039,
+      0.4666666666666667,
+      0.7058823529411765
+    ]
+  },
+  "15": {
+    "label": "handlebar_0",
+    "original_cluster_id": 12,
+    "point_count": 390,
+    "color_rgb": [
+      0.6823529411764706,
+      0.7803921568627451,
+      0.9098039215686274
+    ]
+  },
+  "16": {
+    "label": "headlight_0",
+    "original_cluster_id": 12,
+    "point_count": 392,
+    "color_rgb": [
+      1.0,
+      0.4980392156862745,
+      0.054901960784313725
+    ]
+  },
   "17": {
     "label": "fender_0",
-    "original_cluster_id": 18,
-    "point_count": 1937,
+    "original_cluster_id": 13,
+    "point_count": 503,
     "color_rgb": [
       0.12156862745098039,
       0.4666666666666667,
@@ -180,97 +180,227 @@
     ]
   },
   "18": {
+    "label": "wheel_0",
+    "original_cluster_id": 13,
+    "point_count": 1273,
+    "color_rgb": [
+      0.7803921568627451,
+      0.7803921568627451,
+      0.7803921568627451
+    ]
+  },
+  "19": {
+    "label": "wheel_1",
+    "original_cluster_id": 13,
+    "point_count": 3047,
+    "color_rgb": [
+      0.7372549019607844,
+      0.7411764705882353,
+      0.13333333333333333
+    ]
+  },
+  "20": {
+    "label": "fender_0",
+    "original_cluster_id": 14,
+    "point_count": 373,
+    "color_rgb": [
+      0.12156862745098039,
+      0.4666666666666667,
+      0.7058823529411765
+    ]
+  },
+  "21": {
     "label": "handlebar_0",
-    "original_cluster_id": 18,
-    "point_count": 2084,
+    "original_cluster_id": 14,
+    "point_count": 1180,
     "color_rgb": [
       0.6823529411764706,
       0.7803921568627451,
       0.9098039215686274
     ]
   },
-  "19": {
+  "22": {
+    "label": "wheel_1",
+    "original_cluster_id": 15,
+    "point_count": 2277,
+    "color_rgb": [
+      0.7372549019607844,
+      0.7411764705882353,
+      0.13333333333333333
+    ]
+  },
+  "23": {
+    "label": "fender_0",
+    "original_cluster_id": 16,
+    "point_count": 2626,
+    "color_rgb": [
+      0.12156862745098039,
+      0.4666666666666667,
+      0.7058823529411765
+    ]
+  },
+  "24": {
+    "label": "wheel_0",
+    "original_cluster_id": 16,
+    "point_count": 443,
+    "color_rgb": [
+      0.7803921568627451,
+      0.7803921568627451,
+      0.7803921568627451
+    ]
+  },
+  "25": {
+    "label": "fender_0",
+    "original_cluster_id": 17,
+    "point_count": 341,
+    "color_rgb": [
+      0.12156862745098039,
+      0.4666666666666667,
+      0.7058823529411765
+    ]
+  },
+  "26": {
     "label": "seat_0",
-    "original_cluster_id": 19,
-    "point_count": 1573,
+    "original_cluster_id": 17,
+    "point_count": 2148,
     "color_rgb": [
       1.0,
       0.7333333333333333,
       0.47058823529411764
     ]
   },
-  "20": {
+  "27": {
+    "label": "fender_0",
+    "original_cluster_id": 18,
+    "point_count": 3254,
+    "color_rgb": [
+      0.12156862745098039,
+      0.4666666666666667,
+      0.7058823529411765
+    ]
+  },
+  "28": {
+    "label": "fender_0",
+    "original_cluster_id": 19,
+    "point_count": 1112,
+    "color_rgb": [
+      0.12156862745098039,
+      0.4666666666666667,
+      0.7058823529411765
+    ]
+  },
+  "29": {
+    "label": "handlebar_0",
+    "original_cluster_id": 19,
+    "point_count": 1410,
+    "color_rgb": [
+      0.6823529411764706,
+      0.7803921568627451,
+      0.9098039215686274
+    ]
+  },
+  "30": {
+    "label": "headlight_0",
+    "original_cluster_id": 19,
+    "point_count": 788,
+    "color_rgb": [
+      1.0,
+      0.4980392156862745,
+      0.054901960784313725
+    ]
+  },
+  "31": {
     "label": "unknown_0",
     "original_cluster_id": -1,
-    "point_count": 66623,
+    "point_count": 11121,
     "color_rgb": [
       0.2,
       0.2,
       0.2
     ]
   },
-  "21": {
+  "32": {
     "label": "unknown_1",
     "original_cluster_id": -1,
-    "point_count": 69004,
+    "point_count": 7875,
     "color_rgb": [
       0.2,
       0.2,
       0.2
     ]
   },
-  "22": {
+  "33": {
     "label": "unknown_2",
     "original_cluster_id": -1,
-    "point_count": 74297,
+    "point_count": 230,
     "color_rgb": [
       0.2,
       0.2,
       0.2
     ]
   },
-  "23": {
+  "34": {
     "label": "unknown_3",
     "original_cluster_id": -1,
-    "point_count": 77087,
+    "point_count": 976,
     "color_rgb": [
       0.2,
       0.2,
       0.2
     ]
   },
-  "24": {
+  "35": {
     "label": "unknown_4",
     "original_cluster_id": -1,
-    "point_count": 66139,
+    "point_count": 378,
     "color_rgb": [
       0.2,
       0.2,
       0.2
     ]
   },
-  "25": {
+  "36": {
     "label": "unknown_5",
     "original_cluster_id": -1,
-    "point_count": 69138,
+    "point_count": 142,
     "color_rgb": [
       0.2,
       0.2,
       0.2
     ]
   },
-  "26": {
+  "37": {
     "label": "unknown_6",
     "original_cluster_id": -1,
-    "point_count": 22436,
+    "point_count": 159,
     "color_rgb": [
       0.2,
       0.2,
       0.2
     ]
   },
-  "27": {
+  "38": {
     "label": "unknown_7",
+    "original_cluster_id": -1,
+    "point_count": 757,
+    "color_rgb": [
+      0.2,
+      0.2,
+      0.2
+    ]
+  },
+  "39": {
+    "label": "unknown_8",
+    "original_cluster_id": -1,
+    "point_count": 1027,
+    "color_rgb": [
+      0.2,
+      0.2,
+      0.2
+    ]
+  },
+  "40": {
+    "label": "unknown_9",
     "original_cluster_id": -1,
     "point_count": 585,
     "color_rgb": [
@@ -279,20 +409,10 @@
       0.2
     ]
   },
-  "28": {
-    "label": "unknown_8",
+  "41": {
+    "label": "unknown_10",
     "original_cluster_id": -1,
-    "point_count": 394,
-    "color_rgb": [
-      0.2,
-      0.2,
-      0.2
-    ]
-  },
-  "29": {
-    "label": "unknown_9",
-    "original_cluster_id": -1,
-    "point_count": 1027,
+    "point_count": 347,
     "color_rgb": [
       0.2,
       0.2,

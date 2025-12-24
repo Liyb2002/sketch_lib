@@ -1,42 +1,70 @@
 {
   "0": {
     "label": "fender_0_0",
-    "point_count": 16846
+    "point_count": 16767
   },
   "2": {
-    "label": "wheel_1_0",
-    "point_count": 8611
-  },
-  "3": {
-    "label": "seat_0_0",
-    "point_count": 8690
+    "label": "wheel_0_0",
+    "point_count": 11722
   },
   "4": {
-    "label": "wheel_0_0",
-    "point_count": 11391
+    "label": "seat_0_0",
+    "point_count": 8696
+  },
+  "5": {
+    "label": "wheel_1_0",
+    "point_count": 8651
   },
   "6": {
     "label": "handlebar_0_0",
-    "point_count": 3977
+    "point_count": 4018
   },
   "7": {
     "label": "headlight_0_0",
-    "point_count": 1086
+    "point_count": 1180
+  },
+  "8": {
+    "label": "unknown_0_0",
+    "point_count": 11121
+  },
+  "9": {
+    "label": "unknown_1_0",
+    "point_count": 7875
+  },
+  "10": {
+    "label": "unknown_2_0",
+    "point_count": 230
+  },
+  "11": {
+    "label": "unknown_3_0",
+    "point_count": 976
+  },
+  "12": {
+    "label": "unknown_4_0",
+    "point_count": 378
+  },
+  "13": {
+    "label": "unknown_5_0",
+    "point_count": 142
   },
   "14": {
     "label": "unknown_6_0",
-    "point_count": 22436
+    "point_count": 159
   },
   "15": {
     "label": "unknown_7_0",
-    "point_count": 585
+    "point_count": 757
   },
   "16": {
     "label": "unknown_8_0",
-    "point_count": 394
+    "point_count": 1027
   },
   "17": {
     "label": "unknown_9_0",
-    "point_count": 1027
+    "point_count": 585
+  },
+  "18": {
+    "label": "unknown_10_0",
+    "point_count": 347
   }
 }

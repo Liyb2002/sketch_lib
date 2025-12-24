@@ -51,7 +51,7 @@ def _lineset_from_obb(obb: "o3d.geometry.OrientedBoundingBox") -> "o3d.geometry.
         raise RuntimeError("open3d is required. Please `pip install open3d`.")
     ls = o3d.geometry.LineSet.create_from_oriented_bounding_box(obb)
     # Use a bright color (yellow-ish) without hardcoding exact style; Open3D needs explicit color
-    ls.colors = o3d.utility.Vector3dVector(np.tile(np.array([[0.0, 0.0, 1.0]]), (len(ls.lines), 1)))
+    ls.colors = o3d.utility.Vector3dVector(np.tile(np.array([[1.0, 1.0, 0.0]]), (len(ls.lines), 1)))
     return ls
 
 
