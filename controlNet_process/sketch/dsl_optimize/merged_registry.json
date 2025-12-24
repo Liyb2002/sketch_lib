@@ -1,0 +1,42 @@
+{
+  "0": {
+    "label": "fender_0_0",
+    "point_count": 16846
+  },
+  "2": {
+    "label": "wheel_1_0",
+    "point_count": 8611
+  },
+  "3": {
+    "label": "seat_0_0",
+    "point_count": 8690
+  },
+  "4": {
+    "label": "wheel_0_0",
+    "point_count": 11391
+  },
+  "6": {
+    "label": "handlebar_0_0",
+    "point_count": 3977
+  },
+  "7": {
+    "label": "headlight_0_0",
+    "point_count": 1086
+  },
+  "14": {
+    "label": "unknown_6_0",
+    "point_count": 22436
+  },
+  "15": {
+    "label": "unknown_7_0",
+    "point_count": 585
+  },
+  "16": {
+    "label": "unknown_8_0",
+    "point_count": 394
+  },
+  "17": {
+    "label": "unknown_9_0",
+    "point_count": 1027
+  }
+}

@@ -1,62 +1,57 @@
 #!/usr/bin/env python3
+# 11_optimizer_main.py
+#
+# Pre-optimization debug:
+#   For each label:
+#     - show saved heatmap PLY (already generated elsewhere)
+#     - overlay bounding boxes read the SAME WAY as no_overlapping.py:
+#         mn = center - 0.5*extent, mx = center + 0.5*extent
+#
+# IMPORTANT:
+#   - never imports or calls constraints_optimization.heat_map / build_label_heatmaps
+
 import os
 
-from constraints_optimization.heat_map import build_label_heatmaps
+from constraints_optimization.vis_preopt_label_boxes_heatmap import (
+    vis_preopt_label_boxes_heatmap,
+)
 
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 SKETCH_ROOT = os.path.join(THIS_DIR, "sketch")
 
-CLUSTERS_DIR = os.path.join(SKETCH_ROOT, "clusters")
-DSL_DIR      = os.path.join(SKETCH_ROOT, "dsl_optimize")
+DSL_DIR = os.path.join(SKETCH_ROOT, "dsl_optimize")
 
 MERGED_PRIMITIVES = os.path.join(DSL_DIR, "merged_pca_primitives.json")
 BASE_PRIMITIVES   = os.path.join(DSL_DIR, "pca_primitives.json")
 PRIMITIVES_JSON   = MERGED_PRIMITIVES if os.path.exists(MERGED_PRIMITIVES) else BASE_PRIMITIVES
 
-MERGED_PLY = os.path.join(DSL_DIR, "merged_labeled_clusters.ply")
-BASE_PLY   = os.path.join(CLUSTERS_DIR, "labeled_clusters.ply")
-PLY_PATH   = MERGED_PLY if os.path.exists(MERGED_PLY) else BASE_PLY
-
-# cluster ids aligned to chosen ply
-if os.path.basename(PLY_PATH) == "merged_labeled_clusters.ply":
-    CLUSTER_IDS_NPY = os.path.join(DSL_DIR, "merged_cluster_ids.npy")
-else:
-    CLUSTER_IDS_NPY = os.path.join(CLUSTERS_DIR, "final_cluster_ids.npy")
-
 ITER_ID = 0
-OUT_DIR = os.path.join(DSL_DIR, "optimize_iteration", f"iter_{ITER_ID:03d}")
+OUT_DIR  = os.path.join(DSL_DIR, "optimize_iteration", f"iter_{ITER_ID:03d}")
+HEAT_DIR = os.path.join(OUT_DIR, "heat_map")
 
 
 def main():
-    print("\n[OPT] === Step 1: voxel heat maps per label (label fraction per voxel) ===")
-    print("[OPT] primitives :", PRIMITIVES_JSON)
-    print("[OPT] ply        :", PLY_PATH)
-    print("[OPT] cluster_ids:", CLUSTER_IDS_NPY)
-    print("[OPT] out_dir    :", OUT_DIR)
+    print("\n[PRE-OPT VIS] === per-label heatmap + AABB boxes (optimizer-style) ===")
+    print("[PRE-OPT VIS] primitives :", PRIMITIVES_JSON)
+    print("[PRE-OPT VIS] heat_dir   :", HEAT_DIR)
 
     if not os.path.exists(PRIMITIVES_JSON):
-        raise FileNotFoundError(f"Missing primitives json: {PRIMITIVES_JSON}")
-    if not os.path.exists(PLY_PATH):
-        raise FileNotFoundError(f"Missing ply: {PLY_PATH}")
-    if not os.path.exists(CLUSTER_IDS_NPY):
-        raise FileNotFoundError(f"Missing cluster ids npy: {CLUSTER_IDS_NPY}")
+        raise FileNotFoundError(f"[FATAL] Missing primitives json: {PRIMITIVES_JSON}")
 
-    heat_dir = os.path.join(OUT_DIR, "heat_map")
-    build_label_heatmaps(
+    summary_json = os.path.join(HEAT_DIR, "heatmaps_summary.json")
+    if not os.path.exists(summary_json):
+        raise FileNotFoundError(
+            f"[FATAL] Missing heatmaps_summary.json:\n  {summary_json}\n"
+            "Heatmaps must already exist. This script does NOT generate them."
+        )
+
+    vis_preopt_label_boxes_heatmap(
         primitives_json_path=PRIMITIVES_JSON,
-        ply_path=PLY_PATH,
-        cluster_ids_path=CLUSTER_IDS_NPY,
-        out_dir=heat_dir,
-        voxel_size=None,              # auto
-        min_points_per_label=200,
-        show_windows=True,            # pops Open3D windows per label
-        max_labels_to_show=12,
-        show_combined=True,
+        heat_dir=HEAT_DIR,
+        max_labels=None,
+        max_boxes_per_label=None,
     )
 
-    # --- Optimization intentionally commented out for now ---
-    # from constraints_optimization.no_overlapping import apply_no_overlapping_shrink_only
-    # outputs = apply_no_overlapping_shrink_only(...)
 
 if __name__ == "__main__":
     main()
