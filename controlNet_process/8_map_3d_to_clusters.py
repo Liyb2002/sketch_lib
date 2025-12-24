@@ -5,6 +5,8 @@ import numpy as np
 import open3d as o3d
 import matplotlib.pyplot as plt
 
+from constraints_extraction.merge_unknowns import merge_unknowns
+
 # This code maps each cluster to a semantic label.
 # clusters can be split in this code
 # NEW: keep unlabeled regions as explicit clusters: unknown_0, unknown_1, ...
@@ -150,7 +152,7 @@ def main():
         raise RuntimeError(f"Missing fused model: {FUSED_PLY_PATH}")
 
     pcd_orig = o3d.io.read_point_cloud(FUSED_PLY_PATH)
-    points = np.asarray(pcd_orig.points)
+    points = np.asarray(pcd_orig.points)  # Points from the point cloud
     num_points = points.shape[0]
     print(f"[INFO] Points: {num_points}")
 
@@ -272,10 +274,9 @@ def main():
             }
             new_id += 1
 
-    # -------------------------------------------------------------------------
     # 4) NEW: Unknown clusters at CLUSTER level, then merge neighboring unknown clusters.
     #     Unknown entity = (original cluster id) restricted to points that remain unknown.
-    # -------------------------------------------------------------------------
+    # -----------------------------------------------------------------------------
     print("[INFO] Creating unknown entities at cluster level...")
 
     unknown_entities = []  # list of dicts: {orig_cid, idxs, aabb_min, aabb_max}
@@ -301,44 +302,13 @@ def main():
 
     print(f"[INFO] Unknown entities (pre-merge): {len(unknown_entities)}")
 
-    # Determine merge gap
-    if UNKNOWN_MERGE_GAP_AUTO:
-        mins = points.min(axis=0)
-        maxs = points.max(axis=0)
-        diag = float(np.linalg.norm(maxs - mins))
-        merge_gap = max(1e-8, diag * float(UNKNOWN_MERGE_GAP_FRAC))
-    else:
-        merge_gap = float(UNKNOWN_MERGE_GAP_ABS)
+    # Call the new merge_unknowns function to merge the unknown clusters
+    # Pass the point cloud 'points' to the function
+    merged_groups = merge_unknowns(unknown_entities, points, merge_gap=0.1, threshold=300, box_size=10)
 
-    print(f"[INFO] Unknown merge gap = {merge_gap:.6f} (auto={UNKNOWN_MERGE_GAP_AUTO})")
+    # Assign unknown_0, unknown_1, ...
+    unknown_labels = [f"unknown_{i}" for i in range(len(merged_groups))]
 
-    # Merge unknown entities by AABB distance (O(M^2), M is small)
-    if len(unknown_entities) > 0:
-        find, union, parent = union_find_init(len(unknown_entities))
-
-        for i in range(len(unknown_entities)):
-            ai = unknown_entities[i]
-            for j in range(i + 1, len(unknown_entities)):
-                aj = unknown_entities[j]
-                d = aabb_gap_distance(ai["aabb_min"], ai["aabb_max"], aj["aabb_min"], aj["aabb_max"])
-                if d <= merge_gap:
-                    union(i, j)
-
-        roots = np.array([find(i) for i in range(len(unknown_entities))], dtype=np.int32)
-        uniq_roots, inv = np.unique(roots, return_inverse=True)
-
-        merged_groups = []
-        for gid in range(len(uniq_roots)):
-            members = np.where(inv == gid)[0]
-            merged_groups.append(members)
-
-        print(f"[INFO] Unknown groups (post-merge): {len(merged_groups)}")
-
-        # Assign unknown_0, unknown_1, ...
-        unknown_labels = [f"unknown_{i}" for i in range(len(merged_groups))]
-    else:
-        merged_groups = []
-        unknown_labels = []
 
     # -------------------------------------------------------------------------
     # 5) Final palette (includes unknown_* labels)
