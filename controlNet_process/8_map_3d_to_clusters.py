@@ -304,7 +304,7 @@ def main():
 
     # Call the new merge_unknowns function to merge the unknown clusters
     # Pass the point cloud 'points' to the function
-    merged_groups = merge_unknowns(unknown_entities, points, merge_gap=0.1, threshold=300, box_size=10)
+    merged_groups = merge_unknowns(unknown_entities, points)
 
     # Assign unknown_0, unknown_1, ...
     unknown_labels = [f"unknown_{i}" for i in range(len(merged_groups))]

@@ -65,7 +65,7 @@
     "members": [
       27
     ],
-    "point_count": 1612
+    "point_count": 585
   },
   "16": {
     "label": "unknown_8_0",
@@ -73,5 +73,12 @@
       28
     ],
     "point_count": 394
+  },
+  "17": {
+    "label": "unknown_9_0",
+    "members": [
+      29
+    ],
+    "point_count": 1027
   }
 }

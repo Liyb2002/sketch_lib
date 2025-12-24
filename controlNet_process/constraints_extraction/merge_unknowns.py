@@ -1,81 +1,182 @@
 import numpy as np
+import open3d as o3d
 
-def aabb_of_points(pts):
-    """Calculate the axis-aligned bounding box (AABB) of a set of points."""
-    mn = pts.min(axis=0)
-    mx = pts.max(axis=0)
-    return mn, mx
 
-def aabb_gap_distance(a_min, a_max, b_min, b_max):
-    """
-    Euclidean distance between two AABBs (0 if they overlap/touch).
-    """
+# ---------------------------------------------------------------------
+# Geometry helpers
+# ---------------------------------------------------------------------
+def _aabb_gap_distance(a_min, a_max, b_min, b_max):
     dx = max(0.0, max(b_min[0] - a_max[0], a_min[0] - b_max[0]))
     dy = max(0.0, max(b_min[1] - a_max[1], a_min[1] - b_max[1]))
     dz = max(0.0, max(b_min[2] - a_max[2], a_min[2] - b_max[2]))
-    return float(np.sqrt(dx*dx + dy*dy + dz*dz))
+    return float(np.sqrt(dx * dx + dy * dy + dz * dz))
 
-def get_points_in_box(center, size, points):
+
+def _aabb_intersection(a_min, a_max, b_min, b_max):
+    inter_min = np.maximum(a_min, b_min)
+    inter_max = np.minimum(a_max, b_max)
+    return inter_min, inter_max
+
+
+def _count_points_in_box(points_xyz, mn, mx):
+    mask = np.all((points_xyz >= mn) & (points_xyz <= mx), axis=1)
+    return int(np.count_nonzero(mask))
+
+
+# ---------------------------------------------------------------------
+# Visualization
+# ---------------------------------------------------------------------
+def _vis_points_with_boxes(points, boxes):
     """
-    Count how many points are inside a box centered at `center` with side length `size`.
+    boxes: list of (min_xyz, max_xyz)
     """
-    half_size = size / 2
-    min_bound = center - half_size
-    max_bound = center + half_size
-    
-    # Debugging: Print the box bounds
-    print(f"[DEBUG] Center: {center}, Box Size: {size}")
-    print(f"[DEBUG] Min Bound: {min_bound}, Max Bound: {max_bound}")
+    geoms = []
 
-    inside_points = np.all((points >= min_bound) & (points <= max_bound), axis=1)
-    
-    # Debugging: Check how many points are inside the box
-    points_inside = np.sum(inside_points)
-    print(f"[DEBUG] Points inside the box: {points_inside}")
-    
-    return points_inside
+    pcd = o3d.geometry.PointCloud()
+    pcd.points = o3d.utility.Vector3dVector(points)
+    pcd.paint_uniform_color([0.6, 0.6, 0.6])
+    geoms.append(pcd)
 
-def merge_unknowns(unknown_entities, points, merge_gap=0.1, threshold=300, box_size=1):
+    for mn, mx in boxes:
+        corners = np.array([
+            [mn[0], mn[1], mn[2]],
+            [mx[0], mn[1], mn[2]],
+            [mx[0], mx[1], mn[2]],
+            [mn[0], mx[1], mn[2]],
+            [mn[0], mn[1], mx[2]],
+            [mx[0], mn[1], mx[2]],
+            [mx[0], mx[1], mx[2]],
+            [mn[0], mx[1], mx[2]],
+        ])
+
+        lines = [
+            [0,1],[1,2],[2,3],[3,0],
+            [4,5],[5,6],[6,7],[7,4],
+            [0,4],[1,5],[2,6],[3,7]
+        ]
+
+        box = o3d.geometry.LineSet()
+        box.points = o3d.utility.Vector3dVector(corners)
+        box.lines  = o3d.utility.Vector2iVector(lines)
+        box.colors = o3d.utility.Vector3dVector([[1, 0, 0]] * len(lines))
+        geoms.append(box)
+
+    o3d.visualization.draw_geometries(
+        geoms,
+        window_name="merge_unknowns debug: connecting surfaces"
+    )
+
+
+# ---------------------------------------------------------------------
+# MAIN API (DO NOT RENAME)
+# ---------------------------------------------------------------------
+def merge_unknowns(
+    unknown_entities,
+    points,
+    threshold_points=100,
+    extend_frac=0.005,
+    debug=False,
+    vis=False,
+):
     """
-    Merge unknown clusters based on their bounding boxes and the number of points within the center box.
-    Two clusters are merged if their bounding boxes are connected and the center box contains enough points.
+    Merge unknown clusters if:
+      1) Their AABBs touch or overlap
+      2) Their AABB intersection surface is extended by
+         extend = extend_frac * avg(global_bbox_dim)
+      3) Each side contributes >= threshold_points inside that volume
     """
-    merged_groups = []
-    visited = [False] * len(unknown_entities)
 
-    # Iterate over all unknown entities and check for merges
-    for i, entity_i in enumerate(unknown_entities):
-        if visited[i]:
-            continue
+    n = len(unknown_entities)
+    if n == 0:
+        return []
 
-        visited[i] = True
-        merged = [i]  # Start with the current entity as a merged group
+    pts = np.asarray(points)
 
-        for j, entity_j in enumerate(unknown_entities):
-            if i == j or visited[j]:
+    # global scale
+    shape_min = pts.min(axis=0)
+    shape_max = pts.max(axis=0)
+    dims = shape_max - shape_min
+    avg_dim = float((dims[0] + dims[1] + dims[2]) / 3.0)
+    extend = extend_frac * avg_dim
+
+    if debug:
+        print(
+            f"[merge_unknowns] avg_dim={avg_dim:.6f}, "
+            f"extend={extend:.6f}, threshold={threshold_points}"
+        )
+
+    parent = np.arange(n, dtype=np.int32)
+
+    def find(x):
+        while parent[x] != x:
+            parent[x] = parent[parent[x]]
+            x = parent[x]
+        return x
+
+    def union(a, b):
+        ra, rb = find(a), find(b)
+        if ra != rb:
+            parent[rb] = ra
+
+    debug_boxes = []
+
+    for i in range(n):
+        ai_min = unknown_entities[i]["aabb_min"]
+        ai_max = unknown_entities[i]["aabb_max"]
+        pts_i = pts[unknown_entities[i]["idxs"]]
+
+        for j in range(i + 1, n):
+            aj_min = unknown_entities[j]["aabb_min"]
+            aj_max = unknown_entities[j]["aabb_max"]
+
+            # 1) must touch
+            if _aabb_gap_distance(ai_min, ai_max, aj_min, aj_max) != 0.0:
                 continue
 
-            # Check if their bounding boxes are connected
-            gap = aabb_gap_distance(entity_i["aabb_min"], entity_i["aabb_max"], entity_j["aabb_min"], entity_j["aabb_max"])
-            if gap <= merge_gap:
-                # Check if the center of the bounding boxes contains enough points
-                center_i = (entity_i["aabb_min"] + entity_i["aabb_max"]) / 2
-                center_j = (entity_j["aabb_min"] + entity_j["aabb_max"]) / 2
-                center = (center_i + center_j) / 2
+            # 2) intersection surface
+            inter_min, inter_max = _aabb_intersection(ai_min, ai_max, aj_min, aj_max)
 
-                points_in_box_i = get_points_in_box(center, box_size, points[entity_i["idxs"]])
-                points_in_box_j = get_points_in_box(center, box_size, points[entity_j["idxs"]])
-                total_points = points_in_box_i + points_in_box_j
+            # find thin axis (contact normal)
+            thickness = inter_max - inter_min
+            axis = np.argmin(thickness)
 
-                # Debugging: Print the points inside the box for each cluster
-                print(f"[DEBUG] Total points in merged box: {total_points}")
+            # 3) extend along normal
+            ext_min = inter_min.copy()
+            ext_max = inter_max.copy()
+            ext_min[axis] -= extend
+            ext_max[axis] += extend
 
-                if total_points >= threshold:
-                    # If enough points are in the box, merge the clusters
-                    merged.append(j)
-                    visited[j] = True
+            debug_boxes.append((ext_min.copy(), ext_max.copy()))
 
-        # Add the merged group to the list
-        merged_groups.append(merged)
+            # 4) count independently
+            ci = _count_points_in_box(pts_i, ext_min, ext_max)
+            cj = _count_points_in_box(
+                pts[unknown_entities[j]["idxs"]], ext_min, ext_max
+            )
+
+            if debug:
+                print(
+                    f"[merge_unknowns] pair ({i},{j}) "
+                    f"axis={axis} ci={ci} cj={cj}"
+                )
+
+            if ci >= threshold_points and cj >= threshold_points:
+                union(i, j)
+
+    if vis and len(debug_boxes) > 0:
+        _vis_points_with_boxes(pts, debug_boxes)
+
+    groups = {}
+    for k in range(n):
+        r = find(k)
+        groups.setdefault(r, []).append(k)
+
+    merged_groups = sorted(
+        (sorted(v) for v in groups.values()),
+        key=lambda g: g[0]
+    )
+
+    if debug:
+        print(f"[merge_unknowns] merged_groups={merged_groups}")
 
     return merged_groups

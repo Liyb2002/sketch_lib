@@ -14,19 +14,19 @@
       "a": "fender_0",
       "b": "headlight_0",
       "confidence": 0.6,
-      "evidence": "commonly adjacent"
+      "evidence": "commonly close"
     },
     {
       "a": "handlebar_0",
       "b": "headlight_0",
       "confidence": 0.6,
-      "evidence": "commonly adjacent"
+      "evidence": "commonly close"
     },
     {
       "a": "seat_0",
       "b": "fender_0",
       "confidence": 0.6,
-      "evidence": "commonly adjacent"
+      "evidence": "commonly close"
     },
     {
       "a": "wheel_0",
@@ -43,6 +43,6 @@
       "evidence": "both wheels"
     }
   ],
-  "notes": "Common scooter configurations",
+  "notes": "Most parts are likely to be in close proximity on a scooter.",
   "confidence": 0.6
 }

@@ -1,11 +1,11 @@
 {
   "label": "unknown_7_0",
-  "label_point_count": 1612,
+  "label_point_count": 585,
   "voxel_size": 0.008589088916778564,
   "voxels_total": 7320,
-  "voxels_with_label": 291,
-  "voxels_full_label": 91,
-  "heat_point_mean": 0.0032239998690783978,
+  "voxels_with_label": 125,
+  "voxels_full_label": 20,
+  "heat_point_mean": 0.0011700002942234278,
   "heat_point_p95": 0.0,
   "heat_point_max": 1.0,
   "heat_ply": "/home/yli581/Desktop/sketch_lib/controlNet_process/sketch/dsl_optimize/optimize_iteration/iter_000/heat_map/heatmaps/unknown_7_0/heat_map_unknown_7_0.ply"
