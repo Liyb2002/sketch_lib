@@ -102,13 +102,13 @@ def main():
 
     # 6) Visualize merged primitives
     print("\n[MAIN] Launching visualization (merged)...")
-    run_visualization(
-        PRIMITIVES_JSON,
-        ply_path=merged_ply,
-        cluster_ids_path=merged_cluster_ids_npy,
-        background_keep_ratio=0.3,
-        show_all_boxes_faint=False,
-    )
+    # run_visualization(
+    #     PRIMITIVES_JSON,
+    #     ply_path=merged_ply,
+    #     cluster_ids_path=merged_cluster_ids_npy,
+    #     background_keep_ratio=0.3,
+    #     show_all_boxes_faint=False,
+    # )
 
     print("\n[MAIN] Visualization done. Inferring label relations from sketch...")
     infer_relations_main()

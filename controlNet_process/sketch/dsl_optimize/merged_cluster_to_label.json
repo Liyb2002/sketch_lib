@@ -68,75 +68,54 @@
     "members": [
       31
     ],
-    "point_count": 11121
+    "point_count": 20182
   },
   "9": {
     "label": "unknown_1_0",
     "members": [
       32
     ],
-    "point_count": 7875
+    "point_count": 230
   },
   "10": {
     "label": "unknown_2_0",
     "members": [
       33
     ],
-    "point_count": 230
+    "point_count": 976
   },
   "11": {
     "label": "unknown_3_0",
     "members": [
       34
     ],
-    "point_count": 976
+    "point_count": 378
   },
   "12": {
     "label": "unknown_4_0",
     "members": [
       35
     ],
-    "point_count": 378
+    "point_count": 142
   },
   "13": {
     "label": "unknown_5_0",
     "members": [
       36
     ],
-    "point_count": 142
+    "point_count": 757
   },
   "14": {
     "label": "unknown_6_0",
     "members": [
       37
     ],
-    "point_count": 159
+    "point_count": 585
   },
   "15": {
     "label": "unknown_7_0",
     "members": [
       38
-    ],
-    "point_count": 757
-  },
-  "16": {
-    "label": "unknown_8_0",
-    "members": [
-      39
-    ],
-    "point_count": 1027
-  },
-  "17": {
-    "label": "unknown_9_0",
-    "members": [
-      40
-    ],
-    "point_count": 585
-  },
-  "18": {
-    "label": "unknown_10_0",
-    "members": [
-      41
     ],
     "point_count": 347
   }

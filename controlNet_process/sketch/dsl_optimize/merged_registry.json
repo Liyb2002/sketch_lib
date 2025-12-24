@@ -25,46 +25,34 @@
   },
   "8": {
     "label": "unknown_0_0",
-    "point_count": 11121
+    "point_count": 20182
   },
   "9": {
     "label": "unknown_1_0",
-    "point_count": 7875
+    "point_count": 230
   },
   "10": {
     "label": "unknown_2_0",
-    "point_count": 230
+    "point_count": 976
   },
   "11": {
     "label": "unknown_3_0",
-    "point_count": 976
+    "point_count": 378
   },
   "12": {
     "label": "unknown_4_0",
-    "point_count": 378
+    "point_count": 142
   },
   "13": {
     "label": "unknown_5_0",
-    "point_count": 142
+    "point_count": 757
   },
   "14": {
     "label": "unknown_6_0",
-    "point_count": 159
+    "point_count": 585
   },
   "15": {
     "label": "unknown_7_0",
-    "point_count": 757
-  },
-  "16": {
-    "label": "unknown_8_0",
-    "point_count": 1027
-  },
-  "17": {
-    "label": "unknown_9_0",
-    "point_count": 585
-  },
-  "18": {
-    "label": "unknown_10_0",
     "point_count": 347
   }
 }

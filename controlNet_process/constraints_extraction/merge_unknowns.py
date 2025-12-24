@@ -28,7 +28,7 @@ def _count_points_in_box(points_xyz, mn, mx):
 # ---------------------------------------------------------------------
 def _vis_points_with_boxes(points, boxes):
     """
-    boxes: list of (min_xyz, max_xyz)
+    boxes: list of (min_xyz, max_xyz, color_rgb)
     """
     geoms = []
 
@@ -37,7 +37,7 @@ def _vis_points_with_boxes(points, boxes):
     pcd.paint_uniform_color([0.6, 0.6, 0.6])
     geoms.append(pcd)
 
-    for mn, mx in boxes:
+    for mn, mx, rgb in boxes:
         corners = np.array([
             [mn[0], mn[1], mn[2]],
             [mx[0], mn[1], mn[2]],
@@ -50,20 +50,20 @@ def _vis_points_with_boxes(points, boxes):
         ])
 
         lines = [
-            [0,1],[1,2],[2,3],[3,0],
-            [4,5],[5,6],[6,7],[7,4],
-            [0,4],[1,5],[2,6],[3,7]
+            [0, 1], [1, 2], [2, 3], [3, 0],
+            [4, 5], [5, 6], [6, 7], [7, 4],
+            [0, 4], [1, 5], [2, 6], [3, 7],
         ]
 
         box = o3d.geometry.LineSet()
         box.points = o3d.utility.Vector3dVector(corners)
-        box.lines  = o3d.utility.Vector2iVector(lines)
-        box.colors = o3d.utility.Vector3dVector([[1, 0, 0]] * len(lines))
+        box.lines = o3d.utility.Vector2iVector(lines)
+        box.colors = o3d.utility.Vector3dVector([rgb] * len(lines))
         geoms.append(box)
 
     o3d.visualization.draw_geometries(
         geoms,
-        window_name="merge_unknowns debug: connecting surfaces"
+        window_name="merge_unknowns debug: connecting surfaces",
     )
 
 
@@ -73,10 +73,10 @@ def _vis_points_with_boxes(points, boxes):
 def merge_unknowns(
     unknown_entities,
     points,
-    threshold_points=100,
+    threshold_points=50,
     extend_frac=0.005,
-    debug=False,
-    vis=False,
+    debug=True,
+    vis=True,
 ):
     """
     Merge unknown clusters if:
@@ -84,6 +84,11 @@ def merge_unknowns(
       2) Their AABB intersection surface is extended by
          extend = extend_frac * avg(global_bbox_dim)
       3) Each side contributes >= threshold_points inside that volume
+
+    VIS CHANGE:
+      - For each debug boundary box:
+          blue if (ci >= threshold_points AND cj >= threshold_points)
+          red otherwise
     """
 
     n = len(unknown_entities)
@@ -118,6 +123,7 @@ def merge_unknowns(
         if ra != rb:
             parent[rb] = ra
 
+    # Each entry: (ext_min, ext_max, rgb)
     debug_boxes = []
 
     for i in range(n):
@@ -146,21 +152,22 @@ def merge_unknowns(
             ext_min[axis] -= extend
             ext_max[axis] += extend
 
-            debug_boxes.append((ext_min.copy(), ext_max.copy()))
-
             # 4) count independently
             ci = _count_points_in_box(pts_i, ext_min, ext_max)
-            cj = _count_points_in_box(
-                pts[unknown_entities[j]["idxs"]], ext_min, ext_max
-            )
+            cj = _count_points_in_box(pts[unknown_entities[j]["idxs"]], ext_min, ext_max)
+
+            ok = (ci >= threshold_points) and (cj >= threshold_points)
+            rgb = [0.0, 0.0, 1.0] if ok else [1.0, 0.0, 0.0]  # blue if ok else red
+            debug_boxes.append((ext_min.copy(), ext_max.copy(), rgb))
 
             if debug:
                 print(
                     f"[merge_unknowns] pair ({i},{j}) "
-                    f"axis={axis} ci={ci} cj={cj}"
+                    f"axis={axis} ci={ci} cj={cj} "
+                    f"{'OK' if ok else 'NO'}"
                 )
 
-            if ci >= threshold_points and cj >= threshold_points:
+            if ok:
                 union(i, j)
 
     if vis and len(debug_boxes) > 0:
@@ -173,7 +180,7 @@ def merge_unknowns(
 
     merged_groups = sorted(
         (sorted(v) for v in groups.values()),
-        key=lambda g: g[0]
+        key=lambda g: g[0],
     )
 
     if debug:
