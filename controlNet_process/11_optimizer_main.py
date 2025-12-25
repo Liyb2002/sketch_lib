@@ -1,71 +1,86 @@
 #!/usr/bin/env python3
-"""
-launcher_heatmap_pca_vis.py
-
-1) Load saved per-label heatmap PLYs from:
-   sketch/dsl_optimize/optimize_iteration/iter_XXX/heat_map/heatmaps/<label>/heat_map_<label>.ply
-
-2) Compute PCA-oriented bounding boxes (Open3D OrientedBoundingBox) per label
-   using points whose heat >= min_heat (default 0.5).
-
-3) Visualize (per label): heatmap point cloud + bbox overlay.
-
-Writes:
-  .../iter_XXX/heat_map/pca_bboxes/pca_bboxes.json
-"""
-
 import os
-import sys
 
-# Make sure we can import constraints_optimization/*
+from constraints_optimization.no_overlapping import apply_no_overlapping_shrink_only
+from constraints_optimization.vis_bbx_before_after import (
+    run_before_after_vis_per_label,
+    run_global_vis_all_boxes,
+)
+
+
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
-sys.path.append(THIS_DIR)
-
-from constraints_optimization.pca_analysis import compute_pca_bounding_boxes
-from constraints_optimization.vis import visualize_heatmaps_with_bboxes
-
-
-# -----------------------------------------------------------------------------
-# Paths (match your existing pipeline style)
-# -----------------------------------------------------------------------------
 SKETCH_ROOT = os.path.join(THIS_DIR, "sketch")
+
 CLUSTERS_DIR = os.path.join(SKETCH_ROOT, "clusters")
 DSL_DIR      = os.path.join(SKETCH_ROOT, "dsl_optimize")
 
-# Which iteration to use
+MERGED_PRIMITIVES = os.path.join(DSL_DIR, "merged_pca_primitives.json")
+BASE_PRIMITIVES   = os.path.join(DSL_DIR, "pca_primitives.json")
+PRIMITIVES_JSON   = MERGED_PRIMITIVES if os.path.exists(MERGED_PRIMITIVES) else BASE_PRIMITIVES
+
+MERGED_PLY = os.path.join(DSL_DIR, "merged_labeled_clusters.ply")
+BASE_PLY   = os.path.join(CLUSTERS_DIR, "labeled_clusters.ply")
+PLY_PATH   = MERGED_PLY if os.path.exists(MERGED_PLY) else BASE_PLY
+
+# cluster ids aligned to chosen ply
+if os.path.basename(PLY_PATH) == "merged_labeled_clusters.ply":
+    CLUSTER_IDS_NPY = os.path.join(DSL_DIR, "merged_cluster_ids.npy")
+else:
+    CLUSTER_IDS_NPY = os.path.join(CLUSTERS_DIR, "final_cluster_ids.npy")
+
 ITER_ID = 0
 OUT_DIR = os.path.join(DSL_DIR, "optimize_iteration", f"iter_{ITER_ID:03d}")
 
-HEAT_DIR = os.path.join(OUT_DIR, "heat_map")  # where your heat_map.py writes
-BBOX_DIR = os.path.join(HEAT_DIR, "pca_bboxes")
-BBOX_JSON = os.path.join(BBOX_DIR, "pca_bboxes.json")
-
 
 def main():
-    if not os.path.isdir(HEAT_DIR):
-        raise FileNotFoundError(
-            f"Missing heat map dir: {HEAT_DIR}\n"
-            f"Did you run the heatmap step first?"
-        )
+    print("\n[OPT] === Shrink-only no-overlap + maximize size (tolerant, nonlinear) ===")
+    print("[OPT] primitives:", PRIMITIVES_JSON)
+    print("[OPT] ply       :", PLY_PATH)
+    print("[OPT] cluster_ids:", CLUSTER_IDS_NPY)
+    print("[OPT] out_dir   :", OUT_DIR)
 
-    print("\n[LAUNCH] === PCA BBOX + VIS from saved heatmaps ===")
-    print("[LAUNCH] heat_dir :", HEAT_DIR)
-    print("[LAUNCH] bbox_json:", BBOX_JSON)
+    if not os.path.exists(PRIMITIVES_JSON):
+        raise FileNotFoundError(f"Missing primitives json: {PRIMITIVES_JSON}")
+    if not os.path.exists(PLY_PATH):
+        raise FileNotFoundError(f"Missing ply: {PLY_PATH}")
+    if not os.path.exists(CLUSTER_IDS_NPY):
+        raise FileNotFoundError(f"Missing cluster ids npy: {CLUSTER_IDS_NPY}")
 
-    # 1) Compute PCA bboxes from saved heatmap PLYs
-    compute_pca_bounding_boxes(
-        heat_dir=HEAT_DIR,
-        out_json=BBOX_JSON,
-        min_heat=0.5,              # points with heat>=0.5 define the label bbox (tune if needed)
-        min_points=200,            # skip labels with too few hot points
-        max_labels=None,           # None => all
+    outputs = apply_no_overlapping_shrink_only(
+        primitives_json_path=PRIMITIVES_JSON,
+        out_dir=OUT_DIR,
+        steps=1200,
+        lr=1e-2,
+        overlap_tol_ratio=0.02,
+        overlap_scale_ratio=0.01,
+        r_min=0.70,
+        w_overlap=1.0,
+        w_cut=50.0,
+        w_size=2.0,
+        w_floor=10.0,
+        extent_floor=1e-3,
+        min_points=10,
+        device="cuda",
+        verbose_every=50,
     )
 
-    # 2) Visualize per label: heatmap + bbox overlay
-    visualize_heatmaps_with_bboxes(
-        heat_dir=HEAT_DIR,
-        bbox_json=BBOX_JSON,
-        max_labels_to_show=12,     # matches your previous style
+    print("\n[OPT] Done.")
+    print("[OPT] optimized_primitives:", outputs["optimized_primitives_json"])
+    print("[OPT] report              :", outputs["report_json"])
+
+    print("\n[VIS] Per-label before/after views...")
+    run_before_after_vis_per_label(
+        before_primitives_json=PRIMITIVES_JSON,
+        after_primitives_json=outputs["optimized_primitives_json"],
+        ply_path=PLY_PATH,
+        cluster_ids_path=CLUSTER_IDS_NPY,
+    )
+
+    print("\n[VIS] Global view: all optimized boxes together...")
+    run_global_vis_all_boxes(
+        primitives_json=outputs["optimized_primitives_json"],
+        ply_path=PLY_PATH,
+        show_points=True,
     )
 
 
