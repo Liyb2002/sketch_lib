@@ -164,3 +164,48 @@ def visualize_heatmaps_with_bboxes(
         title = f"HeatMap + PCA BBox (BLUE) | {label} | used={rec.get('points_used')} | min_heat={rec.get('min_heat')}"
         print("[VIS] opening:", title)
         o3d.visualization.draw_geometries(geoms, window_name=title)
+
+        # Call the compute_values function to print out the heat values for each grid
+        compute_values(pcd)
+
+
+def compute_values(pcd: "o3d.geometry.PointCloud") -> None:
+    """
+    Compute and print out the heat value for each 3x3x3 grid for the given point cloud.
+    """
+    points = np.asarray(pcd.points)  # Get the point cloud as an array
+    colors = np.asarray(pcd.colors)  # Get the colors associated with the points
+
+    # Calculate heat value as the average of the red and green channels
+    heat_values = 0.5 + 0.5 * colors[:, 0] - 0.5 * colors[:, 1]  # r -> 1, g -> 0
+
+    # Get the bounding box of the point cloud
+    min_point = points.min(axis=0)
+    max_point = points.max(axis=0)
+
+    # Define the grid size (3x3x3)
+    grid_size = np.array([3, 3, 3])  # Convert grid_size to numpy array for element-wise operations
+    grid_step = (max_point - min_point) / grid_size
+
+    # Create the grid and calculate the heat for each grid
+    grid_heat_values = np.zeros(grid_size)
+    grid_counts = np.zeros(grid_size)
+
+    for point, heat in zip(points, heat_values):
+        # Find the grid coordinates for the current point
+        grid_coords = ((point - min_point) // grid_step).astype(int)
+        grid_coords = np.clip(grid_coords, 0, grid_size - 1)  # Ensure within bounds
+
+        # Add the heat value to the respective grid and increment count
+        grid_heat_values[tuple(grid_coords)] += heat
+        grid_counts[tuple(grid_coords)] += 1
+
+    # Average the heat values for each grid cell
+    grid_heat_values /= np.maximum(grid_counts, 1)  # Avoid division by zero
+
+    # Print out the heat value for each grid cell
+    print("[VALUES] Heat values for each 3x3x3 grid:")
+    for i in range(grid_size[0]):
+        for j in range(grid_size[1]):
+            for k in range(grid_size[2]):
+                print(f"Grid ({i}, {j}, {k}): Heat = {grid_heat_values[i, j, k]:.3f}")
