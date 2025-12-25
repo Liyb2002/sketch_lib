@@ -1,86 +1,166 @@
 #!/usr/bin/env python3
+"""
+constraints_optimization/vis.py
+
+Visualization:
+- Load heatmap PLY (colored full-shape point cloud)
+- Overlay PCA OBB as THICK BLUE BOUNDARY ONLY
+  (cylinders per edge, using Open3D LineSet connectivity to avoid wrong corner ordering)
+
+No solid boxes.
+"""
+
 import json
-import os
-import open3d as o3d
+from typing import Any, Dict, List
+
 import numpy as np
-from typing import List, Dict, Any, Tuple  # <-- Add the correct import for Tuple
 
-def _load_primitives(primitives_json_path: str) -> List[Dict[str, Any]]:
-    with open(primitives_json_path, "r") as f:
-        data = json.load(f)
-    if isinstance(data, dict) and "primitives" in data:
-        return data["primitives"]
-    if isinstance(data, list):
-        return data
-    raise ValueError(f"Unexpected primitives JSON format in {primitives_json_path}")
+try:
+    import open3d as o3d
+except Exception:
+    o3d = None
 
 
-def _obb_from_params(params: Dict[str, Any]) -> o3d.geometry.OrientedBoundingBox:
-    center = np.array(params.get("center", [0, 0, 0]), dtype=np.float64)
-    extent = np.array(params.get("extent", [0, 0, 0]), dtype=np.float64)
-    R = np.array(params.get("rotation", np.eye(3)), dtype=np.float64)
-    return o3d.geometry.OrientedBoundingBox(center, R, extent)
+# ---------------------------------------------------------------------
+# IO
+# ---------------------------------------------------------------------
+
+def _load_json(path: str) -> Any:
+    with open(path, "r") as f:
+        return json.load(f)
+
+def _load_colored_ply(path: str) -> "o3d.geometry.PointCloud":
+    if o3d is None:
+        raise RuntimeError("open3d required")
+    pcd = o3d.io.read_point_cloud(path)
+    if len(pcd.points) == 0:
+        raise ValueError(f"Empty point cloud: {path}")
+    return pcd
 
 
-def _load_points_and_cluster_ids(ply_path: str, cluster_ids_path: str) -> Tuple[o3d.geometry.PointCloud, np.ndarray]:
-    if not os.path.exists(ply_path):
-        raise FileNotFoundError(f"Missing ply: {ply_path}")
-    if not os.path.exists(cluster_ids_path):
-        raise FileNotFoundError(f"Missing cluster_ids npy: {cluster_ids_path}")
+# ---------------------------------------------------------------------
+# OBB restore
+# ---------------------------------------------------------------------
 
-    pcd = o3d.io.read_point_cloud(ply_path)
-    cluster_ids = np.load(cluster_ids_path).reshape(-1)
-    pts = np.asarray(pcd.points)
-    if pts.shape[0] != cluster_ids.shape[0]:
-        raise RuntimeError("cluster_ids.npy must align 1:1 with the PLY points.")
-    return pcd, cluster_ids
+def _obb_from_dict(d: Dict[str, Any]) -> "o3d.geometry.OrientedBoundingBox":
+    if o3d is None:
+        raise RuntimeError("open3d required")
+    return o3d.geometry.OrientedBoundingBox(
+        center=np.asarray(d["center"], dtype=np.float64),
+        R=np.asarray(d["R"], dtype=np.float64),
+        extent=np.asarray(d["extent"], dtype=np.float64),
+    )
 
 
-def visualize_initial_bboxes(primitives_json_path: str, ply_path: str, cluster_ids_path: str):
+# ---------------------------------------------------------------------
+# Thick boundary rendering (cylinders per *correct* LineSet edge)
+# ---------------------------------------------------------------------
+
+def _cylinder_between(p0: np.ndarray, p1: np.ndarray, radius: float, color) -> "o3d.geometry.TriangleMesh":
     """
-    Visualizes the initial bounding boxes for each label, overlaying each bounding box individually
-    with the shape.
+    Create a cylinder mesh between two 3D points, colored uniformly.
+    Cylinder is aligned from p0 to p1.
     """
-    # Load primitives and cluster information
-    primitives = _load_primitives(primitives_json_path)
+    v = p1 - p0
+    length = float(np.linalg.norm(v))
+    if length < 1e-10:
+        return None
 
-    pcd, cluster_ids = _load_points_and_cluster_ids(ply_path, cluster_ids_path)
+    cyl = o3d.geometry.TriangleMesh.create_cylinder(radius=float(radius), height=length)
+    cyl.compute_vertex_normals()
 
-    # Iterate over each primitive (bounding box)
-    for p in primitives:
-        label = p.get("label", "unknown")
-        print(f"[VIS] Visualizing label: {label}")
+    # Open3D cylinder axis is +Z. Rotate Z -> v.
+    z = np.array([0.0, 0.0, 1.0], dtype=np.float64)
+    v_hat = v / length
 
-        params = p.get("parameters", {})
-        obb = _obb_from_params(params)
+    axis = np.cross(z, v_hat)
+    axis_norm = float(np.linalg.norm(axis))
+    dot = float(np.clip(np.dot(z, v_hat), -1.0, 1.0))
+    angle = float(np.arccos(dot))
 
-        # Colorize bounding boxes and point cloud based on the label
-        obb.color = (1.0, 0.6, 0.1)  # Orange color for bounding box
-        pcd_colored = _colorize_points_by_cluster_id(pcd, cluster_ids, int(p.get("cluster_id", -1)))
+    if axis_norm > 1e-10 and angle > 1e-10:
+        axis = axis / axis_norm
+        R = o3d.geometry.get_rotation_matrix_from_axis_angle(axis * angle)
+        cyl.rotate(R, center=(0.0, 0.0, 0.0))
 
-        # Visualize the bounding box and point cloud for this label
-        coord = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.1, origin=[0, 0, 0])
-        
-        o3d.visualization.draw_geometries(
-            [pcd_colored, obb, coord],
-            window_name=f"Initial Bounding Box for Label: {label}",
+    # Move cylinder to midpoint of segment
+    cyl.translate((p0 + p1) * 0.5)
+    cyl.paint_uniform_color(color)
+    return cyl
+
+
+def _thick_obb_boundary_from_lineset(
+    obb: "o3d.geometry.OrientedBoundingBox",
+    *,
+    radius: float,
+    color=(0.0, 0.0, 1.0),  # BLUE
+) -> List["o3d.geometry.TriangleMesh"]:
+    """
+    Use Open3D's own LineSet connectivity (guaranteed correct),
+    then replace each line with a thick cylinder.
+    """
+    ls = o3d.geometry.LineSet.create_from_oriented_bounding_box(obb)
+    pts = np.asarray(ls.points, dtype=np.float64)
+    lines = np.asarray(ls.lines, dtype=np.int64)
+
+    meshes = []
+    for a, b in lines:
+        m = _cylinder_between(pts[a], pts[b], radius=radius, color=color)
+        if m is not None:
+            meshes.append(m)
+    return meshes
+
+
+# ---------------------------------------------------------------------
+# Main visualization
+# ---------------------------------------------------------------------
+
+def visualize_heatmaps_with_bboxes(
+    *,
+    heat_dir: str,                 # kept for compatibility with your launcher; not used internally
+    bbox_json: str,
+    max_labels_to_show: int = 12,
+    darken_heatmap: float = 0.7,
+    bbox_radius: float = 0.003,     # thickness control
+) -> None:
+    """
+    For each label:
+      - show heatmap
+      - overlay thick BLUE bbox boundary
+
+    bbox_radius controls thickness in world units.
+    """
+    if o3d is None:
+        raise RuntimeError("open3d required")
+
+    payload = _load_json(bbox_json)
+    labels = payload.get("labels", [])
+    if not labels:
+        print("[VIS] No labels to visualize.")
+        return
+
+    labels = sorted(labels, key=lambda r: int(r.get("points_used", 0)), reverse=True)
+    labels = labels[: int(max_labels_to_show)]
+
+    for rec in labels:
+        label = rec.get("label", rec.get("sanitized", "unknown"))
+        pcd = _load_colored_ply(rec["heat_ply"])
+
+        # Darken heatmap so bbox pops
+        if float(darken_heatmap) < 0.999:
+            cols = np.asarray(pcd.colors)
+            cols = np.clip(cols * float(darken_heatmap), 0.0, 1.0)
+            pcd.colors = o3d.utility.Vector3dVector(cols)
+
+        obb = _obb_from_dict(rec["obb"])
+
+        bbox_meshes = _thick_obb_boundary_from_lineset(
+            obb,
+            radius=float(bbox_radius),
+            color=(0.0, 0.0, 1.0),  # BLUE fixed
         )
 
-
-def _colorize_points_by_cluster_id(
-    pcd: o3d.geometry.PointCloud,
-    cluster_ids: np.ndarray,
-    target_cluster_id: int,
-    *,
-    active_rgb=(1.0, 0.6, 0.1),
-    inactive_rgb=(0.05, 0.05, 0.05),
-) -> o3d.geometry.PointCloud:
-    pts = np.asarray(pcd.points)
-    colors = np.zeros((pts.shape[0], 3), dtype=np.float64)
-    colors[:] = np.array(inactive_rgb, dtype=np.float64)
-    mask = (cluster_ids == target_cluster_id)
-    colors[mask] = np.array(active_rgb, dtype=np.float64)
-    out = o3d.geometry.PointCloud()
-    out.points = o3d.utility.Vector3dVector(pts)
-    out.colors = o3d.utility.Vector3dVector(colors)
-    return out
+        geoms = [pcd] + bbox_meshes
+        title = f"HeatMap + PCA BBox (BLUE) | {label} | used={rec.get('points_used')} | min_heat={rec.get('min_heat')}"
+        print("[VIS] opening:", title)
+        o3d.visualization.draw_geometries(geoms, window_name=title)

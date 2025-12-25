@@ -23,8 +23,8 @@ if os.path.basename(PLY_PATH) == "merged_labeled_clusters.ply":
 else:
     CLUSTER_IDS_NPY = os.path.join(CLUSTERS_DIR, "final_cluster_ids.npy")
 
-# Output directory set to sketch/dsl_optimize/heat_map folder
-OUT_DIR = os.path.join(DSL_DIR, "heat_map")
+ITER_ID = 0
+OUT_DIR = os.path.join(DSL_DIR, "optimize_iteration", f"iter_{ITER_ID:03d}")
 
 
 def main():
@@ -41,8 +41,7 @@ def main():
     if not os.path.exists(CLUSTER_IDS_NPY):
         raise FileNotFoundError(f"Missing cluster ids npy: {CLUSTER_IDS_NPY}")
 
-    # Directly set the output directory for heatmaps (ply files)
-    heat_dir = OUT_DIR  # No .json summary, only .ply heatmaps
+    heat_dir = os.path.join(OUT_DIR, "heat_map")
     build_label_heatmaps(
         primitives_json_path=PRIMITIVES_JSON,
         ply_path=PLY_PATH,
