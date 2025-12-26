@@ -3,2295 +3,555 @@
   "in_bbox_json": "/Users/yuanboli/Documents/GitHub/sketch_lib/controlNet_process/sketch/dsl_optimize/optimize_iteration/iter_000/heat_map/pca_bboxes/pca_bboxes.json",
   "out_bbox_json": "/Users/yuanboli/Documents/GitHub/sketch_lib/controlNet_process/sketch/dsl_optimize/optimize_iteration/iter_000/heat_map/pca_bboxes/pca_bboxes_optimized.json",
   "labels": 17,
-  "init": {
-    "objective": 43.80318160562538,
-    "overlap_norm": 43.80318160562538,
-    "inter_sum": 0.29032827710603787,
-    "overlap_pairs": 78
-  },
+  "heat_gamma": 2.0,
   "final": {
-    "objective": 19.723586425600978,
-    "overlap_norm": 15.528991175451129,
-    "inter_sum": 0.033135926174408456,
-    "overlap_pairs": 50,
-    "value_loss_norm": 3.8221372991840354,
-    "shrink_penalty_norm": 7.449159019316233
+    "overlap_L": 0.32425985360606263,
+    "value_L": 0.02604179229445675,
+    "core_loss": 0.3503016459005194,
+    "overlap_pairs": 69,
+    "inter_sum": 0.17532738830294609
   },
-  "per_label": [
-    {
-      "label": "fender_0_0",
-      "value0": 16741.0546875,
-      "value": 9222.837890625,
-      "value_loss": 7518.216796875,
-      "extent0": [
-        0.26921897820938734,
-        0.2832851554017725,
-        0.2862512337309804
-      ],
-      "extent": [
-        0.11321282357088537,
-        0.1267318907205552,
-        0.2862512337309804
-      ]
-    },
-    {
-      "label": "handlebar_0_0",
-      "value0": 3836.01953125,
-      "value": 3836.01953125,
-      "value_loss": 0.0,
-      "extent0": [
-        0.2983305688161183,
-        0.10884667954813036,
-        0.05624839715874541
-      ],
-      "extent": [
-        0.2983305688161183,
-        0.10884667954813036,
-        0.05624839715874541
-      ]
-    },
-    {
-      "label": "headlight_0_0",
-      "value0": 1167.5078125,
-      "value": 1167.5078125,
-      "value_loss": 0.0,
-      "extent0": [
-        0.0981376057208887,
-        0.08682591947726315,
-        0.05838414839846316
-      ],
-      "extent": [
-        0.0981376057208887,
-        0.08682591947726315,
-        0.05838414839846316
-      ]
-    },
-    {
-      "label": "seat_0_0",
-      "value0": 4250.34130859375,
-      "value": 3687.84130859375,
-      "value_loss": 562.5,
-      "extent0": [
-        0.2662055372737671,
-        0.14232850381555995,
-        0.09947669196409634
-      ],
-      "extent": [
-        0.10858723372199236,
-        0.14232850381555995,
-        0.09947669196409634
-      ]
-    },
-    {
-      "label": "unknown",
-      "value0": 3168.9921875,
-      "value": 3168.9921875,
-      "value_loss": 0.0,
-      "extent0": [
-        0.20259669133656547,
-        0.09578913079688756,
-        0.08522481249704197
-      ],
-      "extent": [
-        0.20259669133656547,
-        0.09578913079688756,
-        0.08522481249704197
-      ]
-    },
-    {
-      "label": "unknown_0_0",
-      "value0": 9695.533203125,
-      "value": 941.0,
-      "value_loss": 8754.533203125,
-      "extent0": [
-        0.230185265602584,
-        0.17361415630424215,
-        0.21251219044655573
-      ],
-      "extent": [
-        0.15403392302006463,
-        0.06451055700750945,
-        0.06977264912297823
-      ]
-    },
-    {
-      "label": "unknown_10_0",
-      "value0": 245.00392150878906,
-      "value": 245.00392150878906,
-      "value_loss": 0.0,
-      "extent0": [
-        0.09086930657394846,
-        0.07368169000291325,
-        0.059809718931618336
-      ],
-      "extent": [
-        0.09086930657394846,
-        0.07368169000291325,
-        0.059809718931618336
-      ]
-    },
-    {
-      "label": "unknown_1_0",
-      "value0": 7048.015625,
-      "value": 3625.837158203125,
-      "value_loss": 3422.178466796875,
-      "extent0": [
-        0.2727755486818828,
-        0.19020087731984275,
-        0.1651274084503157
-      ],
-      "extent": [
-        0.06572734214479338,
-        0.10898411408359263,
-        0.137152183420297
-      ]
-    },
-    {
-      "label": "unknown_2_0",
-      "value0": 128.67059326171875,
-      "value": 128.67059326171875,
-      "value_loss": 0.0,
-      "extent0": [
-        0.10396134766976564,
-        0.033304126100248965,
-        0.025215779200133074
-      ],
-      "extent": [
-        0.10396134766976564,
-        0.033304126100248965,
-        0.025215779200133074
-      ]
-    },
-    {
-      "label": "unknown_3_0",
-      "value0": 766.50390625,
-      "value": 766.50390625,
-      "value_loss": 0.0,
-      "extent0": [
-        0.13861812176583665,
-        0.07749553451138416,
-        0.023671642583537524
-      ],
-      "extent": [
-        0.13861812176583665,
-        0.07749553451138416,
-        0.023671642583537524
-      ]
-    },
-    {
-      "label": "unknown_4_0",
-      "value0": 100.00784301757812,
-      "value": 100.00784301757812,
-      "value_loss": 0.0,
-      "extent0": [
-        0.07441656429038802,
-        0.03721269692148028,
-        0.02163841680223575
-      ],
-      "extent": [
-        0.07441656429038802,
-        0.03721269692148028,
-        0.02163841680223575
-      ]
-    },
-    {
-      "label": "unknown_6_0",
-      "value0": 21800.1875,
-      "value": 2679.294189453125,
-      "value_loss": 19120.893310546875,
-      "extent0": [
-        0.366177538948755,
-        0.2938516261648225,
-        0.15375778978090102
-      ],
-      "extent": [
-        0.054926630842313244,
-        0.2938516261648225,
-        0.12783103441212523
-      ]
-    },
-    {
-      "label": "unknown_7_0",
-      "value0": 612.0,
-      "value": 612.0,
-      "value_loss": 0.0,
-      "extent0": [
-        0.10909390011610262,
-        0.09782558445215836,
-        0.040220281031167246
-      ],
-      "extent": [
-        0.10909390011610262,
-        0.09782558445215836,
-        0.040220281031167246
-      ]
-    },
-    {
-      "label": "unknown_8_0",
-      "value0": 551.1666870117188,
-      "value": 551.1666870117188,
-      "value_loss": 0.0,
-      "extent0": [
-        0.140341858771873,
-        0.10438038492663082,
-        0.06666832853716612
-      ],
-      "extent": [
-        0.140341858771873,
-        0.10438038492663082,
-        0.06666832853716612
-      ]
-    },
-    {
-      "label": "unknown_9_0",
-      "value0": 567.00390625,
-      "value": 567.00390625,
-      "value_loss": 0.0,
-      "extent0": [
-        0.13776840752291028,
-        0.09903907743033849,
-        0.09294993733844864
-      ],
-      "extent": [
-        0.13776840752291028,
-        0.09903907743033849,
-        0.09294993733844864
-      ]
-    },
-    {
-      "label": "wheel_0_0",
-      "value0": 8977.861328125,
-      "value": 1359.170654296875,
-      "value_loss": 7618.690673828125,
-      "extent0": [
-        0.36554817310863297,
-        0.18389983294069207,
-        0.10458807430850968
-      ],
-      "extent": [
-        0.12767860499722886,
-        0.13091588230044607,
-        0.09241402245899914
-      ]
-    },
-    {
-      "label": "wheel_1_0",
-      "value0": 7114.7158203125,
-      "value": 6214.6826171875,
-      "value_loss": 900.033203125,
-      "extent0": [
-        0.2175863030663745,
-        0.14546078582400626,
-        0.1217078963261039
-      ],
-      "extent": [
-        0.08601008112457638,
-        0.13673313867456588,
-        0.1217078963261039
-      ]
-    }
-  ],
   "history": [
     {
       "iter": 0,
       "step_frac": 0.06,
-      "objective": 43.80318160562538,
-      "overlap_norm": 43.80318160562538,
-      "inter_sum": 0.29032827710603787,
+      "overlap_L": 0.45851390554175425,
+      "value_L": 0.0,
+      "core_loss": 0.45851390554175425,
       "overlap_pairs": 78,
-      "value_loss_norm": 0.0,
-      "shrink_penalty_norm": 0.0
+      "inter_sum": 0.29032827710603787
     },
     {
       "iter": 1,
       "step_frac": 0.06,
-      "objective": 43.43706531175236,
-      "overlap_norm": 43.43406531175236,
-      "inter_sum": 0.28606345301999253,
+      "overlap_L": 0.4477007942964906,
+      "value_L": 0.0007453430361301454,
+      "core_loss": 0.4484461373326208,
       "overlap_pairs": 78,
-      "value_loss_norm": 0.0,
-      "shrink_penalty_norm": 0.06000000000000012
+      "inter_sum": 0.28348147939706975
     },
     {
       "iter": 2,
       "step_frac": 0.06,
-      "objective": 43.10189922366309,
-      "overlap_norm": 43.09579545584724,
-      "inter_sum": 0.2820243111399248,
+      "overlap_L": 0.43915663502561886,
+      "value_L": 0.0009722742716851857,
+      "core_loss": 0.440128909297304,
       "overlap_pairs": 78,
-      "value_loss_norm": 0.000283767815852423,
-      "shrink_penalty_norm": 0.11640000000000013
+      "inter_sum": 0.2770141314949295
     },
     {
       "iter": 3,
       "step_frac": 0.06,
-      "objective": 42.80036705316626,
-      "overlap_norm": 42.79090306581078,
-      "inter_sum": 0.27821719958990704,
-      "overlap_pairs": 77,
-      "value_loss_norm": 0.0009931873554834805,
-      "shrink_penalty_norm": 0.1694160000000002
+      "overlap_L": 0.43248904375265396,
+      "value_L": 0.0010298347575832332,
+      "core_loss": 0.4335188785102372,
+      "overlap_pairs": 78,
+      "inter_sum": 0.27225455506920876
     },
     {
       "iter": 4,
       "step_frac": 0.06,
-      "objective": 42.57165190943063,
-      "overlap_norm": 42.55714225973247,
-      "inter_sum": 0.2747902103200023,
-      "overlap_pairs": 76,
-      "value_loss_norm": 0.0035470976981552874,
-      "shrink_penalty_norm": 0.21925104000000023
+      "overlap_L": 0.4252515119631578,
+      "value_L": 0.0013176171842704042,
+      "core_loss": 0.4265691291474282,
+      "overlap_pairs": 78,
+      "inter_sum": 0.2660763008965041
     },
     {
       "iter": 5,
       "step_frac": 0.06,
-      "objective": 42.33845372393547,
-      "overlap_norm": 42.31997016241617,
-      "inter_sum": 0.27146387316408405,
-      "overlap_pairs": 76,
-      "value_loss_norm": 0.0051787626393067195,
-      "shrink_penalty_norm": 0.2660959776000002
+      "overlap_L": 0.4181611609559399,
+      "value_L": 0.0013418231827296084,
+      "core_loss": 0.41950298413866954,
+      "overlap_pairs": 78,
+      "inter_sum": 0.2607778108752366
     },
     {
       "iter": 6,
       "step_frac": 0.06,
-      "objective": 42.161914329731275,
-      "overlap_norm": 42.089689644282416,
-      "inter_sum": 0.26777110537582116,
-      "overlap_pairs": 76,
-      "value_loss_norm": 0.05591988656886008,
-      "shrink_penalty_norm": 0.3260959776000002
+      "overlap_L": 0.4121092892922343,
+      "value_L": 0.002627790632024258,
+      "core_loss": 0.41473707992425857,
+      "overlap_pairs": 78,
+      "inter_sum": 0.25664107493952104
     },
     {
       "iter": 7,
       "step_frac": 0.06,
-      "objective": 41.960419628663686,
-      "overlap_norm": 41.83811196454205,
-      "inter_sum": 0.2640635037287048,
-      "overlap_pairs": 75,
-      "value_loss_norm": 0.10318286524163525,
-      "shrink_penalty_norm": 0.38249597760000026
+      "overlap_L": 0.4071925176986815,
+      "value_L": 0.002937761890151451,
+      "core_loss": 0.4101302795888329,
+      "overlap_pairs": 78,
+      "inter_sum": 0.2517384831708878
     },
     {
       "iter": 8,
       "step_frac": 0.06,
-      "objective": 41.74450620207121,
-      "overlap_norm": 41.617526002943706,
-      "inter_sum": 0.2604809288448954,
-      "overlap_pairs": 75,
-      "value_loss_norm": 0.10485540024750359,
-      "shrink_penalty_norm": 0.4424959776000003
+      "overlap_L": 0.40070333416141596,
+      "value_L": 0.003982654157935644,
+      "core_loss": 0.4046859883193516,
+      "overlap_pairs": 78,
+      "inter_sum": 0.24427633383261582
     },
     {
       "iter": 9,
       "step_frac": 0.06,
-      "objective": 41.57184371059953,
-      "overlap_norm": 41.39580802530247,
-      "inter_sum": 0.25709952817986687,
-      "overlap_pairs": 73,
-      "value_loss_norm": 0.15126008641706062,
-      "shrink_penalty_norm": 0.4955119776000003
+      "overlap_L": 0.3959345691872009,
+      "value_L": 0.004486988749588634,
+      "core_loss": 0.4004215579367895,
+      "overlap_pairs": 77,
+      "inter_sum": 0.23957063865884642
     },
     {
       "iter": 10,
       "step_frac": 0.06,
-      "objective": 41.356561899728874,
-      "overlap_norm": 41.176621895469495,
-      "inter_sum": 0.2541287502903217,
-      "overlap_pairs": 73,
-      "value_loss_norm": 0.15296269331217516,
-      "shrink_penalty_norm": 0.5395462189440003
+      "overlap_L": 0.3924001123353488,
+      "value_L": 0.004486988749588657,
+      "core_loss": 0.39688710108493747,
+      "overlap_pairs": 77,
+      "inter_sum": 0.23652038462184624
     },
     {
       "iter": 11,
       "step_frac": 0.06,
-      "objective": 41.18909566341188,
-      "overlap_norm": 41.0061556591525,
-      "inter_sum": 0.25121309140451975,
-      "overlap_pairs": 73,
-      "value_loss_norm": 0.15296269331217516,
-      "shrink_penalty_norm": 0.5995462189440004
+      "overlap_L": 0.3867784955423741,
+      "value_L": 0.004973125886513298,
+      "core_loss": 0.39175162142888736,
+      "overlap_pairs": 77,
+      "inter_sum": 0.23313193766611576
     },
     {
       "iter": 12,
       "step_frac": 0.06,
-      "objective": 40.98436761107893,
-      "overlap_norm": 40.79642733797262,
-      "inter_sum": 0.2479128328116589,
-      "overlap_pairs": 73,
-      "value_loss_norm": 0.15514296215911066,
-      "shrink_penalty_norm": 0.6559462189440004
+      "overlap_L": 0.38479442383455786,
+      "value_L": 0.00506994988035007,
+      "core_loss": 0.38986437371490795,
+      "overlap_pairs": 77,
+      "inter_sum": 0.23023585454582216
     },
     {
       "iter": 13,
       "step_frac": 0.06,
-      "objective": 40.82954759225466,
-      "overlap_norm": 40.63878731914835,
-      "inter_sum": 0.24524860971718646,
-      "overlap_pairs": 73,
-      "value_loss_norm": 0.15514296215911066,
-      "shrink_penalty_norm": 0.7123462189440004
+      "overlap_L": 0.38261734203654313,
+      "value_L": 0.005371852472564653,
+      "core_loss": 0.3879891945091078,
+      "overlap_pairs": 77,
+      "inter_sum": 0.22740991547722203
     },
     {
       "iter": 14,
       "step_frac": 0.06,
-      "objective": 40.52189325640402,
-      "overlap_norm": 40.32813298329771,
-      "inter_sum": 0.24069471881148027,
-      "overlap_pairs": 73,
-      "value_loss_norm": 0.15514296215911066,
-      "shrink_penalty_norm": 0.7723462189440006
+      "overlap_L": 0.3768315804341656,
+      "value_L": 0.005626687845633165,
+      "core_loss": 0.38245826827979873,
+      "overlap_pairs": 77,
+      "inter_sum": 0.22311530425571005
     },
     {
       "iter": 15,
       "step_frac": 0.06,
-      "objective": 40.396718774732115,
-      "overlap_norm": 40.15249214074916,
-      "inter_sum": 0.2375507375375291,
-      "overlap_pairs": 73,
-      "value_loss_norm": 0.2031175710357545,
-      "shrink_penalty_norm": 0.8221812589440006
+      "overlap_L": 0.37504383713765005,
+      "value_L": 0.005675123620815393,
+      "core_loss": 0.38071896075846545,
+      "overlap_pairs": 77,
+      "inter_sum": 0.2201493591940112
     },
     {
       "iter": 16,
       "step_frac": 0.06,
-      "objective": 40.19618816341506,
-      "overlap_norm": 39.948086194874236,
-      "inter_sum": 0.23449784820134825,
-      "overlap_pairs": 73,
-      "value_loss_norm": 0.20434210559362243,
-      "shrink_penalty_norm": 0.8751972589440006
+      "overlap_L": 0.37149097270180276,
+      "value_L": 0.007670101330287518,
+      "core_loss": 0.37916107403209026,
+      "overlap_pairs": 77,
+      "inter_sum": 0.21673652791392634
     },
     {
       "iter": 17,
       "step_frac": 0.06,
-      "objective": 40.07224582878338,
-      "overlap_norm": 39.82114386024256,
-      "inter_sum": 0.2323585261285355,
-      "overlap_pairs": 73,
-      "value_loss_norm": 0.20434210559362243,
-      "shrink_penalty_norm": 0.9351972589440006
+      "overlap_L": 0.3667182698078462,
+      "value_L": 0.008058069695603048,
+      "core_loss": 0.37477633950344924,
+      "overlap_pairs": 77,
+      "inter_sum": 0.21395202134441887
     },
     {
       "iter": 18,
       "step_frac": 0.06,
-      "objective": 39.94643019224824,
-      "overlap_norm": 39.689929011670955,
-      "inter_sum": 0.23024087496183054,
-      "overlap_pairs": 73,
-      "value_loss_norm": 0.20692131763009297,
-      "shrink_penalty_norm": 0.9915972589440009
+      "overlap_L": 0.3618499722381875,
+      "value_L": 0.008898555753534926,
+      "core_loss": 0.3707485279917224,
+      "overlap_pairs": 76,
+      "inter_sum": 0.21031470618676398
     },
     {
       "iter": 19,
       "step_frac": 0.06,
-      "objective": 39.70167809573179,
-      "overlap_norm": 39.4423267627961,
-      "inter_sum": 0.2272792885953368,
-      "overlap_pairs": 73,
-      "value_loss_norm": 0.20727971798849334,
-      "shrink_penalty_norm": 1.0414322989440008
+      "overlap_L": 0.3579975538315788,
+      "value_L": 0.00932182453302965,
+      "core_loss": 0.36731937836460843,
+      "overlap_pairs": 75,
+      "inter_sum": 0.20702396836705647
     },
     {
       "iter": 20,
       "step_frac": 0.06,
-      "objective": 39.57873140306342,
-      "overlap_norm": 39.30729183387275,
-      "inter_sum": 0.2251863421319031,
-      "overlap_pairs": 73,
-      "value_loss_norm": 0.2167171542434698,
-      "shrink_penalty_norm": 1.0944482989440008
+      "overlap_L": 0.3566811108039544,
+      "value_L": 0.00932182453302965,
+      "core_loss": 0.3660029353369841,
+      "overlap_pairs": 75,
+      "inter_sum": 0.20511515001122868
     },
     {
       "iter": 21,
       "step_frac": 0.06,
-      "objective": 39.46794728063305,
-      "overlap_norm": 39.139656694807506,
-      "inter_sum": 0.22276613199084017,
-      "overlap_pairs": 73,
-      "value_loss_norm": 0.27091737087834494,
-      "shrink_penalty_norm": 1.1474642989440007
+      "overlap_L": 0.3520964330273273,
+      "value_L": 0.011115421783178276,
+      "core_loss": 0.36321185481050555,
+      "overlap_pairs": 75,
+      "inter_sum": 0.201749407412919
     },
     {
       "iter": 22,
       "step_frac": 0.06,
-      "objective": 39.194071161489425,
-      "overlap_norm": 38.86313966181854,
-      "inter_sum": 0.21991568836745592,
+      "overlap_L": 0.34915278691967006,
+      "value_L": 0.011928747334565195,
+      "core_loss": 0.3610815342542352,
       "overlap_pairs": 73,
-      "value_loss_norm": 0.2712160378436786,
-      "shrink_penalty_norm": 1.194309236544001
+      "inter_sum": 0.19900584984478203
     },
     {
       "iter": 23,
       "step_frac": 0.06,
-      "objective": 39.08262866057752,
-      "overlap_norm": 38.69140520817549,
-      "inter_sum": 0.21687121785397656,
+      "overlap_L": 0.3470358354791545,
+      "value_L": 0.013226457809120068,
+      "core_loss": 0.3602622932882746,
       "overlap_pairs": 73,
-      "value_loss_norm": 0.32916574369483237,
-      "shrink_penalty_norm": 1.2411541741440009
+      "inter_sum": 0.19681746709551892
     },
     {
       "iter": 24,
       "step_frac": 0.06,
-      "objective": 38.79756798037927,
-      "overlap_norm": 38.39595034103953,
-      "inter_sum": 0.2128503597210436,
-      "overlap_pairs": 73,
-      "value_loss_norm": 0.3367399306325361,
-      "shrink_penalty_norm": 1.2975541741440009
+      "overlap_L": 0.34361037732996963,
+      "value_L": 0.014403498262462719,
+      "core_loss": 0.35801387559243236,
+      "overlap_pairs": 72,
+      "inter_sum": 0.19419233883846315
     },
     {
       "iter": 25,
       "step_frac": 0.06,
-      "objective": 38.675619177490944,
-      "overlap_norm": 38.271001469521444,
-      "inter_sum": 0.2101732082504905,
-      "overlap_pairs": 73,
-      "value_loss_norm": 0.33673999926229764,
-      "shrink_penalty_norm": 1.357554174144001
+      "overlap_L": 0.3416714121833476,
+      "value_L": 0.015749442077875805,
+      "core_loss": 0.35742085426122344,
+      "overlap_pairs": 72,
+      "inter_sum": 0.1913465988311108
     },
     {
       "iter": 26,
       "step_frac": 0.06,
-      "objective": 38.411286068639484,
-      "overlap_norm": 38.00372989786604,
-      "inter_sum": 0.20755240292122298,
-      "overlap_pairs": 73,
-      "value_loss_norm": 0.33747674999904836,
-      "shrink_penalty_norm": 1.401588415488001
+      "overlap_L": 0.33889550078582914,
+      "value_L": 0.016981527401180637,
+      "core_loss": 0.3558770281870098,
+      "overlap_pairs": 72,
+      "inter_sum": 0.18879684610511363
     },
     {
       "iter": 27,
       "step_frac": 0.06,
-      "objective": 38.30510285531001,
-      "overlap_norm": 37.874992133804945,
-      "inter_sum": 0.2056705731814333,
-      "overlap_pairs": 73,
-      "value_loss_norm": 0.3575395487306647,
-      "shrink_penalty_norm": 1.451423455488001
+      "overlap_L": 0.3348804426855852,
+      "value_L": 0.019839179997139085,
+      "core_loss": 0.3547196226827243,
+      "overlap_pairs": 72,
+      "inter_sum": 0.18605380552802794
     },
     {
       "iter": 28,
       "step_frac": 0.06,
-      "objective": 37.993575908546205,
-      "overlap_norm": 37.558528491497555,
-      "inter_sum": 0.20304746674603044,
-      "overlap_pairs": 73,
-      "value_loss_norm": 0.3604066349310842,
-      "shrink_penalty_norm": 1.492815642351361
+      "overlap_L": 0.3324145718353927,
+      "value_L": 0.020759680328557108,
+      "core_loss": 0.3531742521639498,
+      "overlap_pairs": 72,
+      "inter_sum": 0.18361568178391752
     },
     {
       "iter": 29,
       "step_frac": 0.06,
-      "objective": 37.89967059924585,
-      "overlap_norm": 37.39556442618256,
-      "inter_sum": 0.20023258370032757,
-      "overlap_pairs": 73,
-      "value_loss_norm": 0.42726367887852734,
-      "shrink_penalty_norm": 1.536849883695361
+      "overlap_L": 0.32948941142381427,
+      "value_L": 0.023492383779966774,
+      "core_loss": 0.35298179520378103,
+      "overlap_pairs": 70,
+      "inter_sum": 0.1800353923075399
     },
     {
       "iter": 30,
       "step_frac": 0.06,
-      "objective": 37.79656902361355,
-      "overlap_norm": 37.28964285055026,
-      "inter_sum": 0.19803070298297068,
-      "overlap_pairs": 72,
-      "value_loss_norm": 0.42726367887852734,
-      "shrink_penalty_norm": 1.593249883695361
+      "overlap_L": 0.32948941142381427,
+      "value_L": 0.023492383779966774,
+      "core_loss": 0.35298179520378103,
+      "overlap_pairs": 70,
+      "inter_sum": 0.1800353923075399
     },
     {
       "iter": 31,
       "step_frac": 0.06,
-      "objective": 37.69099166825975,
-      "overlap_norm": 37.12241596179874,
-      "inter_sum": 0.19520178356206483,
-      "overlap_pairs": 72,
-      "value_loss_norm": 0.4868436029330796,
-      "shrink_penalty_norm": 1.634642070558721
+      "overlap_L": 0.32948941142381427,
+      "value_L": 0.023492383779966774,
+      "core_loss": 0.35298179520378103,
+      "overlap_pairs": 70,
+      "inter_sum": 0.1800353923075399
     },
     {
       "iter": 32,
       "step_frac": 0.06,
-      "objective": 37.48704696011614,
-      "overlap_norm": 36.91512468914062,
-      "inter_sum": 0.1928455959779569,
-      "overlap_pairs": 72,
-      "value_loss_norm": 0.48812055810441546,
-      "shrink_penalty_norm": 1.676034257422081
+      "overlap_L": 0.32948941142381427,
+      "value_L": 0.023492383779966774,
+      "core_loss": 0.35298179520378103,
+      "overlap_pairs": 70,
+      "inter_sum": 0.1800353923075399
     },
     {
       "iter": 33,
       "step_frac": 0.06,
-      "objective": 37.2037597698382,
-      "overlap_norm": 36.61790548742685,
-      "inter_sum": 0.19052199834880587,
-      "overlap_pairs": 72,
-      "value_loss_norm": 0.5001071367576608,
-      "shrink_penalty_norm": 1.7149429130736393
+      "overlap_L": 0.32948941142381427,
+      "value_L": 0.023492383779966774,
+      "core_loss": 0.35298179520378103,
+      "overlap_pairs": 70,
+      "inter_sum": 0.1800353923075399
     },
     {
       "iter": 34,
       "step_frac": 0.06,
-      "objective": 37.03230082601489,
-      "overlap_norm": 36.35841813831797,
-      "inter_sum": 0.18721631775030997,
-      "overlap_pairs": 72,
-      "value_loss_norm": 0.585484742043232,
-      "shrink_penalty_norm": 1.7679589130736395
+      "overlap_L": 0.32948941142381427,
+      "value_L": 0.023492383779966774,
+      "core_loss": 0.35298179520378103,
+      "overlap_pairs": 70,
+      "inter_sum": 0.1800353923075399
     },
     {
       "iter": 35,
-      "step_frac": 0.06,
-      "objective": 36.925612900670785,
-      "overlap_norm": 36.23199120256331,
-      "inter_sum": 0.1855050808191517,
-      "overlap_pairs": 72,
-      "value_loss_norm": 0.6028815055737963,
-      "shrink_penalty_norm": 1.8148038506736395
+      "step_frac": 0.03,
+      "overlap_L": 0.32948941142381427,
+      "value_L": 0.023492383779966774,
+      "core_loss": 0.35298179520378103,
+      "overlap_pairs": 70,
+      "inter_sum": 0.1800353923075399
     },
     {
       "iter": 36,
-      "step_frac": 0.06,
-      "objective": 36.82232931211679,
-      "overlap_norm": 36.07480000630279,
-      "inter_sum": 0.1828859977638205,
-      "overlap_pairs": 72,
-      "value_loss_norm": 0.6548436804977504,
-      "shrink_penalty_norm": 1.853712506325198
+      "step_frac": 0.03,
+      "overlap_L": 0.3283445527063331,
+      "value_L": 0.024611911208704974,
+      "core_loss": 0.3529564639150381,
+      "overlap_pairs": 70,
+      "inter_sum": 0.17906493654714112
     },
     {
       "iter": 37,
-      "step_frac": 0.06,
-      "objective": 36.729147629951,
-      "overlap_norm": 35.96026817608536,
-      "inter_sum": 0.18114751582612995,
-      "overlap_pairs": 72,
-      "value_loss_norm": 0.6739921164821852,
-      "shrink_penalty_norm": 1.897746747669198
+      "step_frac": 0.03,
+      "overlap_L": 0.32712723679956957,
+      "value_L": 0.024956510493207306,
+      "core_loss": 0.35208374729277686,
+      "overlap_pairs": 70,
+      "inter_sum": 0.1778967294283727
     },
     {
       "iter": 38,
-      "step_frac": 0.06,
-      "objective": 36.4536136055835,
-      "overlap_norm": 35.666249803246586,
-      "inter_sum": 0.17911533423951356,
-      "overlap_pairs": 72,
-      "value_loss_norm": 0.6906477581378268,
-      "shrink_penalty_norm": 1.934320883981663
+      "step_frac": 0.03,
+      "overlap_L": 0.32712723679956957,
+      "value_L": 0.024956510493207306,
+      "core_loss": 0.35208374729277686,
+      "overlap_pairs": 70,
+      "inter_sum": 0.1778967294283727
     },
     {
       "iter": 39,
-      "step_frac": 0.06,
-      "objective": 36.2937734955623,
-      "overlap_norm": 35.49864702021784,
-      "inter_sum": 0.17708592023079925,
+      "step_frac": 0.03,
+      "overlap_L": 0.32712723679956957,
+      "value_L": 0.024956510493207306,
+      "core_loss": 0.35208374729277686,
       "overlap_pairs": 70,
-      "value_loss_norm": 0.6964649983628015,
-      "shrink_penalty_norm": 1.9732295396332216
+      "inter_sum": 0.1778967294283727
     },
     {
       "iter": 40,
-      "step_frac": 0.06,
-      "objective": 36.19480240971816,
-      "overlap_norm": 35.352221455274005,
-      "inter_sum": 0.1746494488375283,
+      "step_frac": 0.03,
+      "overlap_L": 0.32712723679956957,
+      "value_L": 0.024956510493207306,
+      "core_loss": 0.35208374729277686,
       "overlap_pairs": 70,
-      "value_loss_norm": 0.7420907706468701,
-      "shrink_penalty_norm": 2.0098036759456868
+      "inter_sum": 0.1778967294283727
     },
     {
       "iter": 41,
-      "step_frac": 0.06,
-      "objective": 36.10426435814577,
-      "overlap_norm": 35.25903260370162,
-      "inter_sum": 0.17286394163994984,
+      "step_frac": 0.03,
+      "overlap_L": 0.32712723679956957,
+      "value_L": 0.024956510493207306,
+      "core_loss": 0.35208374729277686,
       "overlap_pairs": 70,
-      "value_loss_norm": 0.7420907706468701,
-      "shrink_penalty_norm": 2.0628196759456867
+      "inter_sum": 0.1778967294283727
     },
     {
       "iter": 42,
-      "step_frac": 0.06,
-      "objective": 35.96501832513764,
-      "overlap_norm": 35.109373887448335,
-      "inter_sum": 0.17095764729280136,
+      "step_frac": 0.03,
+      "overlap_L": 0.32712723679956957,
+      "value_L": 0.024956510493207306,
+      "core_loss": 0.35208374729277686,
       "overlap_pairs": 70,
-      "value_loss_norm": 0.7506747470764059,
-      "shrink_penalty_norm": 2.0993938122581515
+      "inter_sum": 0.1778967294283727
     },
     {
       "iter": 43,
-      "step_frac": 0.06,
-      "objective": 35.681352475151435,
-      "overlap_norm": 34.82118483593892,
-      "inter_sum": 0.16880916195259063,
+      "step_frac": 0.015,
+      "overlap_L": 0.32712723679956957,
+      "value_L": 0.024956510493207306,
+      "core_loss": 0.35208374729277686,
       "overlap_pairs": 70,
-      "value_loss_norm": 0.7521979485996074,
-      "shrink_penalty_norm": 2.1593938122581515
+      "inter_sum": 0.1778967294283727
     },
     {
       "iter": 44,
-      "step_frac": 0.06,
-      "objective": 35.58089307140892,
-      "overlap_norm": 34.69640904885756,
-      "inter_sum": 0.16725379866427942,
+      "step_frac": 0.015,
+      "overlap_L": 0.32687550720863107,
+      "value_L": 0.02498071649166651,
+      "core_loss": 0.35185622370029757,
       "overlap_pairs": 70,
-      "value_loss_norm": 0.7744447225952841,
-      "shrink_penalty_norm": 2.200785999121511
+      "inter_sum": 0.17754641317617303
     },
     {
       "iter": 45,
-      "step_frac": 0.06,
-      "objective": 35.42879527410892,
-      "overlap_norm": 34.53497785385192,
-      "inter_sum": 0.16550277864096088,
-      "overlap_pairs": 69,
-      "value_loss_norm": 0.7820591358942401,
-      "shrink_penalty_norm": 2.235165687255228
+      "step_frac": 0.015,
+      "overlap_L": 0.3266404485661169,
+      "value_L": 0.025106811825706152,
+      "core_loss": 0.3517472603918231,
+      "overlap_pairs": 70,
+      "inter_sum": 0.17703106479474248
     },
     {
       "iter": 46,
-      "step_frac": 0.06,
-      "objective": 35.3324584252603,
-      "overlap_norm": 34.41886056322717,
-      "inter_sum": 0.16408386522400417,
-      "overlap_pairs": 69,
-      "value_loss_norm": 0.7998941448877903,
-      "shrink_penalty_norm": 2.2740743429067867
+      "step_frac": 0.015,
+      "overlap_L": 0.3257947991578241,
+      "value_L": 0.025448745332206254,
+      "core_loss": 0.35124354449003037,
+      "overlap_pairs": 70,
+      "inter_sum": 0.17646314251573236
     },
     {
       "iter": 47,
-      "step_frac": 0.06,
-      "objective": 35.20091146070789,
-      "overlap_norm": 34.27638066385915,
-      "inter_sum": 0.16248737381184797,
-      "overlap_pairs": 68,
-      "value_loss_norm": 0.8092112343611129,
-      "shrink_penalty_norm": 2.3063912497524806
+      "step_frac": 0.015,
+      "overlap_L": 0.324947538457383,
+      "value_L": 0.0257755263114055,
+      "core_loss": 0.3507230647687885,
+      "overlap_pairs": 70,
+      "inter_sum": 0.17589758912006098
     },
     {
       "iter": 48,
-      "step_frac": 0.06,
-      "objective": 35.10674328120586,
-      "overlap_norm": 34.13809474621266,
-      "inter_sum": 0.1602474845794261,
-      "overlap_pairs": 68,
-      "value_loss_norm": 0.8516099880988961,
-      "shrink_penalty_norm": 2.3407709378861976
+      "step_frac": 0.015,
+      "overlap_L": 0.32425985360606263,
+      "value_L": 0.02604179229445675,
+      "core_loss": 0.3503016459005194,
+      "overlap_pairs": 69,
+      "inter_sum": 0.17532738830294609
     },
     {
       "iter": 49,
-      "step_frac": 0.06,
-      "objective": 34.781173796844186,
-      "overlap_norm": 33.80444872326111,
-      "inter_sum": 0.1582163430506376,
-      "overlap_pairs": 68,
-      "value_loss_norm": 0.856866526688768,
-      "shrink_penalty_norm": 2.3971709378861976
+      "step_frac": 0.015,
+      "overlap_L": 0.32425985360606263,
+      "value_L": 0.02604179229445675,
+      "core_loss": 0.3503016459005194,
+      "overlap_pairs": 69,
+      "inter_sum": 0.17532738830294609
     },
     {
       "iter": 50,
-      "step_frac": 0.06,
-      "objective": 34.65692104908671,
-      "overlap_norm": 33.60186250003827,
-      "inter_sum": 0.1565975230656938,
-      "overlap_pairs": 67,
-      "value_loss_norm": 0.9322000021541326,
-      "shrink_penalty_norm": 2.4571709378861977
+      "step_frac": 0.015,
+      "overlap_L": 0.32425985360606263,
+      "value_L": 0.02604179229445675,
+      "core_loss": 0.3503016459005194,
+      "overlap_pairs": 69,
+      "inter_sum": 0.17532738830294609
     },
     {
       "iter": 51,
-      "step_frac": 0.06,
-      "objective": 34.56073186876142,
-      "overlap_norm": 33.50267331971298,
-      "inter_sum": 0.15441010317388257,
-      "overlap_pairs": 67,
-      "value_loss_norm": 0.9322000021541326,
-      "shrink_penalty_norm": 2.5171709378861977
+      "step_frac": 0.015,
+      "overlap_L": 0.32425985360606263,
+      "value_L": 0.02604179229445675,
+      "core_loss": 0.3503016459005194,
+      "overlap_pairs": 69,
+      "inter_sum": 0.17532738830294609
     },
     {
       "iter": 52,
-      "step_frac": 0.06,
-      "objective": 34.46627606181774,
-      "overlap_norm": 33.32182119413272,
-      "inter_sum": 0.152420354952784,
-      "overlap_pairs": 67,
-      "value_loss_norm": 1.0161045687907098,
-      "shrink_penalty_norm": 2.5670059778861978
+      "step_frac": 0.015,
+      "overlap_L": 0.32425985360606263,
+      "value_L": 0.02604179229445675,
+      "core_loss": 0.3503016459005194,
+      "overlap_pairs": 69,
+      "inter_sum": 0.17532738830294609
     },
     {
       "iter": 53,
-      "step_frac": 0.06,
-      "objective": 34.333731400638506,
-      "overlap_norm": 33.07562244913248,
-      "inter_sum": 0.14973589683858962,
-      "overlap_pairs": 66,
-      "value_loss_norm": 1.1272669006117146,
-      "shrink_penalty_norm": 2.616841017886198
+      "step_frac": 0.015,
+      "overlap_L": 0.32425985360606263,
+      "value_L": 0.02604179229445675,
+      "core_loss": 0.3503016459005194,
+      "overlap_pairs": 69,
+      "inter_sum": 0.17532738830294609
     },
     {
       "iter": 54,
-      "step_frac": 0.06,
-      "objective": 34.24197856613575,
-      "overlap_norm": 32.94387801528016,
-      "inter_sum": 0.14768580284694488,
-      "overlap_pairs": 66,
-      "value_loss_norm": 1.165642654618991,
-      "shrink_penalty_norm": 2.6491579247318917
+      "step_frac": 0.0075,
+      "overlap_L": 0.32425985360606263,
+      "value_L": 0.02604179229445675,
+      "core_loss": 0.3503016459005194,
+      "overlap_pairs": 69,
+      "inter_sum": 0.17532738830294609
     },
     {
       "iter": 55,
-      "step_frac": 0.06,
-      "objective": 34.15310588302223,
-      "overlap_norm": 32.852513580166644,
-      "inter_sum": 0.14616115261481008,
-      "overlap_pairs": 66,
-      "value_loss_norm": 1.165642654618991,
-      "shrink_penalty_norm": 2.6989929647318918
+      "step_frac": 0.0075,
+      "overlap_L": 0.32425985360606263,
+      "value_L": 0.02604179229445675,
+      "core_loss": 0.3503016459005194,
+      "overlap_pairs": 69,
+      "inter_sum": 0.17532738830294609
     },
     {
       "iter": 56,
-      "step_frac": 0.06,
-      "objective": 34.06483933815576,
-      "overlap_norm": 32.71659474797311,
-      "inter_sum": 0.14465053491700122,
-      "overlap_pairs": 66,
-      "value_loss_norm": 1.2102949419460525,
-      "shrink_penalty_norm": 2.758992964731892
+      "step_frac": 0.0075,
+      "overlap_L": 0.32425985360606263,
+      "value_L": 0.02604179229445675,
+      "core_loss": 0.3503016459005194,
+      "overlap_pairs": 69,
+      "inter_sum": 0.17532738830294609
     },
     {
       "iter": 57,
-      "step_frac": 0.06,
-      "objective": 33.87395676261817,
-      "overlap_norm": 32.42555438972683,
-      "inter_sum": 0.14215235919146468,
-      "overlap_pairs": 66,
-      "value_loss_norm": 1.3081104777747457,
-      "shrink_penalty_norm": 2.805837902331892
+      "step_frac": 0.0075,
+      "overlap_L": 0.32425985360606263,
+      "value_L": 0.02604179229445675,
+      "core_loss": 0.3503016459005194,
+      "overlap_pairs": 69,
+      "inter_sum": 0.17532738830294609
     },
     {
       "iter": 58,
-      "step_frac": 0.06,
-      "objective": 33.775048538701405,
-      "overlap_norm": 32.307249013231825,
-      "inter_sum": 0.14092966503460033,
-      "overlap_pairs": 66,
-      "value_loss_norm": 1.325678923537362,
-      "shrink_penalty_norm": 2.8424120386443565
+      "step_frac": 0.0075,
+      "overlap_L": 0.32425985360606263,
+      "value_L": 0.02604179229445675,
+      "core_loss": 0.3503016459005194,
+      "overlap_pairs": 69,
+      "inter_sum": 0.17532738830294609
     },
     {
       "iter": 59,
-      "step_frac": 0.06,
-      "objective": 33.681988479382376,
-      "overlap_norm": 32.165256184118874,
-      "inter_sum": 0.13955522854032604,
-      "overlap_pairs": 66,
-      "value_loss_norm": 1.3717916933312813,
-      "shrink_penalty_norm": 2.8988120386443565
-    },
-    {
-      "iter": 60,
-      "step_frac": 0.06,
-      "objective": 33.588774437295875,
-      "overlap_norm": 32.020940692339266,
-      "inter_sum": 0.13816830361034244,
-      "overlap_pairs": 66,
-      "value_loss_norm": 1.4202423430243885,
-      "shrink_penalty_norm": 2.951828038644357
-    },
-    {
-      "iter": 61,
-      "step_frac": 0.06,
-      "objective": 33.44900875207737,
-      "overlap_norm": 31.86617721052528,
-      "inter_sum": 0.13677553586904512,
-      "overlap_pairs": 66,
-      "value_loss_norm": 1.4337212449981265,
-      "shrink_penalty_norm": 2.982205931079309
-    },
-    {
-      "iter": 62,
-      "step_frac": 0.06,
-      "objective": 33.35745806986992,
-      "overlap_norm": 31.739986412691675,
-      "inter_sum": 0.13487950579514704,
-      "overlap_pairs": 66,
-      "value_loss_norm": 1.4668424660025332,
-      "shrink_penalty_norm": 3.0125838235142615
-    },
-    {
-      "iter": 63,
-      "step_frac": 0.06,
-      "objective": 32.984263000995185,
-      "overlap_norm": 31.351760623103683,
-      "inter_sum": 0.13305649819649337,
-      "overlap_pairs": 66,
-      "value_loss_norm": 1.479222386715787,
-      "shrink_penalty_norm": 3.065599823514262
-    },
-    {
-      "iter": 64,
-      "step_frac": 0.06,
-      "objective": 32.803524626872836,
-      "overlap_norm": 31.103901568488112,
-      "inter_sum": 0.1308664122967115,
-      "overlap_pairs": 65,
-      "value_loss_norm": 1.544141355141809,
-      "shrink_penalty_norm": 3.109634064858262
-    },
-    {
-      "iter": 65,
-      "step_frac": 0.06,
-      "objective": 32.71692617977019,
-      "overlap_norm": 30.99035128237977,
-      "inter_sum": 0.12911191086810775,
-      "overlap_pairs": 65,
-      "value_loss_norm": 1.5696654332030642,
-      "shrink_penalty_norm": 3.138189283747117
-    },
-    {
-      "iter": 66,
-      "step_frac": 0.06,
-      "objective": 32.625799521939726,
-      "overlap_norm": 30.896404624549305,
-      "inter_sum": 0.12731489379624597,
-      "overlap_pairs": 65,
-      "value_loss_norm": 1.5696654332030642,
-      "shrink_penalty_norm": 3.1945892837471175
-    },
-    {
-      "iter": 67,
-      "step_frac": 0.06,
-      "objective": 32.54106478250334,
-      "overlap_norm": 30.786892776006454,
-      "inter_sum": 0.12567947614970015,
-      "overlap_pairs": 65,
-      "value_loss_norm": 1.5931004470217527,
-      "shrink_penalty_norm": 3.2214311895026415
-    },
-    {
-      "iter": 68,
-      "step_frac": 0.06,
-      "objective": 32.46011791019918,
-      "overlap_norm": 30.683289241204882,
-      "inter_sum": 0.12456418804776498,
-      "overlap_pairs": 65,
-      "value_loss_norm": 1.6140381251124811,
-      "shrink_penalty_norm": 3.255810877636358
-    },
-    {
-      "iter": 69,
-      "step_frac": 0.06,
-      "objective": 32.300729601933824,
-      "overlap_norm": 30.46684422969241,
-      "inter_sum": 0.12264252713455429,
-      "overlap_pairs": 65,
-      "value_loss_norm": 1.669025219016431,
-      "shrink_penalty_norm": 3.297203064499718
-    },
-    {
-      "iter": 70,
-      "step_frac": 0.06,
-      "objective": 32.23134448386845,
-      "overlap_norm": 30.377574364181044,
-      "inter_sum": 0.12111902341717977,
-      "overlap_pairs": 65,
-      "value_loss_norm": 1.6876483968919078,
-      "shrink_penalty_norm": 3.32243445590991
-    },
-    {
-      "iter": 71,
-      "step_frac": 0.06,
-      "objective": 32.14188895631119,
-      "overlap_norm": 30.28546803662379,
-      "inter_sum": 0.11952900895072062,
-      "overlap_pairs": 65,
-      "value_loss_norm": 1.6876483968919078,
-      "shrink_penalty_norm": 3.3754504559099106
-    },
-    {
-      "iter": 72,
-      "step_frac": 0.06,
-      "objective": 31.619983446407247,
-      "overlap_norm": 29.73681394212968,
-      "inter_sum": 0.11779687975345775,
-      "overlap_pairs": 65,
-      "value_loss_norm": 1.7119052294820738,
-      "shrink_penalty_norm": 3.42528549590991
-    },
-    {
-      "iter": 73,
-      "step_frac": 0.06,
-      "objective": 31.505308471251766,
-      "overlap_norm": 29.61979678872396,
-      "inter_sum": 0.11651611337573423,
-      "overlap_pairs": 65,
-      "value_loss_norm": 1.7119051608523124,
-      "shrink_penalty_norm": 3.47213043350991
-    },
-    {
-      "iter": 74,
-      "step_frac": 0.06,
-      "objective": 31.418521279564647,
-      "overlap_norm": 29.48944917879173,
-      "inter_sum": 0.11533145835190572,
-      "overlap_pairs": 65,
-      "value_loss_norm": 1.75297382709742,
-      "shrink_penalty_norm": 3.5219654735099106
-    },
-    {
-      "iter": 75,
-      "step_frac": 0.06,
-      "objective": 31.28147637186004,
-      "overlap_norm": 29.338679858602912,
-      "inter_sum": 0.11410398000106567,
-      "overlap_pairs": 65,
-      "value_loss_norm": 1.7652704786371929,
-      "shrink_penalty_norm": 3.550520692398766
-    },
-    {
-      "iter": 76,
-      "step_frac": 0.06,
-      "objective": 31.202422203288112,
-      "overlap_norm": 29.241476017197463,
-      "inter_sum": 0.11269904994748563,
-      "overlap_pairs": 65,
-      "value_loss_norm": 1.7822342760744283,
-      "shrink_penalty_norm": 3.5742382003243467
-    },
-    {
-      "iter": 77,
-      "step_frac": 0.06,
-      "objective": 31.044975558643426,
-      "overlap_norm": 29.040555625220414,
-      "inter_sum": 0.11101295743658093,
-      "overlap_pairs": 65,
-      "value_loss_norm": 1.823762590624216,
-      "shrink_penalty_norm": 3.613146855975905
-    },
-    {
-      "iter": 78,
-      "step_frac": 0.06,
-      "objective": 30.980778560583026,
-      "overlap_norm": 28.952464481545356,
-      "inter_sum": 0.1100516933294518,
-      "overlap_pairs": 65,
-      "value_loss_norm": 1.846040890896591,
-      "shrink_penalty_norm": 3.645463762821599
-    },
-    {
-      "iter": 79,
-      "step_frac": 0.06,
-      "objective": 30.84477537681489,
-      "overlap_norm": 28.80352886998837,
-      "inter_sum": 0.10879320845746876,
-      "overlap_pairs": 65,
-      "value_loss_norm": 1.8559733186854412,
-      "shrink_penalty_norm": 3.7054637628215987
-    },
-    {
-      "iter": 80,
-      "step_frac": 0.06,
-      "objective": 30.775800308225037,
-      "overlap_norm": 28.695537731823507,
-      "inter_sum": 0.1076959095343974,
-      "overlap_pairs": 65,
-      "value_loss_norm": 1.8926471413804524,
-      "shrink_penalty_norm": 3.752308700421599
-    },
-    {
-      "iter": 81,
-      "step_frac": 0.06,
-      "objective": 30.708741176054016,
-      "overlap_norm": 28.594542215147328,
-      "inter_sum": 0.10666862945869465,
-      "overlap_pairs": 64,
-      "value_loss_norm": 1.9243818138184086,
-      "shrink_penalty_norm": 3.796342941765599
-    },
-    {
-      "iter": 82,
-      "step_frac": 0.06,
-      "objective": 30.57276605314617,
-      "overlap_norm": 28.44723405776391,
-      "inter_sum": 0.10539070103336914,
-      "overlap_pairs": 64,
-      "value_loss_norm": 1.9328948482939814,
-      "shrink_penalty_norm": 3.8527429417656
-    },
-    {
-      "iter": 83,
-      "step_frac": 0.06,
-      "objective": 30.517536457097055,
-      "overlap_norm": 28.37256304368772,
-      "inter_sum": 0.10413085400762201,
-      "overlap_pairs": 63,
-      "value_loss_norm": 1.951221543448553,
-      "shrink_penalty_norm": 3.8750373992156453
-    },
-    {
-      "iter": 84,
-      "step_frac": 0.06,
-      "objective": 30.462467050680694,
-      "overlap_norm": 28.300108363298456,
-      "inter_sum": 0.10327717329370442,
-      "overlap_pairs": 63,
-      "value_loss_norm": 1.967087922799708,
-      "shrink_penalty_norm": 3.9054152916505975
-    },
-    {
-      "iter": 85,
-      "step_frac": 0.06,
-      "objective": 29.992688959537038,
-      "overlap_norm": 27.793536440823218,
-      "inter_sum": 0.10180068825726099,
-      "overlap_pairs": 62,
-      "value_loss_norm": 2.0015395072512923,
-      "shrink_penalty_norm": 3.952260229250597
-    },
-    {
-      "iter": 86,
-      "step_frac": 0.06,
-      "objective": 29.86461424453913,
-      "overlap_norm": 27.65144471428229,
-      "inter_sum": 0.100695686088662,
-      "overlap_pairs": 62,
-      "value_loss_norm": 2.0142144235065325,
-      "shrink_penalty_norm": 3.979102135006121
-    },
-    {
-      "iter": 87,
-      "step_frac": 0.06,
-      "objective": 29.821280727546032,
-      "overlap_norm": 27.58949335626398,
-      "inter_sum": 0.0999729240259157,
-      "overlap_pairs": 62,
-      "value_loss_norm": 2.0314045035873045,
-      "shrink_penalty_norm": 4.0076573538949765
-    },
-    {
-      "iter": 88,
-      "step_frac": 0.06,
-      "objective": 29.780153913753054,
-      "overlap_norm": 27.532017536583083,
-      "inter_sum": 0.09930714590502412,
-      "overlap_pairs": 62,
-      "value_loss_norm": 2.0464114141874457,
-      "shrink_penalty_norm": 4.0344992596505005
-    },
-    {
-      "iter": 89,
-      "step_frac": 0.06,
-      "objective": 29.670504140976806,
-      "overlap_norm": 27.410494509791633,
-      "inter_sum": 0.0981677345817373,
-      "overlap_pairs": 62,
-      "value_loss_norm": 2.0556338682026496,
-      "shrink_penalty_norm": 4.0875152596505
-    },
-    {
-      "iter": 90,
-      "step_frac": 0.06,
-      "objective": 29.243081869377566,
-      "overlap_norm": 26.939718651639986,
-      "inter_sum": 0.09683693825884432,
-      "overlap_pairs": 62,
-      "value_loss_norm": 2.0967857426878576,
-      "shrink_penalty_norm": 4.131549500994501
-    },
-    {
-      "iter": 91,
-      "step_frac": 0.06,
-      "objective": 29.205495256348147,
-      "overlap_norm": 26.885136510694604,
-      "inter_sum": 0.09571335590648108,
-      "overlap_pairs": 62,
-      "value_loss_norm": 2.112733431103668,
-      "shrink_penalty_norm": 4.152506290997544
-    },
-    {
-      "iter": 92,
-      "step_frac": 0.06,
-      "objective": 29.043302563638495,
-      "overlap_norm": 26.687031052400634,
-      "inter_sum": 0.09425402931123325,
-      "overlap_pairs": 62,
-      "value_loss_norm": 2.146817489872362,
-      "shrink_penalty_norm": 4.189080427310009
-    },
-    {
-      "iter": 93,
-      "step_frac": 0.06,
-      "objective": 29.000302221601675,
-      "overlap_norm": 26.628353395195937,
-      "inter_sum": 0.09320137557030991,
-      "overlap_pairs": 62,
-      "value_loss_norm": 2.1615098359100973,
-      "shrink_penalty_norm": 4.20877980991287
-    },
-    {
-      "iter": 94,
-      "step_frac": 0.06,
-      "objective": 28.94861719788076,
-      "overlap_norm": 26.56077992222501,
-      "inter_sum": 0.09220851226643058,
-      "overlap_pairs": 62,
-      "value_loss_norm": 2.1764724141777725,
-      "shrink_penalty_norm": 4.227297229559559
-    },
-    {
-      "iter": 95,
-      "step_frac": 0.06,
-      "objective": 28.830518753285055,
-      "overlap_norm": 26.440189725629303,
-      "inter_sum": 0.0909215172957688,
-      "overlap_pairs": 62,
-      "value_loss_norm": 2.1764724141777725,
-      "shrink_penalty_norm": 4.277132269559559
-    },
-    {
-      "iter": 96,
-      "step_frac": 0.06,
-      "objective": 28.666765900572194,
-      "overlap_norm": 26.25257082645499,
-      "inter_sum": 0.0896008277754616,
-      "overlap_pairs": 62,
-      "value_loss_norm": 2.198619476232545,
-      "shrink_penalty_norm": 4.311511957693275
-    },
-    {
-      "iter": 97,
-      "step_frac": 0.06,
-      "objective": 28.61604341569576,
-      "overlap_norm": 26.170153424552016,
-      "inter_sum": 0.08880199312087309,
-      "overlap_pairs": 62,
-      "value_loss_norm": 2.2282447839159114,
-      "shrink_penalty_norm": 4.352904144556636
-    },
-    {
-      "iter": 98,
-      "step_frac": 0.06,
-      "objective": 28.513158189507163,
-      "overlap_norm": 26.050304763462908,
-      "inter_sum": 0.08783148272459505,
-      "overlap_pairs": 62,
-      "value_loss_norm": 2.2439466492459137,
-      "shrink_penalty_norm": 4.378135535966828
-    },
-    {
-      "iter": 99,
-      "step_frac": 0.06,
-      "objective": 28.459811793772587,
-      "overlap_norm": 25.968727549218233,
-      "inter_sum": 0.08706319802204353,
-      "overlap_pairs": 62,
-      "value_loss_norm": 2.2702320349734344,
-      "shrink_penalty_norm": 4.417044191618387
-    },
-    {
-      "iter": 100,
-      "step_frac": 0.06,
-      "objective": 28.365877013018487,
-      "overlap_norm": 25.86130501359985,
-      "inter_sum": 0.08607141701116577,
-      "overlap_pairs": 62,
-      "value_loss_norm": 2.2812280378377157,
-      "shrink_penalty_norm": 4.466879231618386
-    },
-    {
-      "iter": 101,
-      "step_frac": 0.06,
-      "objective": 28.31787128512478,
-      "overlap_norm": 25.795528623164035,
-      "inter_sum": 0.08515601678451426,
-      "overlap_pairs": 62,
-      "value_loss_norm": 2.2981283816564324,
-      "shrink_penalty_norm": 4.484285606086274
-    },
-    {
-      "iter": 102,
-      "step_frac": 0.06,
-      "objective": 27.897857800764214,
-      "overlap_norm": 25.330974736989507,
-      "inter_sum": 0.08390683508107774,
-      "overlap_pairs": 62,
-      "value_loss_norm": 2.340599174127225,
-      "shrink_penalty_norm": 4.525677792949635
-    },
-    {
-      "iter": 103,
-      "step_frac": 0.06,
-      "objective": 27.867782872268098,
-      "overlap_norm": 25.287836936253097,
-      "inter_sum": 0.0832972174409114,
-      "overlap_pairs": 62,
-      "value_loss_norm": 2.352400476797007,
-      "shrink_penalty_norm": 4.550909184359827
-    },
-    {
-      "iter": 104,
-      "step_frac": 0.06,
-      "objective": 27.714122737121638,
-      "overlap_norm": 25.109040125988855,
-      "inter_sum": 0.0821159828583464,
-      "overlap_pairs": 62,
-      "value_loss_norm": 2.3759213065725073,
-      "shrink_penalty_norm": 4.58322609120552
-    },
-    {
-      "iter": 105,
-      "step_frac": 0.06,
-      "objective": 27.621639853278193,
-      "overlap_norm": 24.997281168488538,
-      "inter_sum": 0.0812498453972896,
-      "overlap_pairs": 62,
-      "value_loss_norm": 2.394011504833099,
-      "shrink_penalty_norm": 4.606943599131102
-    },
-    {
-      "iter": 106,
-      "step_frac": 0.06,
-      "objective": 27.590406624716955,
-      "overlap_norm": 24.948716198493667,
-      "inter_sum": 0.08048745418123776,
-      "overlap_pairs": 60,
-      "value_loss_norm": 2.410525146666742,
-      "shrink_penalty_norm": 4.623305591130916
-    },
-    {
-      "iter": 107,
-      "step_frac": 0.06,
-      "objective": 27.460763851093244,
-      "overlap_norm": 24.816731177989954,
-      "inter_sum": 0.07938007469802102,
-      "overlap_pairs": 60,
-      "value_loss_norm": 2.410525146666742,
-      "shrink_penalty_norm": 4.6701505287309155
-    },
-    {
-      "iter": 108,
-      "step_frac": 0.06,
-      "objective": 27.412456412597436,
-      "overlap_norm": 24.757095719871902,
-      "inter_sum": 0.07882955769472702,
-      "overlap_pairs": 60,
-      "value_loss_norm": 2.4206672908927094,
-      "shrink_penalty_norm": 4.6938680366564975
-    },
-    {
-      "iter": 109,
-      "step_frac": 0.06,
-      "objective": 27.0115956319183,
-      "overlap_norm": 24.319255521376203,
-      "inter_sum": 0.07770953716457618,
-      "overlap_pairs": 60,
-      "value_loss_norm": 2.4557012759266947,
-      "shrink_penalty_norm": 4.7327766923080565
-    },
-    {
-      "iter": 110,
-      "step_frac": 0.06,
-      "objective": 26.92845843167161,
-      "overlap_norm": 24.218806767729284,
-      "inter_sum": 0.07684511838224486,
-      "overlap_pairs": 60,
-      "value_loss_norm": 2.4706705824469255,
-      "shrink_penalty_norm": 4.779621629908056
-    },
-    {
-      "iter": 111,
-      "step_frac": 0.06,
-      "objective": 26.902910939221165,
-      "overlap_norm": 24.182569704895812,
-      "inter_sum": 0.07633171420796703,
-      "overlap_pairs": 60,
-      "value_loss_norm": 2.4802454299574475,
-      "shrink_penalty_norm": 4.801916087358102
-    },
-    {
-      "iter": 112,
-      "step_frac": 0.06,
-      "objective": 26.824286565634953,
-      "overlap_norm": 24.078355634319827,
-      "inter_sum": 0.07555668370977991,
-      "overlap_pairs": 60,
-      "value_loss_norm": 2.504720404074719,
-      "shrink_penalty_norm": 4.824210544808149
-    },
-    {
-      "iter": 113,
-      "step_frac": 0.06,
-      "objective": 26.798522494942834,
-      "overlap_norm": 24.02858772199948,
-      "inter_sum": 0.0749005656523821,
-      "overlap_pairs": 60,
-      "value_loss_norm": 2.526895538887323,
-      "shrink_penalty_norm": 4.860784681120612
-    },
-    {
-      "iter": 114,
-      "step_frac": 0.06,
-      "objective": 26.436532821433968,
-      "overlap_norm": 23.620606180845165,
-      "inter_sum": 0.07387594638568395,
-      "overlap_pairs": 60,
-      "value_loss_norm": 2.5710586997171503,
-      "shrink_penalty_norm": 4.897358817433077
-    },
-    {
-      "iter": 115,
-      "step_frac": 0.06,
-      "objective": 26.364746646127276,
-      "overlap_norm": 23.52788961762501,
-      "inter_sum": 0.07309916708332959,
-      "overlap_pairs": 60,
-      "value_loss_norm": 2.58978737556341,
-      "shrink_penalty_norm": 4.941393058777078
-    },
-    {
-      "iter": 116,
-      "step_frac": 0.06,
-      "objective": 26.344952446867808,
-      "overlap_norm": 23.497249252356706,
-      "inter_sum": 0.07261118461128543,
-      "overlap_pairs": 60,
-      "value_loss_norm": 2.5995857020720936,
-      "shrink_penalty_norm": 4.9623498487801205
-    },
-    {
-      "iter": 117,
-      "step_frac": 0.06,
-      "objective": 25.996691705309047,
-      "overlap_norm": 23.1187468312019,
-      "inter_sum": 0.07166961566511926,
-      "overlap_pairs": 60,
-      "value_loss_norm": 2.6281083972614554,
-      "shrink_penalty_norm": 4.996729536913837
-    },
-    {
-      "iter": 118,
-      "step_frac": 0.06,
-      "objective": 25.939153724295064,
-      "overlap_norm": 23.035473210708606,
-      "inter_sum": 0.07096703999693701,
-      "overlap_pairs": 60,
-      "value_loss_norm": 2.652796197240616,
-      "shrink_penalty_norm": 5.017686326916881
-    },
-    {
-      "iter": 119,
-      "step_frac": 0.06,
-      "objective": 25.924060202582357,
-      "overlap_norm": 23.003508194171918,
-      "inter_sum": 0.07035354524015117,
-      "overlap_pairs": 60,
-      "value_loss_norm": 2.668898678440606,
-      "shrink_penalty_norm": 5.033066599396707
-    },
-    {
-      "iter": 120,
-      "step_frac": 0.06,
-      "objective": 25.59449558945033,
-      "overlap_norm": 22.65217704888025,
-      "inter_sum": 0.06948587346909296,
-      "overlap_pairs": 60,
-      "value_loss_norm": 2.6890493652579592,
-      "shrink_penalty_norm": 5.065383506242401
-    },
-    {
-      "iter": 121,
-      "step_frac": 0.06,
-      "objective": 25.451405273002226,
-      "overlap_norm": 22.506885020364948,
-      "inter_sum": 0.06855163080726945,
-      "overlap_pairs": 60,
-      "value_loss_norm": 2.6890493652579592,
-      "shrink_penalty_norm": 5.109417747586401
-    },
-    {
-      "iter": 122,
-      "step_frac": 0.06,
-      "objective": 25.294433708925325,
-      "overlap_norm": 22.321940164837294,
-      "inter_sum": 0.0675436220492527,
-      "overlap_pairs": 60,
-      "value_loss_norm": 2.715503762086964,
-      "shrink_penalty_norm": 5.139795640021354
-    },
-    {
-      "iter": 123,
-      "step_frac": 0.06,
-      "objective": 25.272151863717784,
-      "overlap_norm": 22.27649950297106,
-      "inter_sum": 0.06691820494426597,
-      "overlap_pairs": 60,
-      "value_loss_norm": 2.73694359433897,
-      "shrink_penalty_norm": 5.17417532815507
-    },
-    {
-      "iter": 124,
-      "step_frac": 0.06,
-      "objective": 25.20831169882791,
-      "overlap_norm": 22.186513668798295,
-      "inter_sum": 0.06627490587192514,
-      "overlap_pairs": 60,
-      "value_loss_norm": 2.762104294491717,
-      "shrink_penalty_norm": 5.193874710757932
-    },
-    {
-      "iter": 125,
-      "step_frac": 0.06,
-      "objective": 25.047418939766146,
-      "overlap_norm": 22.023419197669334,
-      "inter_sum": 0.06543243705512067,
-      "overlap_pairs": 60,
-      "value_loss_norm": 2.762104294491717,
-      "shrink_penalty_norm": 5.2379089521019315
-    },
-    {
-      "iter": 126,
-      "step_frac": 0.06,
-      "objective": 25.0054089583352,
-      "overlap_norm": 21.953572651199877,
-      "inter_sum": 0.06484168542853026,
-      "overlap_pairs": 60,
-      "value_loss_norm": 2.7890149885478897,
-      "shrink_penalty_norm": 5.25642637174862
-    },
-    {
-      "iter": 127,
-      "step_frac": 0.06,
-      "objective": 24.984856879278848,
-      "overlap_norm": 21.91849336798805,
-      "inter_sum": 0.06427711977498446,
-      "overlap_pairs": 60,
-      "value_loss_norm": 2.802819319896817,
-      "shrink_penalty_norm": 5.270883827879656
-    },
-    {
-      "iter": 128,
-      "step_frac": 0.06,
-      "objective": 24.85172467631286,
-      "overlap_norm": 21.783291555678893,
-      "inter_sum": 0.06345411690901508,
-      "overlap_pairs": 60,
-      "value_loss_norm": 2.802819319896817,
-      "shrink_penalty_norm": 5.312276014743016
-    },
-    {
-      "iter": 129,
-      "step_frac": 0.06,
-      "objective": 24.829545737219693,
-      "overlap_norm": 21.741243762095582,
-      "inter_sum": 0.0628910449867993,
-      "overlap_pairs": 60,
-      "value_loss_norm": 2.821072329044675,
-      "shrink_penalty_norm": 5.34459292158871
-    },
-    {
-      "iter": 130,
-      "step_frac": 0.06,
-      "objective": 24.52456716831402,
-      "overlap_norm": 21.419972142127342,
-      "inter_sum": 0.06211016715937837,
-      "overlap_pairs": 59,
-      "value_loss_norm": 2.835846485485498,
-      "shrink_penalty_norm": 5.374970814023662
-    },
-    {
-      "iter": 131,
-      "step_frac": 0.06,
-      "objective": 24.364795123175178,
-      "overlap_norm": 21.23547430366623,
-      "inter_sum": 0.06121797808443363,
-      "overlap_pairs": 59,
-      "value_loss_norm": 2.85914451786332,
-      "shrink_penalty_norm": 5.4035260329125165
-    },
-    {
-      "iter": 132,
-      "step_frac": 0.06,
-      "objective": 24.31233767905207,
-      "overlap_norm": 21.154903407840184,
-      "inter_sum": 0.060523120310574975,
-      "overlap_pairs": 59,
-      "value_loss_norm": 2.884257969566259,
-      "shrink_penalty_norm": 5.463526032912517
-    },
-    {
-      "iter": 133,
-      "step_frac": 0.06,
-      "objective": 24.170705280237364,
-      "overlap_norm": 21.01120133105255,
-      "inter_sum": 0.05982619822185703,
-      "overlap_pairs": 58,
-      "value_loss_norm": 2.8842580381960206,
-      "shrink_penalty_norm": 5.5049182197758775
-    },
-    {
-      "iter": 134,
-      "step_frac": 0.06,
-      "objective": 24.1299991281211,
-      "overlap_norm": 20.95101250105658,
-      "inter_sum": 0.05929907462196012,
-      "overlap_pairs": 58,
-      "value_loss_norm": 2.902221821453977,
-      "shrink_penalty_norm": 5.53529611221083
-    },
-    {
-      "iter": 135,
-      "step_frac": 0.06,
-      "objective": 24.076270529408312,
-      "overlap_norm": 20.8777625723257,
-      "inter_sum": 0.05862522637794106,
-      "overlap_pairs": 58,
-      "value_loss_norm": 2.9196735421289004,
-      "shrink_penalty_norm": 5.57668829907419
-    },
-    {
-      "iter": 136,
-      "step_frac": 0.06,
-      "objective": 23.94526668468249,
-      "overlap_norm": 20.744813363447065,
-      "inter_sum": 0.057975767347228174,
-      "overlap_pairs": 58,
-      "value_loss_norm": 2.919673473499139,
-      "shrink_penalty_norm": 5.615596954725748
-    },
-    {
-      "iter": 137,
-      "step_frac": 0.06,
-      "objective": 23.90266289934654,
-      "overlap_norm": 20.674418010316103,
-      "inter_sum": 0.057297335075371346,
-      "overlap_pairs": 58,
-      "value_loss_norm": 2.9446450412941525,
-      "shrink_penalty_norm": 5.671996954725748
-    },
-    {
-      "iter": 138,
-      "step_frac": 0.06,
-      "objective": 23.65151231677434,
-      "overlap_norm": 20.40436494282038,
-      "inter_sum": 0.05657978298045104,
-      "overlap_pairs": 58,
-      "value_loss_norm": 2.961828541810986,
-      "shrink_penalty_norm": 5.706376642859465
-    },
-    {
-      "iter": 139,
-      "step_frac": 0.06,
-      "objective": 23.59654958439036,
-      "overlap_norm": 20.332056449639822,
-      "inter_sum": 0.05609317672189953,
-      "overlap_pairs": 58,
-      "value_loss_norm": 2.977746541663125,
-      "shrink_penalty_norm": 5.734931861748321
-    },
-    {
-      "iter": 140,
-      "step_frac": 0.06,
-      "objective": 23.364178733042582,
-      "overlap_norm": 20.083564513444518,
-      "inter_sum": 0.05543414143176598,
-      "overlap_pairs": 58,
-      "value_loss_norm": 2.992251781168364,
-      "shrink_penalty_norm": 5.767248768594015
-    },
-    {
-      "iter": 141,
-      "step_frac": 0.06,
-      "objective": 23.326371354565907,
-      "overlap_norm": 20.032508039371383,
-      "inter_sum": 0.05493206408427725,
-      "overlap_pairs": 58,
-      "value_loss_norm": 3.004821376326663,
-      "shrink_penalty_norm": 5.7808387773571885
-    },
-    {
-      "iter": 142,
-      "step_frac": 0.06,
-      "objective": 23.189836561740595,
-      "overlap_norm": 19.894027813763493,
-      "inter_sum": 0.05423674563910329,
-      "overlap_pairs": 58,
-      "value_loss_norm": 3.004821376326663,
-      "shrink_penalty_norm": 5.8197474330087475
-    },
-    {
-      "iter": 143,
-      "step_frac": 0.06,
-      "objective": 22.981342887933735,
-      "overlap_norm": 19.66539831838463,
-      "inter_sum": 0.0536340044948849,
-      "overlap_pairs": 57,
-      "value_loss_norm": 3.023438303276923,
-      "shrink_penalty_norm": 5.8501253254437
-    },
-    {
-      "iter": 144,
-      "step_frac": 0.06,
-      "objective": 22.93571814650069,
-      "overlap_norm": 19.59693494600378,
-      "inter_sum": 0.05312187852444806,
-      "overlap_pairs": 57,
-      "value_loss_norm": 3.0454066155013306,
-      "shrink_penalty_norm": 5.867531699911587
-    },
-    {
-      "iter": 145,
-      "step_frac": 0.06,
-      "objective": 22.88566059175271,
-      "overlap_norm": 19.53008145255229,
-      "inter_sum": 0.05268146851955239,
-      "overlap_pairs": 57,
-      "value_loss_norm": 3.0608604589170625,
-      "shrink_penalty_norm": 5.89437360566711
-    },
-    {
-      "iter": 146,
-      "step_frac": 0.06,
-      "objective": 22.769932835686962,
-      "overlap_norm": 19.41224388216775,
-      "inter_sum": 0.0521569935149132,
-      "overlap_pairs": 56,
-      "value_loss_norm": 3.061141566420231,
-      "shrink_penalty_norm": 5.930947741979575
-    },
-    {
-      "iter": 147,
-      "step_frac": 0.06,
-      "objective": 22.62491276146621,
-      "overlap_norm": 19.244625704227023,
-      "inter_sum": 0.05150009573630041,
-      "overlap_pairs": 56,
-      "value_loss_norm": 3.0823975748524313,
-      "shrink_penalty_norm": 5.957789647735099
-    },
-    {
-      "iter": 148,
-      "step_frac": 0.06,
-      "objective": 22.588033422824545,
-      "overlap_norm": 19.19482441002563,
-      "inter_sum": 0.05103741353808928,
-      "overlap_pairs": 56,
-      "value_loss_norm": 3.094680800000294,
-      "shrink_penalty_norm": 5.970564255972483
-    },
-    {
-      "iter": 149,
-      "step_frac": 0.06,
-      "objective": 22.466455534061925,
-      "overlap_norm": 19.071417814447383,
-      "inter_sum": 0.05042478464290683,
-      "overlap_pairs": 56,
-      "value_loss_norm": 3.094680800000294,
-      "shrink_penalty_norm": 6.007138392284948
-    },
-    {
-      "iter": 150,
-      "step_frac": 0.06,
-      "objective": 22.421163277843274,
-      "overlap_norm": 19.00481241778021,
-      "inter_sum": 0.04984328720708555,
-      "overlap_pairs": 56,
-      "value_loss_norm": 3.114048507666237,
-      "shrink_penalty_norm": 6.046047047936506
-    },
-    {
-      "iter": 151,
-      "step_frac": 0.06,
-      "objective": 22.375327330615203,
-      "overlap_norm": 18.94251019573016,
-      "inter_sum": 0.04944862757618306,
-      "overlap_pairs": 56,
-      "value_loss_norm": 3.1292532129177086,
-      "shrink_penalty_norm": 6.071278439346699
-    },
-    {
-      "iter": 152,
-      "step_frac": 0.06,
-      "objective": 22.178186605262667,
-      "overlap_norm": 18.7277539599121,
-      "inter_sum": 0.04886519273312522,
-      "overlap_pairs": 56,
-      "value_loss_norm": 3.1454409624387916,
-      "shrink_penalty_norm": 6.099833658235554
-    },
-    {
-      "iter": 153,
-      "step_frac": 0.06,
-      "objective": 22.07227031466005,
-      "overlap_norm": 18.620118684902796,
-      "inter_sum": 0.04841746668349053,
-      "overlap_pairs": 56,
-      "value_loss_norm": 3.1454409624387916,
-      "shrink_penalty_norm": 6.134213346369271
-    },
-    {
-      "iter": 154,
-      "step_frac": 0.06,
-      "objective": 22.02941186847406,
-      "overlap_norm": 18.566853918673488,
-      "inter_sum": 0.04799000271658429,
-      "overlap_pairs": 56,
-      "value_loss_norm": 3.155246875894955,
-      "shrink_penalty_norm": 6.146221478112411
-    },
-    {
-      "iter": 155,
-      "step_frac": 0.06,
-      "objective": 21.89006497246933,
-      "overlap_norm": 18.406548863288023,
-      "inter_sum": 0.047389086030927736,
-      "overlap_pairs": 56,
-      "value_loss_norm": 3.174943465705176,
-      "shrink_penalty_norm": 6.171452869522604
-    },
-    {
-      "iter": 156,
-      "step_frac": 0.06,
-      "objective": 21.79078753389318,
-      "overlap_norm": 18.305081889858815,
-      "inter_sum": 0.0468509610767418,
-      "overlap_pairs": 56,
-      "value_loss_norm": 3.17541401615155,
-      "shrink_penalty_norm": 6.20583255765632
-    },
-    {
-      "iter": 157,
-      "step_frac": 0.06,
-      "objective": 21.742877032813993,
-      "overlap_norm": 18.24697640251104,
-      "inter_sum": 0.04645255904599361,
-      "overlap_pairs": 56,
-      "value_loss_norm": 3.185044620228206,
-      "shrink_penalty_norm": 6.217120201494873
-    },
-    {
-      "iter": 158,
-      "step_frac": 0.06,
-      "objective": 21.697756740955324,
-      "overlap_norm": 18.178785861732873,
-      "inter_sum": 0.04601745278014631,
-      "overlap_pairs": 56,
-      "value_loss_norm": 3.2072967695477175,
-      "shrink_penalty_norm": 6.233482193494687
-    },
-    {
-      "iter": 159,
-      "step_frac": 0.06,
-      "objective": 21.65010647086896,
-      "overlap_norm": 18.11971274138684,
-      "inter_sum": 0.04566262113865457,
-      "overlap_pairs": 56,
-      "value_loss_norm": 3.217533744411102,
-      "shrink_penalty_norm": 6.2571997014202685
-    },
-    {
-      "iter": 160,
-      "step_frac": 0.06,
-      "objective": 21.45961651624791,
-      "overlap_norm": 17.905142218739545,
-      "inter_sum": 0.04512568923189641,
-      "overlap_pairs": 56,
-      "value_loss_norm": 3.240272217149575,
-      "shrink_penalty_norm": 6.2840416071757925
-    },
-    {
-      "iter": 161,
-      "step_frac": 0.06,
-      "objective": 21.426336901108453,
-      "overlap_norm": 17.862091833126957,
-      "inter_sum": 0.04475378215285985,
-      "overlap_pairs": 56,
-      "value_loss_norm": 3.249512468362294,
-      "shrink_penalty_norm": 6.294651992384031
-    },
-    {
-      "iter": 162,
-      "step_frac": 0.06,
-      "objective": 21.294178964829747,
-      "overlap_norm": 17.713692459430376,
-      "inter_sum": 0.04421601570907587,
-      "overlap_pairs": 56,
-      "value_loss_norm": 3.2645680303838898,
-      "shrink_penalty_norm": 6.318369500309612
-    },
-    {
-      "iter": 163,
-      "step_frac": 0.06,
-      "objective": 21.19979717525061,
-      "overlap_norm": 17.615342072277084,
-      "inter_sum": 0.04374044910482954,
-      "overlap_pairs": 55,
-      "value_loss_norm": 3.2669207826157596,
-      "shrink_penalty_norm": 6.350686407155306
-    },
-    {
-      "iter": 164,
-      "step_frac": 0.06,
-      "objective": 21.15165573171098,
-      "overlap_norm": 17.525940124960403,
-      "inter_sum": 0.042956842254784876,
-      "overlap_pairs": 55,
-      "value_loss_norm": 3.3058390395128123,
-      "shrink_penalty_norm": 6.397531344755306
-    },
-    {
-      "iter": 165,
-      "step_frac": 0.06,
-      "objective": 21.102215263239145,
-      "overlap_norm": 17.45459434206176,
-      "inter_sum": 0.0424615893324152,
-      "overlap_pairs": 55,
-      "value_loss_norm": 3.3259156471239963,
-      "shrink_penalty_norm": 6.434105481067771
-    },
-    {
-      "iter": 166,
-      "step_frac": 0.06,
-      "objective": 21.003325450319085,
-      "overlap_norm": 17.351242058551268,
-      "inter_sum": 0.04207461050403364,
-      "overlap_pairs": 55,
-      "value_loss_norm": 3.328762272372144,
-      "shrink_penalty_norm": 6.4664223879134655
-    },
-    {
-      "iter": 167,
-      "step_frac": 0.06,
-      "objective": 20.836933994827934,
-      "overlap_norm": 17.165682024374856,
-      "inter_sum": 0.04159894534917907,
-      "overlap_pairs": 55,
-      "value_loss_norm": 3.346503090112962,
-      "shrink_penalty_norm": 6.494977606802321
-    },
-    {
-      "iter": 168,
-      "step_frac": 0.06,
-      "objective": 20.724324873900684,
-      "overlap_norm": 17.029535274470945,
-      "inter_sum": 0.04106923883912169,
-      "overlap_pairs": 54,
-      "value_loss_norm": 3.3672207190896226,
-      "shrink_penalty_norm": 6.551377606802321
-    },
-    {
-      "iter": 169,
-      "step_frac": 0.06,
-      "objective": 20.685441067536296,
-      "overlap_norm": 16.980601677732007,
-      "inter_sum": 0.04072916537328185,
-      "overlap_pairs": 54,
-      "value_loss_norm": 3.376771821359385,
-      "shrink_penalty_norm": 6.561351368898066
-    },
-    {
-      "iter": 170,
-      "step_frac": 0.06,
-      "objective": 20.643874285696818,
-      "overlap_norm": 16.915493549686005,
-      "inter_sum": 0.040344959169503376,
-      "overlap_pairs": 54,
-      "value_loss_norm": 3.3995441539419162,
-      "shrink_penalty_norm": 6.576731641377891
-    },
-    {
-      "iter": 171,
-      "step_frac": 0.06,
-      "objective": 20.557927186748714,
-      "overlap_norm": 16.80450724523087,
-      "inter_sum": 0.03987288435637945,
-      "overlap_pairs": 53,
-      "value_loss_norm": 3.4219325594489525,
-      "shrink_penalty_norm": 6.62974764137789
-    },
-    {
-      "iter": 172,
-      "step_frac": 0.06,
-      "objective": 20.504381379969765,
-      "overlap_norm": 16.72981628674102,
-      "inter_sum": 0.03921062300618689,
-      "overlap_pairs": 53,
-      "value_loss_norm": 3.440875999092651,
-      "shrink_penalty_norm": 6.673781882721891
-    },
-    {
-      "iter": 173,
-      "step_frac": 0.06,
-      "objective": 20.466631724378956,
-      "overlap_norm": 16.65913849423301,
-      "inter_sum": 0.03883885986768711,
-      "overlap_pairs": 53,
-      "value_loss_norm": 3.472285241388106,
-      "shrink_penalty_norm": 6.704159775156843
-    },
-    {
-      "iter": 174,
-      "step_frac": 0.06,
-      "objective": 20.404021287307476,
-      "overlap_norm": 16.57097958904234,
-      "inter_sum": 0.038439508512632836,
-      "overlap_pairs": 52,
-      "value_loss_norm": 3.4953419575072924,
-      "shrink_penalty_norm": 6.753994815156844
-    },
-    {
-      "iter": 175,
-      "step_frac": 0.06,
-      "objective": 20.371861312042675,
-      "overlap_norm": 16.53204394915485,
-      "inter_sum": 0.03823076736026967,
-      "overlap_pairs": 52,
-      "value_loss_norm": 3.5018048418216474,
-      "shrink_penalty_norm": 6.760250421323507
-    },
-    {
-      "iter": 176,
-      "step_frac": 0.06,
-      "objective": 20.329576824770058,
-      "overlap_norm": 16.46086010427626,
-      "inter_sum": 0.037717736223914736,
-      "overlap_pairs": 52,
-      "value_loss_norm": 3.528053399427622,
-      "shrink_penalty_norm": 6.813266421323506
-    },
-    {
-      "iter": 177,
-      "step_frac": 0.06,
-      "objective": 20.246851023084275,
-      "overlap_norm": 16.365581663950326,
-      "inter_sum": 0.03738814566673782,
-      "overlap_pairs": 52,
-      "value_loss_norm": 3.539087143446024,
-      "shrink_penalty_norm": 6.843644313758459
-    },
-    {
-      "iter": 178,
-      "step_frac": 0.06,
-      "objective": 20.188225693155967,
-      "overlap_norm": 16.293422172273726,
-      "inter_sum": 0.03703088996357618,
-      "overlap_pairs": 52,
-      "value_loss_norm": 3.5515065823218177,
-      "shrink_penalty_norm": 6.865938771208505
-    },
-    {
-      "iter": 179,
-      "step_frac": 0.06,
-      "objective": 20.179251139782384,
-      "overlap_norm": 16.281447618900142,
-      "inter_sum": 0.03677609377011733,
-      "overlap_pairs": 52,
-      "value_loss_norm": 3.5515065823218177,
-      "shrink_penalty_norm": 6.925938771208505
-    },
-    {
-      "iter": 180,
-      "step_frac": 0.06,
-      "objective": 20.12715769184595,
-      "overlap_norm": 16.204846288780722,
-      "inter_sum": 0.03643393655718376,
-      "overlap_pairs": 52,
-      "value_loss_norm": 3.5736722176248037,
-      "shrink_penalty_norm": 6.972783708808506
-    },
-    {
-      "iter": 181,
-      "step_frac": 0.06,
-      "objective": 20.099764793103827,
-      "overlap_norm": 16.1337937265321,
-      "inter_sum": 0.03611552902795562,
-      "overlap_pairs": 52,
-      "value_loss_norm": 3.615904120186857,
-      "shrink_penalty_norm": 7.001338927697361
-    },
-    {
-      "iter": 182,
-      "step_frac": 0.06,
-      "objective": 20.03248402240918,
-      "overlap_norm": 16.04428159254428,
-      "inter_sum": 0.03581268078107955,
-      "overlap_pairs": 52,
-      "value_loss_norm": 3.636707722535587,
-      "shrink_penalty_norm": 7.029894146586217
-    },
-    {
-      "iter": 183,
-      "step_frac": 0.06,
-      "objective": 20.00176175045333,
-      "overlap_norm": 16.00521283569123,
-      "inter_sum": 0.03556409101064529,
-      "overlap_pairs": 51,
-      "value_loss_norm": 3.6420542074327895,
-      "shrink_penalty_norm": 7.089894146586216
-    },
-    {
-      "iter": 184,
-      "step_frac": 0.06,
-      "objective": 19.987709797789766,
-      "overlap_norm": 15.951939476806794,
-      "inter_sum": 0.035273039666688696,
-      "overlap_pairs": 51,
-      "value_loss_norm": 3.679933518365884,
-      "shrink_penalty_norm": 7.11673605234174
-    },
-    {
-      "iter": 185,
-      "step_frac": 0.06,
-      "objective": 19.932081195294693,
-      "overlap_norm": 15.86470736230721,
-      "inter_sum": 0.03496734795905251,
-      "overlap_pairs": 51,
-      "value_loss_norm": 3.708537030370396,
-      "shrink_penalty_norm": 7.17673605234174
-    },
-    {
-      "iter": 186,
-      "step_frac": 0.06,
-      "objective": 19.91668103047957,
-      "overlap_norm": 15.843832336617897,
-      "inter_sum": 0.03471535159757785,
-      "overlap_pairs": 51,
-      "value_loss_norm": 3.7111918912445856,
-      "shrink_penalty_norm": 7.23313605234174
-    },
-    {
-      "iter": 187,
-      "step_frac": 0.06,
-      "objective": 19.852387861457508,
-      "overlap_norm": 15.749010619109235,
-      "inter_sum": 0.034409653708201836,
-      "overlap_pairs": 51,
-      "value_loss_norm": 3.7403783444434118,
-      "shrink_penalty_norm": 7.259977958097264
-    },
-    {
-      "iter": 188,
-      "step_frac": 0.06,
-      "objective": 19.834465243394778,
-      "overlap_norm": 15.71820622256145,
-      "inter_sum": 0.034182269536666914,
-      "overlap_pairs": 51,
-      "value_loss_norm": 3.7504401229284654,
-      "shrink_penalty_norm": 7.316377958097264
-    },
-    {
-      "iter": 189,
-      "step_frac": 0.06,
-      "objective": 19.782722042380527,
-      "overlap_norm": 15.63145345304896,
-      "inter_sum": 0.03390299999435994,
-      "overlap_pairs": 51,
-      "value_loss_norm": 3.784188121856194,
-      "shrink_penalty_norm": 7.341609349507457
-    },
-    {
-      "iter": 190,
-      "step_frac": 0.06,
-      "objective": 19.782722042380527,
-      "overlap_norm": 15.63145345304896,
-      "inter_sum": 0.03390299999435994,
-      "overlap_pairs": 51,
-      "value_loss_norm": 3.784188121856194,
-      "shrink_penalty_norm": 7.341609349507457
-    },
-    {
-      "iter": 191,
-      "step_frac": 0.06,
-      "objective": 19.782722042380527,
-      "overlap_norm": 15.63145345304896,
-      "inter_sum": 0.03390299999435994,
-      "overlap_pairs": 51,
-      "value_loss_norm": 3.784188121856194,
-      "shrink_penalty_norm": 7.341609349507457
-    },
-    {
-      "iter": 192,
-      "step_frac": 0.06,
-      "objective": 19.782722042380527,
-      "overlap_norm": 15.63145345304896,
-      "inter_sum": 0.03390299999435994,
-      "overlap_pairs": 51,
-      "value_loss_norm": 3.784188121856194,
-      "shrink_penalty_norm": 7.341609349507457
-    },
-    {
-      "iter": 193,
-      "step_frac": 0.06,
-      "objective": 19.782722042380527,
-      "overlap_norm": 15.63145345304896,
-      "inter_sum": 0.03390299999435994,
-      "overlap_pairs": 51,
-      "value_loss_norm": 3.784188121856194,
-      "shrink_penalty_norm": 7.341609349507457
-    },
-    {
-      "iter": 194,
-      "step_frac": 0.06,
-      "objective": 19.782722042380527,
-      "overlap_norm": 15.63145345304896,
-      "inter_sum": 0.03390299999435994,
-      "overlap_pairs": 51,
-      "value_loss_norm": 3.784188121856194,
-      "shrink_penalty_norm": 7.341609349507457
-    },
-    {
-      "iter": 195,
-      "step_frac": 0.03,
-      "objective": 19.782722042380527,
-      "overlap_norm": 15.63145345304896,
-      "inter_sum": 0.03390299999435994,
-      "overlap_pairs": 51,
-      "value_loss_norm": 3.784188121856194,
-      "shrink_penalty_norm": 7.341609349507457
-    },
-    {
-      "iter": 196,
-      "step_frac": 0.03,
-      "objective": 19.777422461022844,
-      "overlap_norm": 15.621641590414454,
-      "inter_sum": 0.03378908711021171,
-      "overlap_pairs": 51,
-      "value_loss_norm": 3.7873750031330182,
-      "shrink_penalty_norm": 7.368117349507457
-    },
-    {
-      "iter": 197,
-      "step_frac": 0.03,
-      "objective": 19.748396571022667,
-      "overlap_norm": 15.584722067186613,
-      "inter_sum": 0.033503015316484475,
-      "overlap_pairs": 51,
-      "value_loss_norm": 3.7942338316890964,
-      "shrink_penalty_norm": 7.388813442939136
-    },
-    {
-      "iter": 198,
-      "step_frac": 0.03,
-      "objective": 19.73985372074524,
-      "overlap_norm": 15.557549877550132,
-      "inter_sum": 0.03337503031184508,
-      "overlap_pairs": 50,
-      "value_loss_norm": 3.812232386262896,
-      "shrink_penalty_norm": 7.401429138644232
-    },
-    {
-      "iter": 199,
-      "step_frac": 0.03,
-      "objective": 19.733132862867254,
-      "overlap_norm": 15.547880966300864,
-      "inter_sum": 0.03326486789740971,
-      "overlap_pairs": 50,
-      "value_loss_norm": 3.8138948016341807,
-      "shrink_penalty_norm": 7.427141898644233
+      "step_frac": 0.0075,
+      "overlap_L": 0.32425985360606263,
+      "value_L": 0.02604179229445675,
+      "core_loss": 0.3503016459005194,
+      "overlap_pairs": 69,
+      "inter_sum": 0.17532738830294609
     }
   ],
-  "note": "Overlap is WORLD AABB intersection volume. Objective uses normalized overlap sum(V_ij/min(V_i,V_j)) and normalized value loss."
+  "note": "Backward compatible: accepts w_shrink but ignores it. No shrink penalty. Value uses heat^gamma."
 }
