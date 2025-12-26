@@ -2,15 +2,17 @@
 """
 constraints_optimization/optimizer.py
 
-Asymmetric shrink-only, value-aware bounding box optimization (balanced 0..1 losses),
-with NONLINEAR value importance and NO shrink regularizer.
+(Updated) Adds SAME-PAIR size loss from constraints_optimization/same_pair_loss.py
+
+New term:
+  L_same in [0,1] penalizes different volumes for same_pairs (e.g., wheel_0 vs wheel_1)
+
+Total:
+  L_core = w_overlap*L_ov + w_value*L_val + w_same*L_same
 
 Backward-compat:
-- accept w_shrink but ignore it (launcher may still pass it)
-- provide optimize_bounding_boxes(...) alias
-
-This file contains ONLY optimization logic.
-Losses/geometry/heat parsing live in constraints_optimization/no_overlap_loss.py
+- accept w_shrink but ignore it
+- accept extra kwargs and ignore them
 """
 
 import os
@@ -31,6 +33,12 @@ from constraints_optimization.no_overlap_loss import (
     pairwise_overlap_volume,
 )
 
+from constraints_optimization.same_pair_loss import (
+    load_same_pairs,
+    print_same_pairs,
+    same_pair_size_loss_0_1,
+)
+
 
 # -----------------------------------------------------------------------------
 # IO
@@ -40,6 +48,23 @@ def _save_json(path: str, obj: Any) -> None:
     os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path, "w") as f:
         json.dump(obj, f, indent=2)
+
+
+def _infer_relations_json_from_bbox_json(bbox_json: str) -> str:
+    """
+    bbox_json example:
+      .../sketch/dsl_optimize/optimize_iteration/iter_000/heat_map/pca_bboxes/pca_bboxes.json
+    relations.json is expected at:
+      .../sketch/dsl_optimize/relations.json
+    """
+    p = os.path.abspath(bbox_json)
+    marker = os.sep + "sketch" + os.sep
+    idx = p.rfind(marker)
+    if idx < 0:
+        # best-effort fallback: assume cwd has sketch/dsl_optimize/relations.json
+        return os.path.join(os.getcwd(), "sketch", "dsl_optimize", "relations.json")
+    root = p[: idx + len(marker)]  # ends with ".../sketch/"
+    return os.path.join(root, "dsl_optimize", "relations.json")
 
 
 # -----------------------------------------------------------------------------
@@ -57,6 +82,7 @@ def apply_no_overlapping_shrink_only(
     min_extent_frac: float = 0.15,
     w_overlap: float = 1.0,
     w_value: float = 1.0,
+    w_same: float = 0.0,     # NEW: same-pair size consistency weight
     heat_gamma: float = 2.0,
     print_every: int = 10,
     verbose: bool = True,
@@ -70,6 +96,13 @@ def apply_no_overlapping_shrink_only(
         _save_json(out_report_json, rep)
         _save_json(out_optimized_bbox_json, payload)
         return rep
+
+    # ---- load same_pairs and print them once ----
+    relations_json = _infer_relations_json_from_bbox_json(bbox_json)
+    same_pairs = load_same_pairs(relations_json)
+    if verbose:
+        print(f"[SAME_PAIR] relations_json: {relations_json}")
+        print_same_pairs(same_pairs)
 
     gamma = float(heat_gamma)
     if gamma <= 0.0 or not np.isfinite(gamma):
@@ -127,8 +160,14 @@ def apply_no_overlapping_shrink_only(
             maxs[k] = mx
         return mins, maxs
 
+    def _label_to_extent_current() -> Dict[str, np.ndarray]:
+        m: Dict[str, np.ndarray] = {}
+        for it in items:
+            m[it["label"]] = extent_from_bounds(it["bmin"], it["bmax"])
+        return m
+
     def objective(mins: np.ndarray, maxs: np.ndarray) -> Dict[str, Any]:
-        return objective_from_world_aabbs(
+        base = objective_from_world_aabbs(
             mins=mins,
             maxs=maxs,
             items=items,
@@ -136,6 +175,21 @@ def apply_no_overlapping_shrink_only(
             w_overlap=w_overlap,
             w_value=w_value,
         )
+
+        L_same = same_pair_size_loss_0_1(
+            same_pairs=same_pairs,
+            label_to_extent=_label_to_extent_current(),
+        )
+        same_term = float(w_same) * float(L_same)
+
+        core = float(base["core_loss"]) + same_term
+
+        base.update({
+            "same_L": float(L_same),
+            "same_term": float(same_term),
+            "core_loss": float(core),  # overwrite with new total
+        })
+        return base
 
     def _can_apply_bounds(it: Dict[str, Any], bmin_new: np.ndarray, bmax_new: np.ndarray) -> bool:
         bmin_new = np.asarray(bmin_new, dtype=np.float64).reshape(3)
@@ -167,6 +221,7 @@ def apply_no_overlapping_shrink_only(
             "step_frac": float(cur_step),
             "overlap_L": float(cur["overlap_L"]),
             "value_L": float(cur["value_L"]),
+            "same_L": float(cur.get("same_L", 0.0)),
             "core_loss": float(cur["core_loss"]),
             "overlap_pairs": int(cur["overlap_pairs"]),
             "inter_sum": float(cur["inter_sum"]),
@@ -177,6 +232,7 @@ def apply_no_overlapping_shrink_only(
                 f"[NO_OVERLAP][iter={itn:04d}] "
                 f"ov={cur['overlap_term']:.6g} (L={cur['overlap_L']:.4f})  "
                 f"val={cur['value_term']:.6g} (L={cur['value_L']:.4f})  "
+                f"same={cur.get('same_term', 0.0):.6g} (L={cur.get('same_L', 0.0):.4f})  "
                 f"sum={cur['core_loss']:.6g}  "
                 f"(pairs={cur['overlap_pairs']}, inter_sum={cur['inter_sum']:.6g}, step={cur_step:.4g})"
             )
@@ -300,6 +356,7 @@ def apply_no_overlapping_shrink_only(
             "value0": float(it["value0"]),
             "value": float(it["value"]),
             "value_loss": float(it["value0"] - it["value"]),
+            "same_pairs": len(same_pairs),
             "center0": it["center0"].tolist(),
             "center": c1.tolist(),
             "extent0": it["extent0"].tolist(),
@@ -323,16 +380,24 @@ def apply_no_overlapping_shrink_only(
         "in_bbox_json": os.path.abspath(bbox_json),
         "out_bbox_json": os.path.abspath(out_optimized_bbox_json),
         "labels": int(len(items)),
+        "relations_json": os.path.abspath(relations_json),
+        "same_pairs": same_pairs,
         "heat_gamma": float(gamma),
+        "weights": {
+            "w_overlap": float(w_overlap),
+            "w_value": float(w_value),
+            "w_same": float(w_same),
+        },
         "final": {
             "overlap_L": float(final["overlap_L"]),
             "value_L": float(final["value_L"]),
+            "same_L": float(final.get("same_L", 0.0)),
             "core_loss": float(final["core_loss"]),
             "overlap_pairs": int(final["overlap_pairs"]),
             "inter_sum": float(final["inter_sum"]),
         },
         "history": history,
-        "note": "Backward compatible: accepts w_shrink but ignores it. No shrink penalty. Value uses heat^gamma.",
+        "note": "Backward compatible: accepts w_shrink but ignores it. Adds same-pair size penalty via relations.json.",
     }
     _save_json(out_report_json, report)
     return report

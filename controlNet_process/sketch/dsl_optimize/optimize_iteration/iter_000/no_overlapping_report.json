@@ -3,10 +3,25 @@
   "in_bbox_json": "/Users/yuanboli/Documents/GitHub/sketch_lib/controlNet_process/sketch/dsl_optimize/optimize_iteration/iter_000/heat_map/pca_bboxes/pca_bboxes.json",
   "out_bbox_json": "/Users/yuanboli/Documents/GitHub/sketch_lib/controlNet_process/sketch/dsl_optimize/optimize_iteration/iter_000/heat_map/pca_bboxes/pca_bboxes_optimized.json",
   "labels": 17,
+  "relations_json": "/Users/yuanboli/Documents/GitHub/sketch_lib/controlNet_process/sketch/dsl_optimize/relations.json",
+  "same_pairs": [
+    {
+      "a": "wheel_0",
+      "b": "wheel_1",
+      "confidence": 1.0,
+      "evidence": "both wheels"
+    }
+  ],
   "heat_gamma": 2.0,
+  "weights": {
+    "w_overlap": 1.0,
+    "w_value": 1.0,
+    "w_same": 0.0
+  },
   "final": {
     "overlap_L": 0.32425985360606263,
     "value_L": 0.02604179229445675,
+    "same_L": 0.0,
     "core_loss": 0.3503016459005194,
     "overlap_pairs": 69,
     "inter_sum": 0.17532738830294609
@@ -17,6 +32,7 @@
       "step_frac": 0.06,
       "overlap_L": 0.45851390554175425,
       "value_L": 0.0,
+      "same_L": 0.0,
       "core_loss": 0.45851390554175425,
       "overlap_pairs": 78,
       "inter_sum": 0.29032827710603787
@@ -26,6 +42,7 @@
       "step_frac": 0.06,
       "overlap_L": 0.4477007942964906,
       "value_L": 0.0007453430361301454,
+      "same_L": 0.0,
       "core_loss": 0.4484461373326208,
       "overlap_pairs": 78,
       "inter_sum": 0.28348147939706975
@@ -35,6 +52,7 @@
       "step_frac": 0.06,
       "overlap_L": 0.43915663502561886,
       "value_L": 0.0009722742716851857,
+      "same_L": 0.0,
       "core_loss": 0.440128909297304,
       "overlap_pairs": 78,
       "inter_sum": 0.2770141314949295
@@ -44,6 +62,7 @@
       "step_frac": 0.06,
       "overlap_L": 0.43248904375265396,
       "value_L": 0.0010298347575832332,
+      "same_L": 0.0,
       "core_loss": 0.4335188785102372,
       "overlap_pairs": 78,
       "inter_sum": 0.27225455506920876
@@ -53,6 +72,7 @@
       "step_frac": 0.06,
       "overlap_L": 0.4252515119631578,
       "value_L": 0.0013176171842704042,
+      "same_L": 0.0,
       "core_loss": 0.4265691291474282,
       "overlap_pairs": 78,
       "inter_sum": 0.2660763008965041
@@ -62,6 +82,7 @@
       "step_frac": 0.06,
       "overlap_L": 0.4181611609559399,
       "value_L": 0.0013418231827296084,
+      "same_L": 0.0,
       "core_loss": 0.41950298413866954,
       "overlap_pairs": 78,
       "inter_sum": 0.2607778108752366
@@ -71,6 +92,7 @@
       "step_frac": 0.06,
       "overlap_L": 0.4121092892922343,
       "value_L": 0.002627790632024258,
+      "same_L": 0.0,
       "core_loss": 0.41473707992425857,
       "overlap_pairs": 78,
       "inter_sum": 0.25664107493952104
@@ -80,6 +102,7 @@
       "step_frac": 0.06,
       "overlap_L": 0.4071925176986815,
       "value_L": 0.002937761890151451,
+      "same_L": 0.0,
       "core_loss": 0.4101302795888329,
       "overlap_pairs": 78,
       "inter_sum": 0.2517384831708878
@@ -89,6 +112,7 @@
       "step_frac": 0.06,
       "overlap_L": 0.40070333416141596,
       "value_L": 0.003982654157935644,
+      "same_L": 0.0,
       "core_loss": 0.4046859883193516,
       "overlap_pairs": 78,
       "inter_sum": 0.24427633383261582
@@ -98,6 +122,7 @@
       "step_frac": 0.06,
       "overlap_L": 0.3959345691872009,
       "value_L": 0.004486988749588634,
+      "same_L": 0.0,
       "core_loss": 0.4004215579367895,
       "overlap_pairs": 77,
       "inter_sum": 0.23957063865884642
@@ -107,6 +132,7 @@
       "step_frac": 0.06,
       "overlap_L": 0.3924001123353488,
       "value_L": 0.004486988749588657,
+      "same_L": 0.0,
       "core_loss": 0.39688710108493747,
       "overlap_pairs": 77,
       "inter_sum": 0.23652038462184624
@@ -116,6 +142,7 @@
       "step_frac": 0.06,
       "overlap_L": 0.3867784955423741,
       "value_L": 0.004973125886513298,
+      "same_L": 0.0,
       "core_loss": 0.39175162142888736,
       "overlap_pairs": 77,
       "inter_sum": 0.23313193766611576
@@ -125,6 +152,7 @@
       "step_frac": 0.06,
       "overlap_L": 0.38479442383455786,
       "value_L": 0.00506994988035007,
+      "same_L": 0.0,
       "core_loss": 0.38986437371490795,
       "overlap_pairs": 77,
       "inter_sum": 0.23023585454582216
@@ -134,6 +162,7 @@
       "step_frac": 0.06,
       "overlap_L": 0.38261734203654313,
       "value_L": 0.005371852472564653,
+      "same_L": 0.0,
       "core_loss": 0.3879891945091078,
       "overlap_pairs": 77,
       "inter_sum": 0.22740991547722203
@@ -143,6 +172,7 @@
       "step_frac": 0.06,
       "overlap_L": 0.3768315804341656,
       "value_L": 0.005626687845633165,
+      "same_L": 0.0,
       "core_loss": 0.38245826827979873,
       "overlap_pairs": 77,
       "inter_sum": 0.22311530425571005
@@ -152,6 +182,7 @@
       "step_frac": 0.06,
       "overlap_L": 0.37504383713765005,
       "value_L": 0.005675123620815393,
+      "same_L": 0.0,
       "core_loss": 0.38071896075846545,
       "overlap_pairs": 77,
       "inter_sum": 0.2201493591940112
@@ -161,6 +192,7 @@
       "step_frac": 0.06,
       "overlap_L": 0.37149097270180276,
       "value_L": 0.007670101330287518,
+      "same_L": 0.0,
       "core_loss": 0.37916107403209026,
       "overlap_pairs": 77,
       "inter_sum": 0.21673652791392634
@@ -170,6 +202,7 @@
       "step_frac": 0.06,
       "overlap_L": 0.3667182698078462,
       "value_L": 0.008058069695603048,
+      "same_L": 0.0,
       "core_loss": 0.37477633950344924,
       "overlap_pairs": 77,
       "inter_sum": 0.21395202134441887
@@ -179,6 +212,7 @@
       "step_frac": 0.06,
       "overlap_L": 0.3618499722381875,
       "value_L": 0.008898555753534926,
+      "same_L": 0.0,
       "core_loss": 0.3707485279917224,
       "overlap_pairs": 76,
       "inter_sum": 0.21031470618676398
@@ -188,6 +222,7 @@
       "step_frac": 0.06,
       "overlap_L": 0.3579975538315788,
       "value_L": 0.00932182453302965,
+      "same_L": 0.0,
       "core_loss": 0.36731937836460843,
       "overlap_pairs": 75,
       "inter_sum": 0.20702396836705647
@@ -197,6 +232,7 @@
       "step_frac": 0.06,
       "overlap_L": 0.3566811108039544,
       "value_L": 0.00932182453302965,
+      "same_L": 0.0,
       "core_loss": 0.3660029353369841,
       "overlap_pairs": 75,
       "inter_sum": 0.20511515001122868
@@ -206,6 +242,7 @@
       "step_frac": 0.06,
       "overlap_L": 0.3520964330273273,
       "value_L": 0.011115421783178276,
+      "same_L": 0.0,
       "core_loss": 0.36321185481050555,
       "overlap_pairs": 75,
       "inter_sum": 0.201749407412919
@@ -215,6 +252,7 @@
       "step_frac": 0.06,
       "overlap_L": 0.34915278691967006,
       "value_L": 0.011928747334565195,
+      "same_L": 0.0,
       "core_loss": 0.3610815342542352,
       "overlap_pairs": 73,
       "inter_sum": 0.19900584984478203
@@ -224,6 +262,7 @@
       "step_frac": 0.06,
       "overlap_L": 0.3470358354791545,
       "value_L": 0.013226457809120068,
+      "same_L": 0.0,
       "core_loss": 0.3602622932882746,
       "overlap_pairs": 73,
       "inter_sum": 0.19681746709551892
@@ -233,6 +272,7 @@
       "step_frac": 0.06,
       "overlap_L": 0.34361037732996963,
       "value_L": 0.014403498262462719,
+      "same_L": 0.0,
       "core_loss": 0.35801387559243236,
       "overlap_pairs": 72,
       "inter_sum": 0.19419233883846315
@@ -242,6 +282,7 @@
       "step_frac": 0.06,
       "overlap_L": 0.3416714121833476,
       "value_L": 0.015749442077875805,
+      "same_L": 0.0,
       "core_loss": 0.35742085426122344,
       "overlap_pairs": 72,
       "inter_sum": 0.1913465988311108
@@ -251,6 +292,7 @@
       "step_frac": 0.06,
       "overlap_L": 0.33889550078582914,
       "value_L": 0.016981527401180637,
+      "same_L": 0.0,
       "core_loss": 0.3558770281870098,
       "overlap_pairs": 72,
       "inter_sum": 0.18879684610511363
@@ -260,6 +302,7 @@
       "step_frac": 0.06,
       "overlap_L": 0.3348804426855852,
       "value_L": 0.019839179997139085,
+      "same_L": 0.0,
       "core_loss": 0.3547196226827243,
       "overlap_pairs": 72,
       "inter_sum": 0.18605380552802794
@@ -269,6 +312,7 @@
       "step_frac": 0.06,
       "overlap_L": 0.3324145718353927,
       "value_L": 0.020759680328557108,
+      "same_L": 0.0,
       "core_loss": 0.3531742521639498,
       "overlap_pairs": 72,
       "inter_sum": 0.18361568178391752
@@ -278,6 +322,7 @@
       "step_frac": 0.06,
       "overlap_L": 0.32948941142381427,
       "value_L": 0.023492383779966774,
+      "same_L": 0.0,
       "core_loss": 0.35298179520378103,
       "overlap_pairs": 70,
       "inter_sum": 0.1800353923075399
@@ -287,6 +332,7 @@
       "step_frac": 0.06,
       "overlap_L": 0.32948941142381427,
       "value_L": 0.023492383779966774,
+      "same_L": 0.0,
       "core_loss": 0.35298179520378103,
       "overlap_pairs": 70,
       "inter_sum": 0.1800353923075399
@@ -296,6 +342,7 @@
       "step_frac": 0.06,
       "overlap_L": 0.32948941142381427,
       "value_L": 0.023492383779966774,
+      "same_L": 0.0,
       "core_loss": 0.35298179520378103,
       "overlap_pairs": 70,
       "inter_sum": 0.1800353923075399
@@ -305,6 +352,7 @@
       "step_frac": 0.06,
       "overlap_L": 0.32948941142381427,
       "value_L": 0.023492383779966774,
+      "same_L": 0.0,
       "core_loss": 0.35298179520378103,
       "overlap_pairs": 70,
       "inter_sum": 0.1800353923075399
@@ -314,6 +362,7 @@
       "step_frac": 0.06,
       "overlap_L": 0.32948941142381427,
       "value_L": 0.023492383779966774,
+      "same_L": 0.0,
       "core_loss": 0.35298179520378103,
       "overlap_pairs": 70,
       "inter_sum": 0.1800353923075399
@@ -323,6 +372,7 @@
       "step_frac": 0.06,
       "overlap_L": 0.32948941142381427,
       "value_L": 0.023492383779966774,
+      "same_L": 0.0,
       "core_loss": 0.35298179520378103,
       "overlap_pairs": 70,
       "inter_sum": 0.1800353923075399
@@ -332,6 +382,7 @@
       "step_frac": 0.03,
       "overlap_L": 0.32948941142381427,
       "value_L": 0.023492383779966774,
+      "same_L": 0.0,
       "core_loss": 0.35298179520378103,
       "overlap_pairs": 70,
       "inter_sum": 0.1800353923075399
@@ -341,6 +392,7 @@
       "step_frac": 0.03,
       "overlap_L": 0.3283445527063331,
       "value_L": 0.024611911208704974,
+      "same_L": 0.0,
       "core_loss": 0.3529564639150381,
       "overlap_pairs": 70,
       "inter_sum": 0.17906493654714112
@@ -350,6 +402,7 @@
       "step_frac": 0.03,
       "overlap_L": 0.32712723679956957,
       "value_L": 0.024956510493207306,
+      "same_L": 0.0,
       "core_loss": 0.35208374729277686,
       "overlap_pairs": 70,
       "inter_sum": 0.1778967294283727
@@ -359,6 +412,7 @@
       "step_frac": 0.03,
       "overlap_L": 0.32712723679956957,
       "value_L": 0.024956510493207306,
+      "same_L": 0.0,
       "core_loss": 0.35208374729277686,
       "overlap_pairs": 70,
       "inter_sum": 0.1778967294283727
@@ -368,6 +422,7 @@
       "step_frac": 0.03,
       "overlap_L": 0.32712723679956957,
       "value_L": 0.024956510493207306,
+      "same_L": 0.0,
       "core_loss": 0.35208374729277686,
       "overlap_pairs": 70,
       "inter_sum": 0.1778967294283727
@@ -377,6 +432,7 @@
       "step_frac": 0.03,
       "overlap_L": 0.32712723679956957,
       "value_L": 0.024956510493207306,
+      "same_L": 0.0,
       "core_loss": 0.35208374729277686,
       "overlap_pairs": 70,
       "inter_sum": 0.1778967294283727
@@ -386,6 +442,7 @@
       "step_frac": 0.03,
       "overlap_L": 0.32712723679956957,
       "value_L": 0.024956510493207306,
+      "same_L": 0.0,
       "core_loss": 0.35208374729277686,
       "overlap_pairs": 70,
       "inter_sum": 0.1778967294283727
@@ -395,6 +452,7 @@
       "step_frac": 0.03,
       "overlap_L": 0.32712723679956957,
       "value_L": 0.024956510493207306,
+      "same_L": 0.0,
       "core_loss": 0.35208374729277686,
       "overlap_pairs": 70,
       "inter_sum": 0.1778967294283727
@@ -404,6 +462,7 @@
       "step_frac": 0.015,
       "overlap_L": 0.32712723679956957,
       "value_L": 0.024956510493207306,
+      "same_L": 0.0,
       "core_loss": 0.35208374729277686,
       "overlap_pairs": 70,
       "inter_sum": 0.1778967294283727
@@ -413,6 +472,7 @@
       "step_frac": 0.015,
       "overlap_L": 0.32687550720863107,
       "value_L": 0.02498071649166651,
+      "same_L": 0.0,
       "core_loss": 0.35185622370029757,
       "overlap_pairs": 70,
       "inter_sum": 0.17754641317617303
@@ -422,6 +482,7 @@
       "step_frac": 0.015,
       "overlap_L": 0.3266404485661169,
       "value_L": 0.025106811825706152,
+      "same_L": 0.0,
       "core_loss": 0.3517472603918231,
       "overlap_pairs": 70,
       "inter_sum": 0.17703106479474248
@@ -431,6 +492,7 @@
       "step_frac": 0.015,
       "overlap_L": 0.3257947991578241,
       "value_L": 0.025448745332206254,
+      "same_L": 0.0,
       "core_loss": 0.35124354449003037,
       "overlap_pairs": 70,
       "inter_sum": 0.17646314251573236
@@ -440,6 +502,7 @@
       "step_frac": 0.015,
       "overlap_L": 0.324947538457383,
       "value_L": 0.0257755263114055,
+      "same_L": 0.0,
       "core_loss": 0.3507230647687885,
       "overlap_pairs": 70,
       "inter_sum": 0.17589758912006098
@@ -449,6 +512,7 @@
       "step_frac": 0.015,
       "overlap_L": 0.32425985360606263,
       "value_L": 0.02604179229445675,
+      "same_L": 0.0,
       "core_loss": 0.3503016459005194,
       "overlap_pairs": 69,
       "inter_sum": 0.17532738830294609
@@ -458,6 +522,7 @@
       "step_frac": 0.015,
       "overlap_L": 0.32425985360606263,
       "value_L": 0.02604179229445675,
+      "same_L": 0.0,
       "core_loss": 0.3503016459005194,
       "overlap_pairs": 69,
       "inter_sum": 0.17532738830294609
@@ -467,6 +532,7 @@
       "step_frac": 0.015,
       "overlap_L": 0.32425985360606263,
       "value_L": 0.02604179229445675,
+      "same_L": 0.0,
       "core_loss": 0.3503016459005194,
       "overlap_pairs": 69,
       "inter_sum": 0.17532738830294609
@@ -476,6 +542,7 @@
       "step_frac": 0.015,
       "overlap_L": 0.32425985360606263,
       "value_L": 0.02604179229445675,
+      "same_L": 0.0,
       "core_loss": 0.3503016459005194,
       "overlap_pairs": 69,
       "inter_sum": 0.17532738830294609
@@ -485,6 +552,7 @@
       "step_frac": 0.015,
       "overlap_L": 0.32425985360606263,
       "value_L": 0.02604179229445675,
+      "same_L": 0.0,
       "core_loss": 0.3503016459005194,
       "overlap_pairs": 69,
       "inter_sum": 0.17532738830294609
@@ -494,6 +562,7 @@
       "step_frac": 0.015,
       "overlap_L": 0.32425985360606263,
       "value_L": 0.02604179229445675,
+      "same_L": 0.0,
       "core_loss": 0.3503016459005194,
       "overlap_pairs": 69,
       "inter_sum": 0.17532738830294609
@@ -503,6 +572,7 @@
       "step_frac": 0.0075,
       "overlap_L": 0.32425985360606263,
       "value_L": 0.02604179229445675,
+      "same_L": 0.0,
       "core_loss": 0.3503016459005194,
       "overlap_pairs": 69,
       "inter_sum": 0.17532738830294609
@@ -512,6 +582,7 @@
       "step_frac": 0.0075,
       "overlap_L": 0.32425985360606263,
       "value_L": 0.02604179229445675,
+      "same_L": 0.0,
       "core_loss": 0.3503016459005194,
       "overlap_pairs": 69,
       "inter_sum": 0.17532738830294609
@@ -521,6 +592,7 @@
       "step_frac": 0.0075,
       "overlap_L": 0.32425985360606263,
       "value_L": 0.02604179229445675,
+      "same_L": 0.0,
       "core_loss": 0.3503016459005194,
       "overlap_pairs": 69,
       "inter_sum": 0.17532738830294609
@@ -530,6 +602,7 @@
       "step_frac": 0.0075,
       "overlap_L": 0.32425985360606263,
       "value_L": 0.02604179229445675,
+      "same_L": 0.0,
       "core_loss": 0.3503016459005194,
       "overlap_pairs": 69,
       "inter_sum": 0.17532738830294609
@@ -539,6 +612,7 @@
       "step_frac": 0.0075,
       "overlap_L": 0.32425985360606263,
       "value_L": 0.02604179229445675,
+      "same_L": 0.0,
       "core_loss": 0.3503016459005194,
       "overlap_pairs": 69,
       "inter_sum": 0.17532738830294609
@@ -548,10 +622,11 @@
       "step_frac": 0.0075,
       "overlap_L": 0.32425985360606263,
       "value_L": 0.02604179229445675,
+      "same_L": 0.0,
       "core_loss": 0.3503016459005194,
       "overlap_pairs": 69,
       "inter_sum": 0.17532738830294609
     }
   ],
-  "note": "Backward compatible: accepts w_shrink but ignores it. No shrink penalty. Value uses heat^gamma."
+  "note": "Backward compatible: accepts w_shrink but ignores it. Adds same-pair size penalty via relations.json."
 }
