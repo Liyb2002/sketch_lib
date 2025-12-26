@@ -1,4 +1,35 @@
 #!/usr/bin/env python3
+"""
+constraints_optimization/no_overlapping.py
+
+Shrink-only, value-aware bounding box optimization.
+
+Goal:
+- Minimize AABB overlap between boxes (computed in WORLD coordinates).
+- Minimize value loss, where value(label, box) = sum of heat values of points inside the OBB.
+- Boxes can ONLY shrink (extent decreases); center and rotation fixed.
+
+Critical normalization (so overlap competes with large value sums):
+- Overlap objective uses a *dimensionless* normalized overlap:
+    sum_{i<j}  V_ij / max(eps, min(V_i, V_j))
+  where V_ij is raw AABB intersection volume and V_i is box i AABB volume.
+- Value loss objective uses normalized value loss:
+    sum_i (value0_i - value_i) / max(eps, value0_i)
+
+Print requirement:
+- Print "overlapping volume for each label":
+  For each label i, we print sum_j V_ij (raw AABB inter_vol with all other boxes).
+
+Exports:
+- apply_no_overlapping_shrink_only(...)
+- optimize_bounding_boxes(...)  # backward-compatible alias for launcher
+
+Notes:
+- This file assumes bbox_json is produced by compute_pca_bounding_boxes()
+  and contains per-label:
+    rec["obb"] = {center,R,extent}, and rec["heat_ply"] path.
+"""
+
 import os
 import json
 from typing import Any, Dict, List, Tuple
@@ -6,11 +37,14 @@ from typing import Any, Dict, List, Tuple
 import numpy as np
 
 try:
-    import torch
-    import torch.nn.functional as F
+    import open3d as o3d
 except Exception:
-    torch = None
+    o3d = None
 
+
+# -----------------------------------------------------------------------------
+# IO
+# -----------------------------------------------------------------------------
 
 def _load_json(path: str) -> Any:
     with open(path, "r") as f:
@@ -21,305 +55,480 @@ def _save_json(path: str, obj: Any) -> None:
     with open(path, "w") as f:
         json.dump(obj, f, indent=2)
 
-def _load_primitives(primitives_json_path: str) -> Tuple[Dict[str, Any], List[Dict[str, Any]]]:
-    raw = _load_json(primitives_json_path)
-    if isinstance(raw, dict) and "primitives" in raw:
-        return raw, raw["primitives"]
-    if isinstance(raw, list):
-        return {"primitives": raw}, raw
-    raise ValueError(f"Unexpected primitives JSON format: {primitives_json_path}")
 
+# -----------------------------------------------------------------------------
+# Heat decode (matches heat_map.py colormap)
+# -----------------------------------------------------------------------------
 
-# ---------------- overlap ----------------
-
-def _pairwise_overlap_volumes(mins: torch.Tensor, maxs: torch.Tensor) -> torch.Tensor:
+def _heat_from_red_green_black(colors_0_1: np.ndarray) -> np.ndarray:
     """
-    mins,maxs: (N,3)
-    returns overlap volume matrix (N,N) with diagonal 0.
+    Reverse heat_map.py colormap:
+      h<=0.5 : rgb=(0, 2h, 0)         => h=0.5*g
+      h>=0.5 : rgb=(2h-1, 2-2h, 0)    => h=0.5+0.5*r
     """
-    N = mins.shape[0]
-    min_i = mins.unsqueeze(1)
-    min_j = mins.unsqueeze(0)
-    max_i = maxs.unsqueeze(1)
-    max_j = maxs.unsqueeze(0)
-    omax = torch.minimum(max_i, max_j)
-    omin = torch.maximum(min_i, min_j)
-    o = F.relu(omax - omin)
-    vol = o[..., 0] * o[..., 1] * o[..., 2]
-    vol = vol * (1.0 - torch.eye(N, device=mins.device, dtype=mins.dtype))
-    return vol
-
-def _box_volumes(mins: torch.Tensor, maxs: torch.Tensor) -> torch.Tensor:
-    ext = torch.clamp(maxs - mins, min=0.0)
-    return ext[:, 0] * ext[:, 1] * ext[:, 2]
+    c = np.asarray(colors_0_1, dtype=np.float32)
+    r = c[:, 0]
+    g = c[:, 1]
+    h = np.where(r > 1e-6, 0.5 + 0.5 * r, 0.5 * g)
+    return np.clip(h, 0.0, 1.0)
 
 
 # -----------------------------------------------------------------------------
-# Public API
+# OBB -> world AABB (via corners)
+# -----------------------------------------------------------------------------
+
+def _obb_corners_world(center: np.ndarray, R: np.ndarray, extent: np.ndarray) -> np.ndarray:
+    c = np.asarray(center, dtype=np.float64).reshape(3)
+    Rm = np.asarray(R, dtype=np.float64).reshape(3, 3)
+    e = np.asarray(extent, dtype=np.float64).reshape(3)
+    h = 0.5 * e
+
+    signs = np.array(
+        [[-1, -1, -1],
+         [-1, -1,  1],
+         [-1,  1, -1],
+         [-1,  1,  1],
+         [ 1, -1, -1],
+         [ 1, -1,  1],
+         [ 1,  1, -1],
+         [ 1,  1,  1]],
+        dtype=np.float64,
+    )
+    corners_local = signs * h[None, :]
+    corners_world = (Rm @ corners_local.T).T + c[None, :]
+    return corners_world
+
+def _obb_world_aabb(center: np.ndarray, R: np.ndarray, extent: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+    corners = _obb_corners_world(center, R, extent)
+    mn = corners.min(axis=0)
+    mx = corners.max(axis=0)
+    return mn, mx
+
+
+# -----------------------------------------------------------------------------
+# AABB volume + overlap volume
+# -----------------------------------------------------------------------------
+
+def _box_volume(mn: np.ndarray, mx: np.ndarray) -> float:
+    ext = np.asarray(mx, dtype=np.float64) - np.asarray(mn, dtype=np.float64)
+    ext = np.maximum(ext, 0.0)
+    return float(ext[0] * ext[1] * ext[2])
+
+def _pairwise_overlap_volume(mn1: np.ndarray, mx1: np.ndarray, mn2: np.ndarray, mx2: np.ndarray) -> float:
+    omax = np.minimum(mx1, mx2)
+    omin = np.maximum(mn1, mn2)
+    oext = omax - omin
+    oext = np.maximum(oext, 0.0)
+    return float(oext[0] * oext[1] * oext[2])
+
+
+def _compute_pairwise_overlaps(
+    mins: np.ndarray,
+    maxs: np.ndarray,
+) -> Tuple[np.ndarray, np.ndarray, float, int]:
+    """
+    Returns:
+      vols: (N,) AABB volumes
+      per_box_overlap: (N,) sum_j V_ij (raw), counting each pair into both endpoints
+      total_overlap: sum_{i<j} V_ij
+      overlap_pairs: count of pairs with V_ij > 0
+    """
+    mins = np.asarray(mins, dtype=np.float64)
+    maxs = np.asarray(maxs, dtype=np.float64)
+    n = int(mins.shape[0])
+
+    vols = np.array([_box_volume(mins[i], maxs[i]) for i in range(n)], dtype=np.float64)
+    per_box = np.zeros((n,), dtype=np.float64)
+
+    total = 0.0
+    pairs = 0
+    for i in range(n):
+        for j in range(i + 1, n):
+            v = _pairwise_overlap_volume(mins[i], maxs[i], mins[j], maxs[j])
+            if v > 0.0:
+                pairs += 1
+                total += v
+                per_box[i] += v
+                per_box[j] += v
+
+    return vols, per_box, float(total), int(pairs)
+
+
+def _normalized_overlap_objective(mins: np.ndarray, maxs: np.ndarray, eps: float = 1e-12) -> float:
+    """
+    Dimensionless overlap objective:
+      sum_{i<j} V_ij / max(eps, min(V_i, V_j))
+    """
+    mins = np.asarray(mins, dtype=np.float64)
+    maxs = np.asarray(maxs, dtype=np.float64)
+    n = int(mins.shape[0])
+    vols = np.array([_box_volume(mins[i], maxs[i]) for i in range(n)], dtype=np.float64)
+
+    tot = 0.0
+    for i in range(n):
+        for j in range(i + 1, n):
+            vij = _pairwise_overlap_volume(mins[i], maxs[i], mins[j], maxs[j])
+            if vij <= 0.0:
+                continue
+            denom = max(float(eps), float(min(vols[i], vols[j])))
+            tot += float(vij) / denom
+    return float(tot)
+
+
+# -----------------------------------------------------------------------------
+# Value inside OBB (sum heat inside)
+# -----------------------------------------------------------------------------
+
+def _load_heat_ply_points_and_heat(path: str) -> Tuple[np.ndarray, np.ndarray]:
+    if o3d is None:
+        raise RuntimeError("open3d required to read PLY. pip install open3d")
+    pcd = o3d.io.read_point_cloud(path)
+    pts = np.asarray(pcd.points, dtype=np.float64)
+    cols = np.asarray(pcd.colors, dtype=np.float32)
+    if pts.shape[0] == 0:
+        return pts, np.zeros((0,), dtype=np.float32)
+    heat = _heat_from_red_green_black(cols)
+    return pts, heat
+
+def _to_local(points_world: np.ndarray, center: np.ndarray, R: np.ndarray) -> np.ndarray:
+    c = np.asarray(center, dtype=np.float64).reshape(1, 3)
+    Rm = np.asarray(R, dtype=np.float64).reshape(3, 3)
+    return (points_world - c) @ Rm.T
+
+def _value_inside_halfext(local_pts: np.ndarray, heat: np.ndarray, half: np.ndarray) -> float:
+    h = np.asarray(half, dtype=np.float64).reshape(1, 3)
+    inside = np.all(np.abs(local_pts) <= h, axis=1)
+    return float(np.sum(heat[inside]))
+
+
+# -----------------------------------------------------------------------------
+# Optimizer (shrink-only)
 # -----------------------------------------------------------------------------
 
 def apply_no_overlapping_shrink_only(
-    primitives_json_path: str,
-    out_dir: str,
     *,
-    steps: int = 1200,
-    lr: float = 1e-2,
-    overlap_tol_ratio: float = 0.02,
-    overlap_scale_ratio: float = 0.01,
-    r_min: float = 0.70,
-    w_overlap: float = 1.0,
-    w_cut: float = 50.0,
-    w_size: float = 2.0,
-    w_floor: float = 10.0,
-    extent_floor: float = 1e-3,
-    min_points: int = 10,
-    device: str = "cuda",
-    verbose_every: int = 50,
+    bbox_json: str,
+    out_optimized_bbox_json: str,
+    out_report_json: str,
+    max_iter: int = 400,
+    step_frac: float = 0.08,
+    step_decay: float = 0.5,
+    min_extent_frac: float = 0.15,
+    w_overlap: float = 3.0,
+    w_value: float = 1.0,
+    w_shrink: float = 0.05,
+    verbose: bool = True,
 ) -> Dict[str, Any]:
     """
-    Robust shrink-only optimizer that NEVER produces negative extents.
+    Shrink-only optimization.
 
-    Parameterization:
-      - original AABB: mid0, half0
-      - half = half0 * sigmoid(s) + floor_half   (positive, <= half0+floor_half)
-      - mid  = mid0 + tanh(t) * (half0 - half)   (keeps box inside original)
-
-    So mins = mid-half, maxs = mid+half are always ordered, extent=2*half always positive.
-
-    Loss:
-      - tolerant nonlinear overlap
-      - penalize too much cut (vol ratio below r_min)
-      - gentle size encouragement
-      - floor penalty (mostly redundant, but stabilizes)
+    Prints:
+      - initial per-label overlap volumes (raw)
+      - final per-label overlap volumes (raw)
+      - per-label extent/value changes at end
     """
-    if torch is None:
-        raise RuntimeError("PyTorch is required. Please install torch.")
+    payload = _load_json(bbox_json)
+    labels = payload.get("labels", [])
+    if not labels:
+        rep = {"ok": True, "note": "No labels in bbox_json", "iters": 0}
+        _save_json(out_report_json, rep)
+        _save_json(out_optimized_bbox_json, payload)
+        return rep
 
-    os.makedirs(out_dir, exist_ok=True)
-    raw, prims = _load_primitives(primitives_json_path)
+    items: List[Dict[str, Any]] = []
+    for rec in labels:
+        obb = rec.get("obb", {})
+        center = np.asarray(obb["center"], dtype=np.float64)
+        Rm = np.asarray(obb["R"], dtype=np.float64)
+        extent0 = np.asarray(obb["extent"], dtype=np.float64)
 
-    if device == "cuda" and not torch.cuda.is_available():
-        device = "cpu"
+        heat_ply = rec.get("heat_ply", None)
+        if heat_ply is None:
+            raise ValueError("Missing 'heat_ply' in bbox labels.")
 
-    eligible_idxs = [i for i, p in enumerate(prims) if int(p.get("point_count", 0)) >= min_points]
-    if len(eligible_idxs) <= 1:
-        out_path = os.path.join(out_dir, "optimized_primitives.json")
-        rep_path = os.path.join(out_dir, "no_overlapping_report.json")
-        out_raw = dict(raw) if isinstance(raw, dict) else {"primitives": prims}
-        out_raw["primitives"] = prims
-        _save_json(out_path, out_raw)
-        _save_json(rep_path, {"note": "Not enough eligible primitives.", "eligible_count": len(eligible_idxs)})
-        return {"optimized_primitives_json": out_path, "report_json": rep_path}
+        pts_w, heat = _load_heat_ply_points_and_heat(heat_ply)
+        pts_l = _to_local(pts_w, center=center, R=Rm)
+        v0 = _value_inside_halfext(pts_l, heat, 0.5 * extent0)
 
-    mins0, maxs0, meta = [], [], []
-    for i in eligible_idxs:
-        p = prims[i]
-        params = p.get("parameters", {})
-        c = np.array(params.get("center", [0, 0, 0]), dtype=np.float32)
-        e = np.array(params.get("extent", [0, 0, 0]), dtype=np.float32)
-
-        # sanitize original extent (in case upstream has negatives)
-        e = np.abs(e)
-
-        mn = c - 0.5 * e
-        mx = c + 0.5 * e
-
-        # ensure ordered original bounds (paranoia)
-        mn2 = np.minimum(mn, mx)
-        mx2 = np.maximum(mn, mx)
-
-        mins0.append(mn2)
-        maxs0.append(mx2)
-        meta.append({
-            "prim_index": i,
-            "cluster_id": int(p.get("cluster_id", -1)),
-            "label": str(p.get("label", "unknown")),
+        items.append({
+            "label": rec.get("label", rec.get("sanitized", "unknown")),
+            "rec": rec,
+            "center": center,
+            "R": Rm,
+            "extent0": extent0.copy(),
+            "extent_min": np.maximum(extent0 * float(min_extent_frac), 1e-9),
+            "extent": extent0.copy(),
+            "pts_l": pts_l,
+            "heat": heat,
+            "value0": float(v0),
+            "value": float(v0),
         })
 
-    mins0_t = torch.tensor(np.stack(mins0, axis=0), device=device, dtype=torch.float32)
-    maxs0_t = torch.tensor(np.stack(maxs0, axis=0), device=device, dtype=torch.float32)
+    def compute_world_aabbs() -> Tuple[np.ndarray, np.ndarray]:
+        mins = np.zeros((len(items), 3), dtype=np.float64)
+        maxs = np.zeros((len(items), 3), dtype=np.float64)
+        for k, it in enumerate(items):
+            mn, mx = _obb_world_aabb(it["center"], it["R"], it["extent"])
+            mins[k] = mn
+            maxs[k] = mx
+        return mins, maxs
 
-    mid0 = 0.5 * (mins0_t + maxs0_t)
-    half0 = 0.5 * (maxs0_t - mins0_t)
+    def total_value_loss_norm(eps: float = 1e-12) -> float:
+        s = 0.0
+        for it in items:
+            denom = max(float(eps), float(it["value0"]))
+            s += float(it["value0"] - it["value"]) / denom
+        return float(s)
 
-    # enforce a minimum half extent floor
-    floor_half = 0.5 * float(extent_floor)
-    half0 = torch.clamp(half0, min=floor_half + 1e-6)
+    def shrink_penalty_norm(eps: float = 1e-12) -> float:
+        s = 0.0
+        for it in items:
+            e0 = np.asarray(it["extent0"], dtype=np.float64)
+            e = np.asarray(it["extent"], dtype=np.float64)
+            s += float(np.sum((e0 - e) / np.maximum(e0, float(eps))))
+        return float(s)
 
-    N = mins0_t.shape[0]
-
-    # learnable params
-    s = torch.nn.Parameter(torch.zeros((N, 3), device=device, dtype=torch.float32))  # controls shrink
-    t = torch.nn.Parameter(torch.zeros((N, 3), device=device, dtype=torch.float32))  # controls shift within original
-
-    opt = torch.optim.Adam([s, t], lr=lr)
-
-    # compute original volumes
-    mins_init = mid0 - half0
-    maxs_init = mid0 + half0
-    vol0 = _box_volumes(mins_init, maxs_init).detach()
-    vol0 = torch.clamp(vol0, min=1e-12)
-
-    loss_hist = []
-
-    for step in range(steps):
-        opt.zero_grad(set_to_none=True)
-
-        # half in (floor_half, half0] (approx)
-        half = half0 * torch.sigmoid(s)
-        half = torch.clamp(half, min=floor_half)
-
-        # allow mid shift only as much as still staying inside original bounds:
-        # available slack = half0 - half (>=0)
-        slack = torch.clamp(half0 - half, min=0.0)
-        mid = mid0 + torch.tanh(t) * slack
-
-        mins = mid - half
-        maxs = mid + half
-
-        # safety ordering (should be unnecessary, but guarantees no negatives)
-        mins, maxs = torch.minimum(mins, maxs), torch.maximum(mins, maxs)
-
-        extent = maxs - mins
-        floor_pen = torch.mean(F.relu(float(extent_floor) - extent) ** 2)
-
-        vol = _box_volumes(mins, maxs)
-        vol = torch.clamp(vol, min=1e-12)
-        r = vol / vol0
-
-        cut_pen = torch.mean(F.relu(float(r_min) - r) ** 2)
-        size_pen = torch.mean(1.0 - r)
-
-        V = _pairwise_overlap_volumes(mins, maxs)
-        Vi = vol.unsqueeze(1)
-        Vj = vol.unsqueeze(0)
-        Vtol = float(overlap_tol_ratio) * torch.minimum(Vi, Vj)
-        excess = F.relu(V - Vtol)
-
-        s_scale = float(overlap_scale_ratio) * torch.mean(vol).detach()
-        s_scale = torch.clamp(s_scale, min=1e-12)
-
-        overlap_pen = torch.triu(torch.log1p((excess / s_scale) ** 2), diagonal=1).sum()
-
-        loss = w_overlap * overlap_pen + w_cut * cut_pen + w_size * size_pen + w_floor * floor_pen
-        loss.backward()
-        opt.step()
-
-        rec = {
-            "step": step,
-            "loss": float(loss.detach().cpu().item()),
-            "overlap_pen": float(overlap_pen.detach().cpu().item()),
-            "cut_pen": float(cut_pen.detach().cpu().item()),
-            "size_pen": float(size_pen.detach().cpu().item()),
-            "floor_pen": float(floor_pen.detach().cpu().item()),
-            "mean_r": float(r.detach().mean().cpu().item()),
-            "min_r": float(r.detach().min().cpu().item()),
-            "min_extent": float(extent.detach().min().cpu().item()),
+    def objective(mins: np.ndarray, maxs: np.ndarray) -> Tuple[float, Dict[str, Any]]:
+        overlap_norm = _normalized_overlap_objective(mins, maxs)
+        vols, per_box_overlap, inter_sum, overlap_pairs = _compute_pairwise_overlaps(mins, maxs)
+        J = (float(w_overlap) * float(overlap_norm)
+             + float(w_value) * float(total_value_loss_norm())
+             + float(w_shrink) * float(shrink_penalty_norm()))
+        info = {
+            "overlap_norm": float(overlap_norm),
+            "inter_sum": float(inter_sum),
+            "overlap_pairs": int(overlap_pairs),
+            "per_box_overlap": per_box_overlap,
+            "vols": vols,
         }
-        loss_hist.append(rec)
+        return float(J), info
 
-        if verbose_every > 0 and (step % verbose_every == 0 or step == steps - 1):
+    # ---------------- initial report (per-label overlap volume) ----------------
+    mins0, maxs0 = compute_world_aabbs()
+    J0, info0 = objective(mins0, maxs0)
+
+    if verbose:
+        print("\n[NO_OVERLAP][INIT] overlap_pairs=", info0["overlap_pairs"], " inter_sum=", f"{info0['inter_sum']:.9g}")
+        print("[NO_OVERLAP][INIT] per-label raw overlap volume (sum with others):")
+        per = np.asarray(info0["per_box_overlap"], dtype=np.float64)
+        order = np.argsort(-per)
+        for idx in order:
+            print(f"  {items[int(idx)]['label']}: overlap_sum={per[int(idx)]:.9g}")
+
+    # ---------------- search (greedy coordinate shrink on worst pair) ----------------
+    best_J = float(J0)
+    best_state = [it["extent"].copy() for it in items]
+    history: List[Dict[str, Any]] = []
+
+    cur_step = float(step_frac)
+    no_improve_rounds = 0
+
+    for itn in range(int(max_iter)):
+        mins, maxs = compute_world_aabbs()
+        J, info = objective(mins, maxs)
+
+        history.append({
+            "iter": int(itn),
+            "step_frac": float(cur_step),
+            "objective": float(J),
+            "overlap_norm": float(info["overlap_norm"]),
+            "inter_sum": float(info["inter_sum"]),
+            "overlap_pairs": int(info["overlap_pairs"]),
+            "value_loss_norm": float(total_value_loss_norm()),
+            "shrink_penalty_norm": float(shrink_penalty_norm()),
+        })
+
+        # Hard stop: NO overlap means raw inter_sum == 0
+        if float(info["inter_sum"]) <= 0.0:
+            if J < best_J:
+                best_J = float(J)
+                best_state = [it2["extent"].copy() for it2 in items]
+            break
+
+        # choose worst overlapping pair by raw intersection volume
+        n = len(items)
+        worst = None  # (V_ij, i, j)
+        for i in range(n):
+            for j in range(i + 1, n):
+                V_ij = _pairwise_overlap_volume(mins[i], maxs[i], mins[j], maxs[j])
+                if V_ij > 0.0:
+                    if (worst is None) or (V_ij > worst[0]):
+                        worst = (V_ij, i, j)
+
+        if worst is None:
+            if J < best_J:
+                best_J = float(J)
+                best_state = [it2["extent"].copy() for it2 in items]
+            break
+
+        _, i, j = worst
+
+        # candidate: shrink one axis of either box in the worst pair
+        candidates = []
+        for box_id in (int(i), int(j)):
+            it = items[box_id]
+            e_old = it["extent"]
+
+            for axis in (0, 1, 2):
+                e_new = e_old.copy()
+                e_new[axis] = max(it["extent_min"][axis], e_old[axis] * (1.0 - cur_step))
+                if np.allclose(e_new, e_old, rtol=0, atol=1e-12):
+                    continue
+
+                old_extent = it["extent"].copy()
+                old_value = it["value"]
+
+                it["extent"] = e_new
+                it["value"] = _value_inside_halfext(it["pts_l"], it["heat"], 0.5 * e_new)
+
+                mins_t, maxs_t = compute_world_aabbs()
+                J_t, _ = objective(mins_t, maxs_t)
+
+                it["extent"] = old_extent
+                it["value"] = old_value
+
+                candidates.append((float(J_t), int(box_id), int(axis), e_new))
+
+        if not candidates:
+            no_improve_rounds += 1
+        else:
+            candidates.sort(key=lambda t: t[0])
+            J_new, box_id, axis, e_new = candidates[0]
+
+            if J_new + 1e-12 < J:
+                it = items[box_id]
+                it["extent"] = e_new
+                it["value"] = _value_inside_halfext(it["pts_l"], it["heat"], 0.5 * e_new)
+
+                if J_new + 1e-12 < best_J:
+                    best_J = float(J_new)
+                    best_state = [it2["extent"].copy() for it2 in items]
+
+                no_improve_rounds = 0
+            else:
+                no_improve_rounds += 1
+
+        if no_improve_rounds >= 6:
+            cur_step *= float(step_decay)
+            no_improve_rounds = 0
+            if cur_step < 0.005:
+                break
+
+    # restore best
+    for it, e_best in zip(items, best_state):
+        it["extent"] = e_best
+        it["value"] = _value_inside_halfext(it["pts_l"], it["heat"], 0.5 * e_best)
+
+    # final overlaps
+    mins_f, maxs_f = compute_world_aabbs()
+    J_f, info_f = objective(mins_f, maxs_f)
+
+    # ---------------- print final per-label overlap volume ----------------
+    if verbose:
+        print("\n[NO_OVERLAP][FINAL] overlap_pairs=", info_f["overlap_pairs"], " inter_sum=", f"{info_f['inter_sum']:.9g}")
+        print("[NO_OVERLAP][FINAL] per-label raw overlap volume (sum with others):")
+        per = np.asarray(info_f["per_box_overlap"], dtype=np.float64)
+        order = np.argsort(-per)
+        for idx in order:
+            print(f"  {items[int(idx)]['label']}: overlap_sum={per[int(idx)]:.9g}")
+
+        print("\n[NO_OVERLAP] === Per-box changes (extent + value) ===")
+        for k, it in enumerate(items):
+            e0 = np.asarray(it["extent0"], dtype=np.float64)
+            e1 = np.asarray(it["extent"], dtype=np.float64)
+            de = e0 - e1
+            rel = de / np.maximum(e0, 1e-12)
+
+            v0 = float(it["value0"])
+            v1 = float(it["value"])
+            vloss = v0 - v1
+            vloss_rel = vloss / max(v0, 1e-12)
+
             print(
-                f"[NO_OVERLAP] step={step:04d} "
-                f"loss={rec['loss']:.6e} "
-                f"overlap={rec['overlap_pen']:.6e} "
-                f"cut={rec['cut_pen']:.6e} "
-                f"mean_r={rec['mean_r']:.3f} "
-                f"min_r={rec['min_r']:.3f} "
-                f"min_extent={rec['min_extent']:.3e}"
+                f"[NO_OVERLAP][BOX {k:02d}] {it['label']}\n"
+                f"   extent0 = [{e0[0]:.6g}, {e0[1]:.6g}, {e0[2]:.6g}]\n"
+                f"   extent  = [{e1[0]:.6g}, {e1[1]:.6g}, {e1[2]:.6g}]\n"
+                f"   shrink  = [{de[0]:.6g}, {de[1]:.6g}, {de[2]:.6g}]  "
+                f"(rel=[{rel[0]:.3%}, {rel[1]:.3%}, {rel[2]:.3%}])\n"
+                f"   value0  = {v0:.6g}\n"
+                f"   value   = {v1:.6g}\n"
+                f"   v_loss  = {vloss:.6g}  (rel={vloss_rel:.3%})"
             )
 
-    with torch.no_grad():
-        half = torch.clamp(half0 * torch.sigmoid(s), min=floor_half)
-        slack = torch.clamp(half0 - half, min=0.0)
-        mid = mid0 + torch.tanh(t) * slack
-        mins = torch.minimum(mid - half, mid + half)
-        maxs = torch.maximum(mid - half, mid + half)
+    # write optimized bbox json
+    out_payload = json.loads(json.dumps(payload))
+    out_labels = out_payload.get("labels", [])
 
-    mins_opt = mins.detach().cpu().numpy()
-    maxs_opt = maxs.detach().cpu().numpy()
+    if len(out_labels) == len(items):
+        for rec, it in zip(out_labels, items):
+            rec["obb"]["extent"] = it["extent"].tolist()
+            rec["opt"] = {
+                "value0": float(it["value0"]),
+                "value": float(it["value"]),
+                "value_loss": float(it["value0"] - it["value"]),
+                "extent0": it["extent0"].tolist(),
+                "extent": it["extent"].tolist(),
+            }
+    else:
+        lab2it = {it["label"]: it for it in items}
+        for rec in out_labels:
+            lab = rec.get("label", rec.get("sanitized", "unknown"))
+            if lab in lab2it:
+                it = lab2it[lab]
+                rec["obb"]["extent"] = it["extent"].tolist()
+                rec["opt"] = {
+                    "value0": float(it["value0"]),
+                    "value": float(it["value"]),
+                    "value_loss": float(it["value0"] - it["value"]),
+                    "extent0": it["extent0"].tolist(),
+                    "extent": it["extent"].tolist(),
+                }
 
-    new_prims = json.loads(json.dumps(prims))
-    changed = []
+    _save_json(out_optimized_bbox_json, out_payload)
 
-    for k, info in enumerate(meta):
-        pi = info["prim_index"]
-        p_old = prims[pi]
-        p_new = new_prims[pi]
-        params_old = p_old.get("parameters", {})
-        params_new = p_new.setdefault("parameters", {})
-
-        c0 = np.array(params_old.get("center", [0, 0, 0]), dtype=np.float64)
-        e0 = np.abs(np.array(params_old.get("extent", [0, 0, 0]), dtype=np.float64))
-
-        mn0 = np.minimum(c0 - 0.5 * e0, c0 + 0.5 * e0)
-        mx0 = np.maximum(c0 - 0.5 * e0, c0 + 0.5 * e0)
-
-        mn = mins_opt[k].astype(np.float64)
-        mx = maxs_opt[k].astype(np.float64)
-
-        # final safety ordering
-        mn2 = np.minimum(mn, mx)
-        mx2 = np.maximum(mn, mx)
-
-        c = 0.5 * (mn2 + mx2)
-        e = (mx2 - mn2)
-        e = np.maximum(e, extent_floor)  # hard clamp: cannot be negative
-
-        params_new["aabb_min_before_opt"] = mn0.tolist()
-        params_new["aabb_max_before_opt"] = mx0.tolist()
-        params_new["aabb_min"] = mn2.tolist()
-        params_new["aabb_max"] = mx2.tolist()
-
-        params_new["center_before_opt"] = params_old.get("center", [0, 0, 0])
-        params_new["extent_before_opt"] = params_old.get("extent", [0, 0, 0])
-        params_new["center"] = c.tolist()
-        params_new["extent"] = e.tolist()
-
-        v0 = float(np.prod(np.maximum(e0, 1e-12)))
-        v1 = float(np.prod(np.maximum(e, 1e-12)))
-        changed.append({
-            "cluster_id": int(p_old.get("cluster_id", -1)),
-            "label": str(p_old.get("label", "unknown")),
-            "vol_ratio": (v1 / v0) if v0 > 0 else None,
-            "extent_before": params_old.get("extent", [0, 0, 0]),
-            "extent_after": e.tolist(),
-        })
-
-    out_primitives_path = os.path.join(out_dir, "optimized_primitives.json")
-    out_report_path = os.path.join(out_dir, "no_overlapping_report.json")
-
-    out_raw = dict(raw) if isinstance(raw, dict) else {"primitives": new_prims}
-    out_raw["primitives"] = new_prims
-    out_raw.setdefault("optimization", {})
-    out_raw["optimization"].update({
-        "method": "no_overlapping_shrink_only_size_max_mid_half",
-        "never_expand": True,
-        "params": {
-            "steps": int(steps),
-            "lr": float(lr),
-            "overlap_tol_ratio": float(overlap_tol_ratio),
-            "overlap_scale_ratio": float(overlap_scale_ratio),
-            "r_min": float(r_min),
-            "extent_floor": float(extent_floor),
-            "min_points": int(min_points),
-            "device": str(device),
+    report = {
+        "ok": True,
+        "in_bbox_json": os.path.abspath(bbox_json),
+        "out_bbox_json": os.path.abspath(out_optimized_bbox_json),
+        "labels": int(len(items)),
+        "init": {
+            "objective": float(J0),
+            "overlap_norm": float(info0["overlap_norm"]),
+            "inter_sum": float(info0["inter_sum"]),
+            "overlap_pairs": int(info0["overlap_pairs"]),
         },
-        "weights": {
-            "w_overlap": float(w_overlap),
-            "w_cut": float(w_cut),
-            "w_size": float(w_size),
-            "w_floor": float(w_floor),
+        "final": {
+            "objective": float(J_f),
+            "overlap_norm": float(info_f["overlap_norm"]),
+            "inter_sum": float(info_f["inter_sum"]),
+            "overlap_pairs": int(info_f["overlap_pairs"]),
+            "value_loss_norm": float(total_value_loss_norm()),
+            "shrink_penalty_norm": float(shrink_penalty_norm()),
         },
-        "note": "Uses mid/half parameterization to guarantee non-negative extents and ordered mins/maxs."
-    })
+        "per_label": [
+            {
+                "label": it["label"],
+                "value0": float(it["value0"]),
+                "value": float(it["value"]),
+                "value_loss": float(it["value0"] - it["value"]),
+                "extent0": it["extent0"].tolist(),
+                "extent": it["extent"].tolist(),
+            }
+            for it in items
+        ],
+        "history": history,
+        "note": (
+            "Overlap is WORLD AABB intersection volume. Objective uses normalized overlap "
+            "sum(V_ij/min(V_i,V_j)) and normalized value loss."
+        ),
+    }
+    _save_json(out_report_json, report)
+    return report
 
-    _save_json(out_primitives_path, out_raw)
-    _save_json(out_report_path, {
-        "inputs": {"primitives_json": os.path.abspath(primitives_json_path)},
-        "settings": out_raw["optimization"],
-        "changed_summary": changed,
-        "loss_history_tail": loss_hist[-min(120, len(loss_hist)):],
-    })
 
-    return {"optimized_primitives_json": out_primitives_path, "report_json": out_report_path}
+# -----------------------------------------------------------------------------
+# Backward-compatible alias
+# -----------------------------------------------------------------------------
+
+def optimize_bounding_boxes(**kwargs):
+    return apply_no_overlapping_shrink_only(**kwargs)
