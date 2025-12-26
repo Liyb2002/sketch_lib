@@ -15,7 +15,7 @@ sys.path.append(THIS_DIR)
 
 from constraints_optimization.pca_analysis import compute_pca_bounding_boxes
 from constraints_optimization.vis import visualize_heatmaps_with_bboxes
-from constraints_optimization.no_overlapping import optimize_bounding_boxes
+from constraints_optimization.optimizer import optimize_bounding_boxes
 from constraints_optimization.vis import visualize_heatmaps_with_bboxes_before_after
 
 
@@ -64,10 +64,6 @@ def main():
     #     grid_res=3,
     # )
 
-
-
-
-
     # Step 3: optimize (shrink-only)
     print("\n[LAUNCH] === Step 3: Optimize bboxes (shrink-only, value-aware) ===")
     optimize_bounding_boxes(
@@ -79,18 +75,17 @@ def main():
         min_extent_frac=0.15,
         w_overlap=1.0,
         w_value=1.0,
-        w_shrink=0.05,
+        w_shrink=0.05,  # accepted but ignored (backward compat)
         verbose=True,
     )
 
     # (Optional) visualize optimized
     visualize_heatmaps_with_bboxes_before_after(
-    heat_dir=HEAT_DIR,
-    bbox_json_before=BBOX_JSON,
-    bbox_json_after=OPT_BBOX_JSON,
-    max_labels_to_show=12,
+        heat_dir=HEAT_DIR,
+        bbox_json_before=BBOX_JSON,
+        bbox_json_after=OPT_BBOX_JSON,
+        max_labels_to_show=12,
     )
-
 
 
 if __name__ == "__main__":
