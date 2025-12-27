@@ -2,31 +2,35 @@
 """
 constraints_optimization/color_value_loss.py
 
-Color/value loss based on the *heatmap point colors* removed by shrinking.
+Point-based value loss := weighted COUNT of points that get cut away.
 
-Goal (your spec):
-- Loss = sum of "redness value" of points that were cut away.
-- Redder  -> closer to 1
-- Greener -> closer to 0
-- Black   -> 0
-- Empty (no points) -> 0
+Your spec:
+- Each point has a scalar "value" = (redness) ** 8
+- Red   -> value near 1
+- Green -> value near 0
+- Black -> 0
+- Empty (no point) -> 0
+- Cutting more points always increases penalty via SUM of point values removed.
 
-We keep the same public function names used elsewhere:
+We keep the same function names used by optimizer.py:
 - load_heat_ply_points_and_heat
 - to_local
 - value_inside_bounds
 - value_loss_0_1
 
-Interpretation:
+Definition:
 - load_heat_ply_points_and_heat returns:
     pts_world: (N,3)
-    heat:      (N,) in [0,1] derived from point colors
+    heat:      (N,) where heat = (redness ** 8) in [0,1]
 - value_inside_bounds(...) returns:
-    sum(heat) for points that lie inside [bmin,bmax] in *local coords*
+    sum(heat) for points inside [bmin,bmax] in local coords
 - value_loss_0_1(items, sum_value0) returns:
-    deleted_heat / sum_value0  (clipped to [0,1]),
-  where deleted_heat is the total heat removed by shrinking:
-    deleted_heat_i = max(0, value0_i - value_i)
+    removed_value / sum_value0  (clipped to [0,1]),
+  where removed_value = sum_i max(0, value0_i - value_i)
+
+Notes:
+- This is SUM, not average.
+- Normalization by sum_value0 keeps the loss in [0,1] and scale-stable across scenes.
 """
 
 from typing import Any, Dict, List, Tuple
@@ -39,19 +43,18 @@ except Exception:
 
 
 # -----------------------------------------------------------------------------
-# IO: load points + convert RGB -> "heat" in [0,1]
+# Color -> redness -> heat = redness^8
 # -----------------------------------------------------------------------------
 
-def _rgb_to_heat(rgb: np.ndarray) -> np.ndarray:
+def _rgb_to_redness(rgb: np.ndarray) -> np.ndarray:
     """
     Map RGB -> redness score in [0,1].
 
-    We use: heat = r / (r + g + b + eps)
+    redness = r / (r + g + b + eps)
 
-    Properties:
     - pure red   (1,0,0) -> 1
     - pure green (0,1,0) -> 0
-    - black      (0,0,0) -> 0 (handled explicitly)
+    - black      (0,0,0) -> 0
     - yellow     (1,1,0) -> 0.5
     """
     rgb = np.asarray(rgb, dtype=np.float32)
@@ -63,14 +66,25 @@ def _rgb_to_heat(rgb: np.ndarray) -> np.ndarray:
     b = rgb[:, 2]
     s = r + g + b
 
-    heat = np.zeros((rgb.shape[0],), dtype=np.float32)
-    non_black = s > 1e-12
-    heat[non_black] = (r[non_black] / (s[non_black] + 1e-12)).astype(np.float32)
+    red = np.zeros((rgb.shape[0],), dtype=np.float32)
+    m = s > 1e-12
+    red[m] = r[m] / (s[m] + 1e-12)
+    return np.clip(red, 0.0, 1.0).astype(np.float32)
 
-    # clamp safety
-    heat = np.clip(heat, 0.0, 1.0).astype(np.float32)
-    return heat
 
+def _redness_to_value(redness: np.ndarray, power: int = 8) -> np.ndarray:
+    """
+    point_value = redness ** power
+    """
+    red = np.asarray(redness, dtype=np.float32).reshape(-1)
+    # Ensure non-negative, then power
+    red = np.clip(red, 0.0, 1.0)
+    return np.power(red, float(power), dtype=np.float32)
+
+
+# -----------------------------------------------------------------------------
+# IO
+# -----------------------------------------------------------------------------
 
 def load_heat_ply_points_and_heat(path: str) -> Tuple[np.ndarray, np.ndarray]:
     """
@@ -78,9 +92,9 @@ def load_heat_ply_points_and_heat(path: str) -> Tuple[np.ndarray, np.ndarray]:
 
     Returns:
       pts_world: (N,3) float64
-      heat:      (N,)  float32 in [0,1]
+      heat:      (N,)  float32, where heat = (redness ** 8) in [0,1]
 
-    If open3d is unavailable or file has no points, returns empty arrays.
+    If open3d is unavailable, returns empty arrays.
     If the PLY has no colors, heat is zeros.
     """
     if o3d is None:
@@ -88,7 +102,6 @@ def load_heat_ply_points_and_heat(path: str) -> Tuple[np.ndarray, np.ndarray]:
 
     pcd = o3d.io.read_point_cloud(path)
     pts = np.asarray(pcd.points, dtype=np.float64)
-
     if pts.size == 0:
         return np.zeros((0, 3), dtype=np.float64), np.zeros((0,), dtype=np.float32)
 
@@ -97,7 +110,8 @@ def load_heat_ply_points_and_heat(path: str) -> Tuple[np.ndarray, np.ndarray]:
         heat = np.zeros((pts.shape[0],), dtype=np.float32)
     else:
         # open3d colors are typically already in [0,1]
-        heat = _rgb_to_heat(cols)
+        red = _rgb_to_redness(cols)
+        heat = _redness_to_value(red, power=8)
 
     return pts, heat
 
@@ -118,36 +132,38 @@ def to_local(points_world: np.ndarray, center0_world: np.ndarray, R: np.ndarray)
 
 
 # -----------------------------------------------------------------------------
-# Core: sum of heat inside bounds, and deleted-heat loss
+# Core: sum of point values inside bounds, and removed-value loss
 # -----------------------------------------------------------------------------
 
 def _inside_mask(local_pts: np.ndarray, bmin: np.ndarray, bmax: np.ndarray) -> np.ndarray:
-    local_pts = np.asarray(local_pts, dtype=np.float64)
+    lp = np.asarray(local_pts, dtype=np.float64)
     bmin = np.asarray(bmin, dtype=np.float64).reshape(1, 3)
     bmax = np.asarray(bmax, dtype=np.float64).reshape(1, 3)
-    if local_pts.size == 0:
+    if lp.size == 0:
         return np.zeros((0,), dtype=bool)
     return (
-        (local_pts[:, 0] >= bmin[0, 0]) & (local_pts[:, 0] <= bmax[0, 0]) &
-        (local_pts[:, 1] >= bmin[0, 1]) & (local_pts[:, 1] <= bmax[0, 1]) &
-        (local_pts[:, 2] >= bmin[0, 2]) & (local_pts[:, 2] <= bmax[0, 2])
+        (lp[:, 0] >= bmin[0, 0]) & (lp[:, 0] <= bmax[0, 0]) &
+        (lp[:, 1] >= bmin[0, 1]) & (lp[:, 1] <= bmax[0, 1]) &
+        (lp[:, 2] >= bmin[0, 2]) & (lp[:, 2] <= bmax[0, 2])
     )
 
 
 def value_inside_bounds(local_pts0: np.ndarray, heat_pow: np.ndarray, bmin: np.ndarray, bmax: np.ndarray) -> float:
     """
-    Returns the sum of heat values inside [bmin,bmax] in local coordinates.
+    Backward-compat signature.
 
-    Notes:
-    - heat_pow can be raw heat, or heat**gamma depending on caller.
-    - If there are no points, returns 0.
+    Returns:
+      sum(point_value) for points inside [bmin,bmax] in local coordinates.
+
+    heat_pow is assumed to already be the per-point value (redness^8),
+    OR (redness^(8*gamma)) if the caller applied an extra gamma. Either way,
+    we just sum it.
     """
     lp = np.asarray(local_pts0, dtype=np.float64)
     h = np.asarray(heat_pow, dtype=np.float32).reshape(-1)
     if lp.size == 0 or h.size == 0:
         return 0.0
     if lp.shape[0] != h.shape[0]:
-        # safety: mismatched shapes -> treat as empty
         return 0.0
 
     m = _inside_mask(lp, bmin, bmax)
@@ -158,23 +174,23 @@ def value_inside_bounds(local_pts0: np.ndarray, heat_pow: np.ndarray, bmin: np.n
 
 def value_loss_0_1(items: List[Dict[str, Any]], sum_value0: float) -> float:
     """
-    Deleted-heat loss in [0,1].
+    Global removed-value loss in [0,1].
 
-    Each item expects:
-      value0 = sum heat inside original bounds (bmin0/bmax0)
-      value  = sum heat inside current bounds  (bmin/bmax)
+    Each item:
+      value0 = sum(point_value) inside original bounds
+      value  = sum(point_value) inside current bounds
+      removed_i = max(0, value0 - value)
 
-    deleted_heat = sum_i max(0, value0 - value)
-    normalize by sum_value0 (total original heat sum).
+    Normalize by sum_value0 (total original value).
     """
     denom = max(1e-12, float(sum_value0))
     if denom <= 1e-12:
         return 0.0
 
-    deleted = 0.0
+    removed = 0.0
     for it in items:
         v0 = float(it.get("value0", 0.0))
         v = float(it.get("value", 0.0))
-        deleted += max(0.0, v0 - v)
+        removed += max(0.0, v0 - v)
 
-    return float(np.clip(deleted / denom, 0.0, 1.0))
+    return float(np.clip(removed / denom, 0.0, 1.0))

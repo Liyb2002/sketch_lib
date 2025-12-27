@@ -14,9 +14,9 @@
       "points_used": 17064,
       "obb": {
         "center": [
-          0.07547944784164429,
-          -0.0009504929184913635,
-          0.8727670907974243
+          0.02680228464305401,
+          0.027358805760741234,
+          0.8468801975250244
         ],
         "R": [
           [
@@ -36,9 +36,9 @@
           ]
         ],
         "extent": [
-          0.1255512535572052,
-          0.11634717881679535,
-          0.145857572555542
+          0.1627231277525425,
+          0.15912975743412971,
+          0.13925814628601074
         ]
       },
       "aabb": {
@@ -55,18 +55,18 @@
       },
       "opt_aabb_world": {
         "min": [
-          0.012703821063041687,
-          -0.05912408232688904,
-          0.7998383045196533
+          -0.05455927923321724,
+          -0.052206072956323624,
+          0.777251124382019
         ],
         "max": [
-          0.1382550746202469,
-          0.05722309648990631,
-          0.9456958770751953
+          0.10816384851932526,
+          0.10692368447780609,
+          0.9165092706680298
         ]
       },
       "opt": {
-        "method": "gradient_adam_world_aabb_mid_half",
+        "method": "gradient_adam_world_aabb_mid_half_softpoints_value",
         "lr": 0.01,
         "max_iter": 200,
         "weights": {
@@ -77,7 +77,8 @@
         "overlap_tol_ratio": 0.02,
         "overlap_scale_ratio": 0.01,
         "min_extent_frac": 0.15,
-        "note": "Optimized WORLD AABB directly; output boxes are axis-aligned (R=I)."
+        "soft_tau_frac": 0.01,
+        "note": "Optimized WORLD AABB directly; value loss uses soft point-in-box with point_value=redness^8; output boxes axis-aligned (R=I)."
       }
     },
     {
@@ -88,9 +89,9 @@
       "points_used": 4125,
       "obb": {
         "center": [
-          0.02170364186167717,
-          -0.10734613984823227,
-          0.8554370403289795
+          0.01034681499004364,
+          -0.0911562442779541,
+          0.8352550864219666
         ],
         "R": [
           [
@@ -110,9 +111,9 @@
           ]
         ],
         "extent": [
-          0.12430765479803085,
-          0.0555238276720047,
-          0.0646127462387085
+          0.1653486043214798,
+          0.057460516691207886,
+          0.06730866432189941
         ]
       },
       "aabb": {
@@ -129,18 +130,18 @@
       },
       "opt_aabb_world": {
         "min": [
-          -0.04045018553733826,
-          -0.13510805368423462,
-          0.8231306672096252
+          -0.07232748717069626,
+          -0.11988650262355804,
+          0.8016007542610168
         ],
         "max": [
-          0.0838574692606926,
-          -0.07958422601222992,
-          0.8877434134483337
+          0.09302111715078354,
+          -0.06242598593235016,
+          0.8689094185829163
         ]
       },
       "opt": {
-        "method": "gradient_adam_world_aabb_mid_half",
+        "method": "gradient_adam_world_aabb_mid_half_softpoints_value",
         "lr": 0.01,
         "max_iter": 200,
         "weights": {
@@ -151,7 +152,8 @@
         "overlap_tol_ratio": 0.02,
         "overlap_scale_ratio": 0.01,
         "min_extent_frac": 0.15,
-        "note": "Optimized WORLD AABB directly; output boxes are axis-aligned (R=I)."
+        "soft_tau_frac": 0.01,
+        "note": "Optimized WORLD AABB directly; value loss uses soft point-in-box with point_value=redness^8; output boxes axis-aligned (R=I)."
       }
     },
     {
@@ -162,9 +164,9 @@
       "points_used": 1235,
       "obb": {
         "center": [
-          0.04905341565608978,
-          -0.08225544542074203,
-          0.7884411811828613
+          0.03342256136238575,
+          -0.07787039689719677,
+          0.7783845067024231
         ],
         "R": [
           [
@@ -184,9 +186,9 @@
           ]
         ],
         "extent": [
-          0.06258347630500793,
-          0.05317877233028412,
-          0.06944561004638672
+          0.07498988136649132,
+          0.05529281869530678,
+          0.04538536071777344
         ]
       },
       "aabb": {
@@ -203,18 +205,18 @@
       },
       "opt_aabb_world": {
         "min": [
-          0.017761677503585815,
-          -0.1088448315858841,
-          0.753718376159668
+          -0.004072379320859909,
+          -0.10551680624485016,
+          0.7556918263435364
         ],
         "max": [
-          0.08034515380859375,
-          -0.055666059255599976,
-          0.8231639862060547
+          0.07091750204563141,
+          -0.05022398754954338,
+          0.8010771870613098
         ]
       },
       "opt": {
-        "method": "gradient_adam_world_aabb_mid_half",
+        "method": "gradient_adam_world_aabb_mid_half_softpoints_value",
         "lr": 0.01,
         "max_iter": 200,
         "weights": {
@@ -225,7 +227,8 @@
         "overlap_tol_ratio": 0.02,
         "overlap_scale_ratio": 0.01,
         "min_extent_frac": 0.15,
-        "note": "Optimized WORLD AABB directly; output boxes are axis-aligned (R=I)."
+        "soft_tau_frac": 0.01,
+        "note": "Optimized WORLD AABB directly; value loss uses soft point-in-box with point_value=redness^8; output boxes axis-aligned (R=I)."
       }
     },
     {
@@ -236,9 +239,9 @@
       "points_used": 8869,
       "obb": {
         "center": [
-          -0.050664909183979034,
-          -0.10447753220796585,
-          1.0505579710006714
+          -0.008957289159297943,
+          -0.10231705382466316,
+          1.0730591714382172
         ],
         "R": [
           [
@@ -258,9 +261,9 @@
           ]
         ],
         "extent": [
-          0.06994761526584625,
-          0.07823006808757782,
-          0.11954116821289062
+          0.12956151366233826,
+          0.0855012759566307,
+          0.16410237550735474
         ]
       },
       "aabb": {
@@ -277,18 +280,18 @@
       },
       "opt_aabb_world": {
         "min": [
-          -0.08563871681690216,
-          -0.14359256625175476,
-          0.9907873868942261
+          -0.07373804599046707,
+          -0.14506769180297852,
+          0.9910079836845398
         ],
         "max": [
-          -0.015691101551055908,
-          -0.06536249816417694,
-          1.1103285551071167
+          0.055823467671871185,
+          -0.05956641584634781,
+          1.1551103591918945
         ]
       },
       "opt": {
-        "method": "gradient_adam_world_aabb_mid_half",
+        "method": "gradient_adam_world_aabb_mid_half_softpoints_value",
         "lr": 0.01,
         "max_iter": 200,
         "weights": {
@@ -299,7 +302,8 @@
         "overlap_tol_ratio": 0.02,
         "overlap_scale_ratio": 0.01,
         "min_extent_frac": 0.15,
-        "note": "Optimized WORLD AABB directly; output boxes are axis-aligned (R=I)."
+        "soft_tau_frac": 0.01,
+        "note": "Optimized WORLD AABB directly; value loss uses soft point-in-box with point_value=redness^8; output boxes axis-aligned (R=I)."
       }
     },
     {
@@ -310,9 +314,9 @@
       "points_used": 3458,
       "obb": {
         "center": [
-          -0.007853049784898758,
-          0.012911725789308548,
-          1.2481497526168823
+          -0.0034232735633850098,
+          0.03215882368385792,
+          1.2476880550384521
         ],
         "R": [
           [
@@ -332,9 +336,9 @@
           ]
         ],
         "extent": [
-          0.036239005625247955,
-          0.07282229512929916,
-          0.03754544258117676
+          0.0729936808347702,
+          0.16287442669272423,
+          0.041791439056396484
         ]
       },
       "aabb": {
@@ -351,18 +355,18 @@
       },
       "opt_aabb_world": {
         "min": [
-          -0.025972552597522736,
-          -0.023499421775341034,
-          1.229377031326294
+          -0.03992011398077011,
+          -0.049278389662504196,
+          1.226792335510254
         ],
         "max": [
-          0.01026645302772522,
-          0.04932287335395813,
-          1.2669224739074707
+          0.03307356685400009,
+          0.11359603703022003,
+          1.2685837745666504
         ]
       },
       "opt": {
-        "method": "gradient_adam_world_aabb_mid_half",
+        "method": "gradient_adam_world_aabb_mid_half_softpoints_value",
         "lr": 0.01,
         "max_iter": 200,
         "weights": {
@@ -373,7 +377,8 @@
         "overlap_tol_ratio": 0.02,
         "overlap_scale_ratio": 0.01,
         "min_extent_frac": 0.15,
-        "note": "Optimized WORLD AABB directly; output boxes are axis-aligned (R=I)."
+        "soft_tau_frac": 0.01,
+        "note": "Optimized WORLD AABB directly; value loss uses soft point-in-box with point_value=redness^8; output boxes axis-aligned (R=I)."
       }
     },
     {
@@ -384,9 +389,9 @@
       "points_used": 11476,
       "obb": {
         "center": [
-          -0.008824087679386139,
-          -0.09588952735066414,
-          1.2200095653533936
+          -0.004372730851173401,
+          -0.07563228905200958,
+          1.2139812707901
         ],
         "R": [
           [
@@ -406,9 +411,9 @@
           ]
         ],
         "extent": [
-          0.22140949964523315,
-          0.12227781862020493,
-          0.10123443603515625
+          0.16724078357219696,
+          0.1398884356021881,
+          0.11683869361877441
         ]
       },
       "aabb": {
@@ -425,18 +430,18 @@
       },
       "opt_aabb_world": {
         "min": [
-          -0.11952883750200272,
-          -0.1570284366607666,
-          1.1693923473358154
+          -0.08799312263727188,
+          -0.14557650685310364,
+          1.155561923980713
         ],
         "max": [
-          0.10188066214323044,
-          -0.034750618040561676,
-          1.2706267833709717
+          0.07924766093492508,
+          -0.005688071250915527,
+          1.2724006175994873
         ]
       },
       "opt": {
-        "method": "gradient_adam_world_aabb_mid_half",
+        "method": "gradient_adam_world_aabb_mid_half_softpoints_value",
         "lr": 0.01,
         "max_iter": 200,
         "weights": {
@@ -447,7 +452,8 @@
         "overlap_tol_ratio": 0.02,
         "overlap_scale_ratio": 0.01,
         "min_extent_frac": 0.15,
-        "note": "Optimized WORLD AABB directly; output boxes are axis-aligned (R=I)."
+        "soft_tau_frac": 0.01,
+        "note": "Optimized WORLD AABB directly; value loss uses soft point-in-box with point_value=redness^8; output boxes axis-aligned (R=I)."
       }
     },
     {
@@ -458,9 +464,9 @@
       "points_used": 368,
       "obb": {
         "center": [
-          -0.009378144517540932,
-          -0.08500251919031143,
-          0.794425368309021
+          0.001851797103881836,
+          -0.10056988894939423,
+          0.7963781356811523
         ],
         "R": [
           [
@@ -480,9 +486,9 @@
           ]
         ],
         "extent": [
-          0.057198915630578995,
-          0.061007171869277954,
-          0.06195509433746338
+          0.07387219369411469,
+          0.02425086498260498,
+          0.05964195728302002
         ]
       },
       "aabb": {
@@ -499,18 +505,18 @@
       },
       "opt_aabb_world": {
         "min": [
-          -0.03797760233283043,
-          -0.11550610512495041,
-          0.7634478211402893
+          -0.03508429974317551,
+          -0.11269532144069672,
+          0.7665571570396423
         ],
         "max": [
-          0.019221313297748566,
-          -0.054498933255672455,
-          0.8254029154777527
+          0.03878789395093918,
+          -0.08844445645809174,
+          0.8261991143226624
         ]
       },
       "opt": {
-        "method": "gradient_adam_world_aabb_mid_half",
+        "method": "gradient_adam_world_aabb_mid_half_softpoints_value",
         "lr": 0.01,
         "max_iter": 200,
         "weights": {
@@ -521,7 +527,8 @@
         "overlap_tol_ratio": 0.02,
         "overlap_scale_ratio": 0.01,
         "min_extent_frac": 0.15,
-        "note": "Optimized WORLD AABB directly; output boxes are axis-aligned (R=I)."
+        "soft_tau_frac": 0.01,
+        "note": "Optimized WORLD AABB directly; value loss uses soft point-in-box with point_value=redness^8; output boxes axis-aligned (R=I)."
       }
     },
     {
@@ -532,9 +539,9 @@
       "points_used": 8011,
       "obb": {
         "center": [
-          -0.04719804972410202,
-          0.09860910847783089,
-          1.0523184537887573
+          0.002735324203968048,
+          0.08119551837444305,
+          1.0563165247440338
         ],
         "R": [
           [
@@ -554,9 +561,9 @@
           ]
         ],
         "extent": [
-          0.12064890563488007,
-          0.13251837342977524,
-          0.1402437686920166
+          0.1540202498435974,
+          0.14036819338798523,
+          0.12357085943222046
         ]
       },
       "aabb": {
@@ -573,18 +580,18 @@
       },
       "opt_aabb_world": {
         "min": [
-          -0.10752250254154205,
-          0.03234992176294327,
-          0.982196569442749
+          -0.07427480071783066,
+          0.01101142168045044,
+          0.9945310950279236
         ],
         "max": [
-          0.013126403093338013,
-          0.1648682951927185,
-          1.1224403381347656
+          0.07974544912576675,
+          0.15137961506843567,
+          1.118101954460144
         ]
       },
       "opt": {
-        "method": "gradient_adam_world_aabb_mid_half",
+        "method": "gradient_adam_world_aabb_mid_half_softpoints_value",
         "lr": 0.01,
         "max_iter": 200,
         "weights": {
@@ -595,7 +602,8 @@
         "overlap_tol_ratio": 0.02,
         "overlap_scale_ratio": 0.01,
         "min_extent_frac": 0.15,
-        "note": "Optimized WORLD AABB directly; output boxes are axis-aligned (R=I)."
+        "soft_tau_frac": 0.01,
+        "note": "Optimized WORLD AABB directly; value loss uses soft point-in-box with point_value=redness^8; output boxes axis-aligned (R=I)."
       }
     },
     {
@@ -606,9 +614,9 @@
       "points_used": 244,
       "obb": {
         "center": [
-          0.12977264821529388,
-          -0.09104567766189575,
-          0.8580504655838013
+          0.13216236233711243,
+          -0.09161276370286942,
+          0.8556424975395203
         ],
         "R": [
           [
@@ -628,9 +636,9 @@
           ]
         ],
         "extent": [
-          0.09814798831939697,
-          0.041177406907081604,
-          0.08096754550933838
+          0.0822594165802002,
+          0.034937530755996704,
+          0.06626737117767334
         ]
       },
       "aabb": {
@@ -647,18 +655,18 @@
       },
       "opt_aabb_world": {
         "min": [
-          0.0806986540555954,
-          -0.11163438111543655,
-          0.8175666928291321
+          0.09103265404701233,
+          -0.10908152908086777,
+          0.8225088119506836
         ],
         "max": [
-          0.17884664237499237,
-          -0.07045697420835495,
-          0.8985342383384705
+          0.17329207062721252,
+          -0.07414399832487106,
+          0.8887761831283569
         ]
       },
       "opt": {
-        "method": "gradient_adam_world_aabb_mid_half",
+        "method": "gradient_adam_world_aabb_mid_half_softpoints_value",
         "lr": 0.01,
         "max_iter": 200,
         "weights": {
@@ -669,7 +677,8 @@
         "overlap_tol_ratio": 0.02,
         "overlap_scale_ratio": 0.01,
         "min_extent_frac": 0.15,
-        "note": "Optimized WORLD AABB directly; output boxes are axis-aligned (R=I)."
+        "soft_tau_frac": 0.01,
+        "note": "Optimized WORLD AABB directly; value loss uses soft point-in-box with point_value=redness^8; output boxes axis-aligned (R=I)."
       }
     },
     {
@@ -680,9 +689,9 @@
       "points_used": 1002,
       "obb": {
         "center": [
-          -0.055519046261906624,
-          -0.02526423055678606,
-          1.0683096647262573
+          -0.05538578890264034,
+          -0.02701287344098091,
+          1.0784462690353394
         ],
         "R": [
           [
@@ -702,9 +711,9 @@
           ]
         ],
         "extent": [
-          0.01852598413825035,
-          0.08047986589372158,
-          0.10807538032531738
+          0.022566188126802444,
+          0.06585563719272614,
+          0.12880849838256836
         ]
       },
       "aabb": {
@@ -721,18 +730,18 @@
       },
       "opt_aabb_world": {
         "min": [
-          -0.0647820383310318,
-          -0.06550416350364685,
-          1.0142719745635986
+          -0.06666888296604156,
+          -0.05994069203734398,
+          1.0140420198440552
         ],
         "max": [
-          -0.04625605419278145,
-          0.01497570239007473,
-          1.122347354888916
+          -0.04410269483923912,
+          0.005914945155382156,
+          1.1428505182266235
         ]
       },
       "opt": {
-        "method": "gradient_adam_world_aabb_mid_half",
+        "method": "gradient_adam_world_aabb_mid_half_softpoints_value",
         "lr": 0.01,
         "max_iter": 200,
         "weights": {
@@ -743,7 +752,8 @@
         "overlap_tol_ratio": 0.02,
         "overlap_scale_ratio": 0.01,
         "min_extent_frac": 0.15,
-        "note": "Optimized WORLD AABB directly; output boxes are axis-aligned (R=I)."
+        "soft_tau_frac": 0.01,
+        "note": "Optimized WORLD AABB directly; value loss uses soft point-in-box with point_value=redness^8; output boxes axis-aligned (R=I)."
       }
     },
     {
@@ -754,9 +764,9 @@
       "points_used": 393,
       "obb": {
         "center": [
-          0.041466448456048965,
-          0.07361452840268612,
-          0.8039611577987671
+          0.029120853170752525,
+          0.06047110632061958,
+          0.8013920783996582
         ],
         "R": [
           [
@@ -776,9 +786,9 @@
           ]
         ],
         "extent": [
-          0.0521230474114418,
-          0.03600149229168892,
-          0.04677474498748779
+          0.048900704830884933,
+          0.03000856190919876,
+          0.02891409397125244
         ]
       },
       "aabb": {
@@ -795,18 +805,18 @@
       },
       "opt_aabb_world": {
         "min": [
-          0.015404924750328064,
-          0.05561378225684166,
-          0.7805737853050232
+          0.004670500755310059,
+          0.0454668253660202,
+          0.786935031414032
         ],
         "max": [
-          0.06752797216176987,
-          0.09161527454853058,
-          0.827348530292511
+          0.05357120558619499,
+          0.07547538727521896,
+          0.8158491253852844
         ]
       },
       "opt": {
-        "method": "gradient_adam_world_aabb_mid_half",
+        "method": "gradient_adam_world_aabb_mid_half_softpoints_value",
         "lr": 0.01,
         "max_iter": 200,
         "weights": {
@@ -817,7 +827,8 @@
         "overlap_tol_ratio": 0.02,
         "overlap_scale_ratio": 0.01,
         "min_extent_frac": 0.15,
-        "note": "Optimized WORLD AABB directly; output boxes are axis-aligned (R=I)."
+        "soft_tau_frac": 0.01,
+        "note": "Optimized WORLD AABB directly; value loss uses soft point-in-box with point_value=redness^8; output boxes axis-aligned (R=I)."
       }
     },
     {
@@ -828,9 +839,9 @@
       "points_used": 23072,
       "obb": {
         "center": [
-          0.032884866930544376,
-          -0.019323792308568954,
-          1.0786069631576538
+          0.05402924865484238,
+          0.021973207592964172,
+          1.056955724954605
         ],
         "R": [
           [
@@ -850,9 +861,9 @@
           ]
         ],
         "extent": [
-          0.0569866131991148,
-          0.11615418642759323,
-          0.14646697044372559
+          0.0376143753528595,
+          0.13326773047447205,
+          0.14741510152816772
         ]
       },
       "aabb": {
@@ -869,18 +880,18 @@
       },
       "opt_aabb_world": {
         "min": [
-          0.004391560330986977,
-          -0.07740088552236557,
-          1.005373477935791
+          0.03522206097841263,
+          -0.04466065764427185,
+          0.9832481741905212
         ],
         "max": [
-          0.061378173530101776,
-          0.03875330090522766,
-          1.1518404483795166
+          0.07283643633127213,
+          0.0886070728302002,
+          1.130663275718689
         ]
       },
       "opt": {
-        "method": "gradient_adam_world_aabb_mid_half",
+        "method": "gradient_adam_world_aabb_mid_half_softpoints_value",
         "lr": 0.01,
         "max_iter": 200,
         "weights": {
@@ -891,7 +902,8 @@
         "overlap_tol_ratio": 0.02,
         "overlap_scale_ratio": 0.01,
         "min_extent_frac": 0.15,
-        "note": "Optimized WORLD AABB directly; output boxes are axis-aligned (R=I)."
+        "soft_tau_frac": 0.01,
+        "note": "Optimized WORLD AABB directly; value loss uses soft point-in-box with point_value=redness^8; output boxes axis-aligned (R=I)."
       }
     },
     {
@@ -902,9 +914,9 @@
       "points_used": 780,
       "obb": {
         "center": [
-          -0.10035035014152527,
-          -0.08758430927991867,
-          0.8397625684738159
+          -0.10445176064968109,
+          -0.09166064113378525,
+          0.8419849872589111
         ],
         "R": [
           [
@@ -924,9 +936,9 @@
           ]
         ],
         "extent": [
-          0.12764796614646912,
-          0.057510584592819214,
-          0.1301708221435547
+          0.06654521822929382,
+          0.046987906098365784,
+          0.10352480411529541
         ]
       },
       "aabb": {
@@ -943,18 +955,18 @@
       },
       "opt_aabb_world": {
         "min": [
-          -0.16417433321475983,
-          -0.11633960157632828,
-          0.7746771574020386
+          -0.137724369764328,
+          -0.11515459418296814,
+          0.7902225852012634
         ],
         "max": [
-          -0.03652636706829071,
-          -0.058829016983509064,
-          0.9048479795455933
+          -0.07117915153503418,
+          -0.06816668808460236,
+          0.8937473893165588
         ]
       },
       "opt": {
-        "method": "gradient_adam_world_aabb_mid_half",
+        "method": "gradient_adam_world_aabb_mid_half_softpoints_value",
         "lr": 0.01,
         "max_iter": 200,
         "weights": {
@@ -965,7 +977,8 @@
         "overlap_tol_ratio": 0.02,
         "overlap_scale_ratio": 0.01,
         "min_extent_frac": 0.15,
-        "note": "Optimized WORLD AABB directly; output boxes are axis-aligned (R=I)."
+        "soft_tau_frac": 0.01,
+        "note": "Optimized WORLD AABB directly; value loss uses soft point-in-box with point_value=redness^8; output boxes axis-aligned (R=I)."
       }
     },
     {
@@ -976,9 +989,9 @@
       "points_used": 1113,
       "obb": {
         "center": [
-          -0.04975259769707918,
-          0.05963198095560074,
-          0.9314655661582947
+          -0.04886847734451294,
+          0.06374327465891838,
+          0.9538871049880981
         ],
         "R": [
           [
@@ -998,9 +1011,9 @@
           ]
         ],
         "extent": [
-          0.056414445862174034,
-          0.09312501549720764,
-          0.061086058616638184
+          0.05283273756504059,
+          0.12618175894021988,
+          0.07709372043609619
         ]
       },
       "aabb": {
@@ -1017,18 +1030,18 @@
       },
       "opt_aabb_world": {
         "min": [
-          -0.0779598206281662,
-          0.013069473206996918,
-          0.9009225368499756
+          -0.07528484612703323,
+          0.0006523951888084412,
+          0.91534024477005
         ],
         "max": [
-          -0.021545374765992165,
-          0.10619448870420456,
-          0.9620085954666138
+          -0.022452108561992645,
+          0.12683415412902832,
+          0.9924339652061462
         ]
       },
       "opt": {
-        "method": "gradient_adam_world_aabb_mid_half",
+        "method": "gradient_adam_world_aabb_mid_half_softpoints_value",
         "lr": 0.01,
         "max_iter": 200,
         "weights": {
@@ -1039,7 +1052,8 @@
         "overlap_tol_ratio": 0.02,
         "overlap_scale_ratio": 0.01,
         "min_extent_frac": 0.15,
-        "note": "Optimized WORLD AABB directly; output boxes are axis-aligned (R=I)."
+        "soft_tau_frac": 0.01,
+        "note": "Optimized WORLD AABB directly; value loss uses soft point-in-box with point_value=redness^8; output boxes axis-aligned (R=I)."
       }
     },
     {
@@ -1050,9 +1064,9 @@
       "points_used": 617,
       "obb": {
         "center": [
-          -0.015030397102236748,
-          -0.04279882274568081,
-          0.9732025563716888
+          -0.002439405769109726,
+          -0.042437488213181496,
+          0.9619085788726807
         ],
         "R": [
           [
@@ -1072,9 +1086,9 @@
           ]
         ],
         "extent": [
-          0.09806618466973305,
-          0.0663311667740345,
-          0.07382041215896606
+          0.12401974946260452,
+          0.09235722944140434,
+          0.06631457805633545
         ]
       },
       "aabb": {
@@ -1091,18 +1105,18 @@
       },
       "opt_aabb_world": {
         "min": [
-          -0.06406348943710327,
-          -0.07596440613269806,
-          0.9362923502922058
+          -0.06444928050041199,
+          -0.08861610293388367,
+          0.9287512898445129
         ],
         "max": [
-          0.034002695232629776,
-          -0.009633239358663559,
-          1.0101127624511719
+          0.059570468962192535,
+          0.0037411265075206757,
+          0.9950658679008484
         ]
       },
       "opt": {
-        "method": "gradient_adam_world_aabb_mid_half",
+        "method": "gradient_adam_world_aabb_mid_half_softpoints_value",
         "lr": 0.01,
         "max_iter": 200,
         "weights": {
@@ -1113,7 +1127,8 @@
         "overlap_tol_ratio": 0.02,
         "overlap_scale_ratio": 0.01,
         "min_extent_frac": 0.15,
-        "note": "Optimized WORLD AABB directly; output boxes are axis-aligned (R=I)."
+        "soft_tau_frac": 0.01,
+        "note": "Optimized WORLD AABB directly; value loss uses soft point-in-box with point_value=redness^8; output boxes axis-aligned (R=I)."
       }
     },
     {
@@ -1124,9 +1139,9 @@
       "points_used": 11871,
       "obb": {
         "center": [
-          0.02331393677741289,
-          0.1508689485490322,
-          0.8860315084457397
+          0.013606719672679901,
+          0.16092805564403534,
+          0.8581405878067017
         ],
         "R": [
           [
@@ -1146,9 +1161,9 @@
           ]
         ],
         "extent": [
-          0.07525201700627804,
-          0.11974699050188065,
-          0.1609950065612793
+          0.10634474456310272,
+          0.11021408438682556,
+          0.168920636177063
         ]
       },
       "aabb": {
@@ -1165,18 +1180,18 @@
       },
       "opt_aabb_world": {
         "min": [
-          -0.014312071725726128,
-          0.09099545329809189,
-          0.8055340051651001
+          -0.03956565260887146,
+          0.10582101345062256,
+          0.7736802697181702
         ],
         "max": [
-          0.06093994528055191,
-          0.21074244379997253,
-          0.9665290117263794
+          0.06677909195423126,
+          0.21603509783744812,
+          0.9426009058952332
         ]
       },
       "opt": {
-        "method": "gradient_adam_world_aabb_mid_half",
+        "method": "gradient_adam_world_aabb_mid_half_softpoints_value",
         "lr": 0.01,
         "max_iter": 200,
         "weights": {
@@ -1187,7 +1202,8 @@
         "overlap_tol_ratio": 0.02,
         "overlap_scale_ratio": 0.01,
         "min_extent_frac": 0.15,
-        "note": "Optimized WORLD AABB directly; output boxes are axis-aligned (R=I)."
+        "soft_tau_frac": 0.01,
+        "note": "Optimized WORLD AABB directly; value loss uses soft point-in-box with point_value=redness^8; output boxes axis-aligned (R=I)."
       }
     },
     {
@@ -1198,9 +1214,9 @@
       "points_used": 8796,
       "obb": {
         "center": [
-          -0.008023612201213837,
-          0.10071496851742268,
-          1.1914372444152832
+          -0.01573948562145233,
+          0.07002829760313034,
+          1.1884243488311768
         ],
         "R": [
           [
@@ -1220,9 +1236,9 @@
           ]
         ],
         "extent": [
-          0.18599244952201843,
-          0.10632362589240074,
-          0.14246916770935059
+          0.1352710872888565,
+          0.1263490468263626,
+          0.13442397117614746
         ]
       },
       "aabb": {
@@ -1239,18 +1255,18 @@
       },
       "opt_aabb_world": {
         "min": [
-          -0.10101983696222305,
-          0.047553155571222305,
-          1.120202660560608
+          -0.08337502926588058,
+          0.006853774189949036,
+          1.121212363243103
         ],
         "max": [
-          0.08497261255979538,
-          0.15387678146362305,
-          1.2626718282699585
+          0.05189605802297592,
+          0.13320282101631165,
+          1.2556363344192505
         ]
       },
       "opt": {
-        "method": "gradient_adam_world_aabb_mid_half",
+        "method": "gradient_adam_world_aabb_mid_half_softpoints_value",
         "lr": 0.01,
         "max_iter": 200,
         "weights": {
@@ -1261,7 +1277,8 @@
         "overlap_tol_ratio": 0.02,
         "overlap_scale_ratio": 0.01,
         "min_extent_frac": 0.15,
-        "note": "Optimized WORLD AABB directly; output boxes are axis-aligned (R=I)."
+        "soft_tau_frac": 0.01,
+        "note": "Optimized WORLD AABB directly; value loss uses soft point-in-box with point_value=redness^8; output boxes axis-aligned (R=I)."
       }
     }
   ],

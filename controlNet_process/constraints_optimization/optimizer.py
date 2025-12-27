@@ -4,23 +4,19 @@ constraints_optimization/optimizer.py
 
 Gradient-based (Adam) shrink-only optimizer over WORLD AABB boxes.
 
-What it does now (per your spec):
+What it does now (per your latest spec):
 1) Optimization method: gradient descent (Adam) on all boxes at once.
 2) Directly optimizes WORLD AABB mins/maxs via (mid, half) parameters; boxes remain axis-aligned.
-3) Updates all boxes simultaneously every gradient step (no explicit per-box responsibility active set).
+3) Value/color loss (DIFFERENTIABLE): uses a soft "points inside box" approximation and
+   penalizes REMOVED SUM of per-point values, where point_value = (redness ** 8).
+   (Your color_value_loss.py should provide heat = redness^8 via load_heat_ply_points_and_heat.)
 
-Still uses your existing loss utilities for:
-- loading heat PLYs (we keep compatibility with bbox_json format)
-- loading / printing same_pairs from relations.json
-- overlap utilities as helpers
+Overlap:
+- Still uses tolerant overlap; overlap penalty is computed as MEAN over pairs (softened scale),
+  so it won't dominate by pair-count.
 
-Objective (differentiable, shrink-only):
-  L = w_overlap * overlap_pen + w_value * value_pen + w_same * same_pen
-
-Notes:
-- We treat "value loss" as "amount of space deleted" (volume reduction), which is differentiable.
-  (This matches your simplified value loss requirement and avoids non-differentiable point-in-box counting.)
-- We still load heat PLYs to keep bbox_json compatibility, but heat is not used in gradients.
+Same-pair:
+- Uses differentiable extent mismatch penalty.
 
 Output:
 - Writes optimized boxes as axis-aligned OBBs with R = identity.
@@ -42,18 +38,18 @@ except Exception:
 
 from constraints_optimization.overlap_loss import (
     obb_world_aabb_asym,
-    overlap_loss_0_1,           # used for reporting
-    pairwise_overlap_volume,    # not used in gradients, kept for compatibility
+    overlap_loss_0_1,           # reporting
+    pairwise_overlap_volume,    # kept for compatibility
 )
 
 from constraints_optimization.color_value_loss import (
-    load_heat_ply_points_and_heat,  # kept for bbox_json compatibility
+    load_heat_ply_points_and_heat,  # now expected to return heat = redness^8
 )
 
 from constraints_optimization.same_pair_loss import (
     load_same_pairs,
     print_same_pairs,
-    same_pair_size_loss_0_1,  # used for reporting
+    same_pair_size_loss_0_1,  # reporting
 )
 
 
@@ -164,7 +160,6 @@ def _same_pair_penalty_torch(
         ea = ext[torch.tensor(ia_list, device=mins.device)]  # (A,3)
         eb = ext[torch.tensor(ib_list, device=mins.device)]  # (B,3)
 
-        # pairwise |ea-eb| / max(ea,eb,eps)
         ea2 = ea.unsqueeze(1)  # (A,1,3)
         eb2 = eb.unsqueeze(0)  # (1,B,3)
         denom = torch.maximum(torch.maximum(ea2, eb2), torch.tensor(float(eps), device=mins.device, dtype=mins.dtype))
@@ -179,6 +174,25 @@ def _same_pair_penalty_torch(
         total = total + (torch.tensor(w, device=mins.device, dtype=mins.dtype) * worst)
 
     return total
+
+
+# -----------------------------------------------------------------------------
+# Soft differentiable "points inside box"
+# -----------------------------------------------------------------------------
+
+def _soft_inside(points_w: torch.Tensor, mn: torch.Tensor, mx: torch.Tensor, tau: float) -> torch.Tensor:
+    """
+    points_w: (M,3)
+    mn,mx: (3,)
+    tau: soft boundary thickness (world units)
+
+    Returns: (M,) soft membership in [0,1]
+      sigma((p-mn)/tau) * sigma((mx-p)/tau) per-axis product
+    """
+    left = torch.sigmoid((points_w - mn[None, :]) / tau)
+    right = torch.sigmoid((mx[None, :] - points_w) / tau)
+    w = left * right
+    return w[:, 0] * w[:, 1] * w[:, 2]
 
 
 # -----------------------------------------------------------------------------
@@ -197,7 +211,7 @@ def apply_no_overlapping_shrink_only(
     w_overlap: float = 1.0,
     w_value: float = 1.0,
     w_same: float = 1.0,
-    heat_gamma: float = 2.0,       # kept for signature compat (heat not used in gradients)
+    heat_gamma: float = 2.0,       # kept for signature compat (not used here)
     print_every: int = 10,
     verbose: bool = True,
     w_shrink: float = 0.0,         # backward-compat: ignored
@@ -205,24 +219,27 @@ def apply_no_overlapping_shrink_only(
     lr: float = 1e-2,
     overlap_tol_ratio: float = 0.02,
     overlap_scale_ratio: float = 0.01,
+    # soft-inside thickness as fraction of mean initial extent (world)
+    soft_tau_frac: float = 0.01,
     **_ignored: Any,
 ) -> Dict[str, Any]:
     """
     Gradient-based shrink-only optimizer on WORLD AABBs.
 
-    Parameterization per box (same as your torch code idea):
+    Parameterization per box:
       mid0, half0 from initial WORLD AABB
       half = half0 * sigmoid(s), clamped by half_floor (derived from min_extent_frac)
       mid  = mid0 + tanh(t) * (half0 - half)   (stays inside original AABB)
 
     Differentiable losses:
-      overlap_pen: tolerant overlap on WORLD AABB
-      value_pen  : "amount of space deleted" = mean((vol0 - vol)/vol0)
+      overlap_pen: tolerant overlap penalty on WORLD AABB (MEAN over pairs)
+      value_pen  : removed SUM of per-point values (soft inside), normalized to [0,1]
+                  point_value expected from load_heat_ply_points_and_heat = redness^8
       same_pen   : same-pair extent mismatch on WORLD AABB extents
 
-    For reporting, we also compute:
-      overlap_loss_0_1 (your existing normalized metric)
-      same_pair_size_loss_0_1 (your existing metric)
+    Reporting metrics:
+      overlap_loss_0_1 (normalized [0,1])
+      same_pair_size_loss_0_1 ([0,1])
     """
     if torch is None:
         raise RuntimeError("PyTorch is required. Please install torch.")
@@ -245,11 +262,13 @@ def apply_no_overlapping_shrink_only(
         print(f"[SAME_PAIR] relations_json: {relations_json}")
         print_same_pairs(same_pairs)
 
-    # ---- build initial WORLD AABBs (one per label) ----
-    # Keep heat loading for compatibility, but gradients don't use it.
+    # ---- build initial WORLD AABBs (one per label) + load heat points ----
     items: List[Dict[str, Any]] = []
     world_mins0: List[np.ndarray] = []
     world_maxs0: List[np.ndarray] = []
+
+    pts_w_all: List[np.ndarray] = []
+    heat_all: List[np.ndarray] = []
 
     for rec in labels:
         obb = rec.get("obb", {})
@@ -265,11 +284,11 @@ def apply_no_overlapping_shrink_only(
         # initial WORLD AABB from OBB+local bounds
         mn_w, mx_w = obb_world_aabb_asym(center0, Rm, bmin0, bmax0)
 
-        # load heat ply just to validate file exists and keep format stable
+        # load heat ply -> (points, heat), where heat should already be redness^8
         heat_ply = rec.get("heat_ply", None)
         if heat_ply is None:
             raise ValueError("Missing 'heat_ply' in bbox labels.")
-        _pts_w, _heat = load_heat_ply_points_and_heat(heat_ply)
+        pts_w, heat = load_heat_ply_points_and_heat(heat_ply)
 
         lab = rec.get("label", rec.get("sanitized", "unknown"))
         items.append({
@@ -283,6 +302,9 @@ def apply_no_overlapping_shrink_only(
         world_mins0.append(np.asarray(mn_w, dtype=np.float64).reshape(3))
         world_maxs0.append(np.asarray(mx_w, dtype=np.float64).reshape(3))
 
+        pts_w_all.append(np.asarray(pts_w, dtype=np.float32))
+        heat_all.append(np.asarray(heat, dtype=np.float32).reshape(-1))
+
     mins0_t = torch.tensor(np.stack(world_mins0, axis=0), device=device, dtype=torch.float32)
     maxs0_t = torch.tensor(np.stack(world_maxs0, axis=0), device=device, dtype=torch.float32)
 
@@ -291,7 +313,6 @@ def apply_no_overlapping_shrink_only(
     half0 = 0.5 * torch.clamp(maxs0_t - mins0_t, min=1e-9)
 
     # Floors based on min_extent_frac
-    # extent_floor_world = (maxs0-mins0) * min_extent_frac
     extent0_world = torch.clamp(maxs0_t - mins0_t, min=1e-9)
     half_floor = 0.5 * torch.clamp(extent0_world * float(min_extent_frac), min=1e-9)
 
@@ -299,16 +320,22 @@ def apply_no_overlapping_shrink_only(
     N = mins0_t.shape[0]
     s = torch.nn.Parameter(torch.zeros((N, 3), device=device, dtype=torch.float32))  # shrink
     t = torch.nn.Parameter(torch.zeros((N, 3), device=device, dtype=torch.float32))  # shift
-
     opt = torch.optim.Adam([s, t], lr=float(lr))
-
-    # Original volumes (for "deleted space" value loss)
-    vol0 = _torch_box_volumes(mins0_t, maxs0_t).detach()
-    vol0 = torch.clamp(vol0, min=1e-12)
 
     # same-pair base mapping
     label_list = [it["label"] for it in items]
     base_map = _build_samepair_index_map(label_list)
+
+    # ---- heat tensors for differentiable value loss ----
+    pts_t = [torch.tensor(p, device=device, dtype=torch.float32) for p in pts_w_all]
+    heat_t = [torch.tensor(h, device=device, dtype=torch.float32) for h in heat_all]
+
+    # per-label original total "value" (sum of redness^8 over all points)
+    value0 = torch.tensor([float(np.sum(h)) for h in heat_all], device=device, dtype=torch.float32)
+    value0 = torch.clamp(value0, min=1e-12)
+
+    # global denom for optional global fraction (we keep per-label fraction then mean by default)
+    sum_value0 = torch.clamp(torch.sum(value0), min=1e-12)
 
     history: List[Dict[str, Any]] = []
 
@@ -326,12 +353,17 @@ def apply_no_overlapping_shrink_only(
         mins, maxs = torch.minimum(mins, maxs), torch.maximum(mins, maxs)
         return mins, maxs
 
+    # soft boundary thickness (world units)
+    mean_extent = torch.mean(extent0_world).detach()
+    tau = float(max(1e-6, float(soft_tau_frac))) * float(mean_extent.cpu().item())
+    tau = float(max(1e-4, tau))
+
     for itn in range(int(max_iter)):
         opt.zero_grad(set_to_none=True)
 
         mins, maxs = _compute_current_mins_maxs()
 
-        # ---- differentiable overlap penalty (tolerant) ----
+        # ---- differentiable overlap penalty (tolerant, MEAN over pairs) ----
         vol = _torch_box_volumes(mins, maxs)
         vol = torch.clamp(vol, min=1e-12)
 
@@ -344,15 +376,27 @@ def apply_no_overlapping_shrink_only(
         s_scale = float(overlap_scale_ratio) * torch.mean(vol).detach()
         s_scale = torch.clamp(s_scale, min=1e-12)
 
+        # softened pairwise penalty: log1p(excess / s_scale), averaged over i<j
+        x = excess / s_scale
+        per_pair = torch.log1p(x)
+
         mask = torch.triu(torch.ones((N, N), device=mins.device, dtype=mins.dtype), diagonal=1)
         pair_count = torch.clamp(mask.sum(), min=1.0)
+        overlap_pen = (per_pair * mask).sum() / pair_count
 
-        overlap_pen = (torch.log1p((excess / s_scale) ** 2) * mask).sum() / pair_count
+        # ---- differentiable value penalty: removed SUM of point values (soft inside) ----
+        kept_val = []
+        for i in range(N):
+            if pts_t[i].numel() == 0 or heat_t[i].numel() == 0:
+                kept_val.append(torch.zeros((), device=device, dtype=torch.float32))
+            else:
+                w_in = _soft_inside(pts_t[i], mins[i], maxs[i], tau=tau)  # (Mi,)
+                kept_val.append(torch.sum(heat_t[i] * w_in))
+        kept_val = torch.stack(kept_val, dim=0)  # (N,)
 
-        # ---- differentiable value penalty: "space deleted" ----
-        # normalized per-box: (vol0 - vol)/vol0, clamped >=0
-        deleted_frac = torch.clamp((vol0 - vol) / vol0, min=0.0, max=1.0)
-        value_pen = torch.mean(deleted_frac)
+        # per-label removed fraction, then mean over labels (stable scale)
+        removed_frac = torch.clamp((value0 - kept_val) / value0, min=0.0, max=1.0)
+        value_pen = torch.mean(removed_frac)
 
         # ---- differentiable same-pair penalty on WORLD extents ----
         same_pen = _same_pair_penalty_torch(
@@ -372,13 +416,12 @@ def apply_no_overlapping_shrink_only(
         loss.backward()
         opt.step()
 
-        # ---- reporting metrics (non-differentiable / your existing scalars) ----
+        # ---- reporting metrics (numpy / your existing scalars) ----
         mins_np = mins.detach().cpu().numpy()
         maxs_np = maxs.detach().cpu().numpy()
-        # overlap normalized metric from your overlap_loss_0_1
+
         ov_L, inter_sum, ov_denom, overlap_pairs, _, _ = overlap_loss_0_1(mins_np, maxs_np)
 
-        # same normalized metric from your same_pair_size_loss_0_1
         label_to_extent = {label_list[i]: (maxs_np[i] - mins_np[i]) for i in range(len(label_list))}
         same_L = same_pair_size_loss_0_1(
             same_pairs=same_pairs,
@@ -396,9 +439,10 @@ def apply_no_overlapping_shrink_only(
             "same_L": float(same_L),
             "overlap_pairs": int(overlap_pairs),
             "inter_sum": float(inter_sum),
-            "mean_deleted": float(deleted_frac.detach().mean().cpu().item()),
-            "max_deleted": float(deleted_frac.detach().max().cpu().item()),
+            "mean_removed": float(removed_frac.detach().mean().cpu().item()),
+            "max_removed": float(removed_frac.detach().max().cpu().item()),
             "min_extent": float((maxs - mins).detach().min().cpu().item()),
+            "tau": float(tau),
         }
         history.append(rec)
 
@@ -407,7 +451,7 @@ def apply_no_overlapping_shrink_only(
                 f"[NO_OVERLAP][iter={itn:04d}] "
                 f"loss={rec['loss']:.6g}  "
                 f"ov_pen={rec['overlap_pen']:.6g} (L={rec['overlap_L']:.4f})  "
-                f"val_pen={rec['value_pen']:.6g} (mean_deleted={rec['mean_deleted']:.3f})  "
+                f"val_pen={rec['value_pen']:.6g} (mean_removed={rec['mean_removed']:.3f})  "
                 f"same_pen={rec['same_pen']:.6g} (L={rec['same_L']:.4f})  "
                 f"(pairs={rec['overlap_pairs']}, inter_sum={rec['inter_sum']:.6g}, min_ext={rec['min_extent']:.4g})"
             )
@@ -451,17 +495,18 @@ def apply_no_overlapping_shrink_only(
         rec["opt_aabb_world"] = {"min": mn2.tolist(), "max": mx2.tolist()}
         rec.setdefault("opt", {})
         rec["opt"].update({
-            "method": "gradient_adam_world_aabb_mid_half",
+            "method": "gradient_adam_world_aabb_mid_half_softpoints_value",
             "lr": float(lr),
             "max_iter": int(max_iter),
             "weights": {"w_overlap": float(w_overlap), "w_value": float(w_value), "w_same": float(w_same)},
             "overlap_tol_ratio": float(overlap_tol_ratio),
             "overlap_scale_ratio": float(overlap_scale_ratio),
             "min_extent_frac": float(min_extent_frac),
-            "note": "Optimized WORLD AABB directly; output boxes are axis-aligned (R=I).",
+            "soft_tau_frac": float(soft_tau_frac),
+            "note": "Optimized WORLD AABB directly; value loss uses soft point-in-box with point_value=redness^8; output boxes axis-aligned (R=I).",
         })
 
-    # assume bbox_json labels order matches items order (same as your earlier optimizer)
+    # assume bbox_json labels order matches items order
     if len(out_labels) == len(items):
         for i, rec in enumerate(out_labels):
             _write_back_axis_aligned(rec, i)
@@ -494,10 +539,11 @@ def apply_no_overlapping_shrink_only(
             "min_extent_frac": float(min_extent_frac),
             "overlap_tol_ratio": float(overlap_tol_ratio),
             "overlap_scale_ratio": float(overlap_scale_ratio),
+            "soft_tau_frac": float(soft_tau_frac),
             "weights": {"w_overlap": float(w_overlap), "w_value": float(w_value), "w_same": float(w_same)},
         },
         "history_tail": history[-min(200, len(history)):],
-        "note": "Gradient-based Adam optimizer on WORLD AABBs. Value term is volume deleted (differentiable). Heat PLYs are loaded for compatibility but not used in gradients.",
+        "note": "Adam optimizer on WORLD AABBs. Value term is soft removed SUM of point_value (redness^8). Overlap penalty is tolerant and averaged over pairs.",
     }
     _save_json(out_report_json, report)
     return report
