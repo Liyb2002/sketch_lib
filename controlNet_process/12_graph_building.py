@@ -4,15 +4,17 @@
 
 Build a simple component graph from optimized bounding boxes.
 
-Inputs (based on your saved paths):
-- Iter folder: sketch/dsl_optimize/optimize_iteration/iter_XXX/
-  - optimize_results/<label>/bbox_after.json
-  - optimize_results/<label>/heat_map_<label>.ply   (present, not used here)
-- relations.json: sketch/dsl_optimize/relations.json
+Inputs (hard-coded iter_000):
+- Iter folder:
+    sketch/dsl_optimize/optimize_iteration/iter_000/
+      optimize_results/<label>/bbox_after.json
+      optimize_results/<label>/heat_map_<label>.ply   (present, not used here)
+- relations.json:
+    sketch/dsl_optimize/relations.json
 
 Outputs:
 - Writes a graph json to:
-    sketch/dsl_optimize/optimize_iteration/iter_XXX/program_graph.json
+    sketch/dsl_optimize/optimize_iteration/iter_000/program_graph.json
 
 Graph nodes:
 - one node per component label
@@ -43,7 +45,7 @@ import os
 import json
 import argparse
 from dataclasses import dataclass
-from typing import Dict, Any, List, Tuple, Optional
+from typing import Dict, Any, List, Tuple
 
 import numpy as np
 
@@ -176,8 +178,8 @@ def _contact_axis_and_type(
     near_axes = (gaps <= float(attach_eps) + 1e-12).astype(np.int32)
     near_count = int(np.sum(near_axes))
 
-    # face touch: near along 1 axis, overlap on other 2 axes
-    # edge touch: near along 2 axes, overlap on 1 axis
+    # face touch: near along 1 axis
+    # edge touch: near along 2 axes
     # point touch: near along 3 axes
     if near_count == 1:
         axis = int(np.argmax(near_axes))
@@ -339,8 +341,8 @@ def build_graph(
         },
         "nodes": node_table,
         "edges": edges + same_edges + neighbor_edges,
-        "same_pairs": same_pairs,          # copied verbatim
-        "neighboring_pairs": neighboring_pairs,  # copied verbatim
+        "same_pairs": same_pairs,                 # copied verbatim
+        "neighboring_pairs": neighboring_pairs,   # copied verbatim
     }
     return graph
 
@@ -348,13 +350,19 @@ def build_graph(
 # ------------------------ CLI ------------------------
 
 def main():
-    ap = argparse.ArgumentParser()
-    ap.add_argument(
-        "--iter_dir",
-        type=str,
-        required=True,
-        help="Path to optimize_iteration/iter_XXX (contains optimize_results/)",
+    # Hard-code iter_000 relative to this script's directory.
+    # Assumes this script is run from repo root OR that this file lives where sketch/ is reachable.
+    THIS_DIR = os.path.dirname(os.path.abspath(__file__))
+
+    iter_dir = os.path.join(
+        THIS_DIR,
+        "sketch",
+        "dsl_optimize",
+        "optimize_iteration",
+        "iter_000",
     )
+
+    ap = argparse.ArgumentParser()
     ap.add_argument(
         "--out_json",
         type=str,
@@ -375,8 +383,8 @@ def main():
     )
     args = ap.parse_args()
 
-    optimize_results_dir, relations_json = infer_paths_from_iter_dir(args.iter_dir)
-    print("[GRAPH] iter_dir            :", os.path.abspath(args.iter_dir))
+    optimize_results_dir, relations_json = infer_paths_from_iter_dir(iter_dir)
+    print("[GRAPH] iter_dir            :", os.path.abspath(iter_dir))
     print("[GRAPH] optimize_results_dir:", os.path.abspath(optimize_results_dir))
     print("[GRAPH] relations_json      :", os.path.abspath(relations_json))
     print("[GRAPH] attach_eps_ratio    :", args.attach_eps_ratio)
@@ -390,7 +398,7 @@ def main():
         attach_eps_abs=float(args.attach_eps_abs),
     )
 
-    out_json = args.out_json.strip() or os.path.join(os.path.abspath(args.iter_dir), "program_graph.json")
+    out_json = args.out_json.strip() or os.path.join(os.path.abspath(iter_dir), "program_graph.json")
     save_json(out_json, graph)
 
     # quick summary
@@ -398,9 +406,9 @@ def main():
     same_edges = [e for e in graph["edges"] if e.get("type") == "same_pair"]
     neigh_edges = [e for e in graph["edges"] if e.get("type") == "prior_neighboring"]
 
-    print(f"[GRAPH] nodes         : {len(graph['nodes'])}")
-    print(f"[GRAPH] connected edges: {len(conn_edges)}")
-    print(f"[GRAPH] same_pair edges: {len(same_edges)}")
+    print(f"[GRAPH] nodes            : {len(graph['nodes'])}")
+    print(f"[GRAPH] connected edges  : {len(conn_edges)}")
+    print(f"[GRAPH] same_pair edges  : {len(same_edges)}")
     print(f"[GRAPH] prior_neighbor edges: {len(neigh_edges)}")
     print(f"[GRAPH] wrote: {out_json}")
 
