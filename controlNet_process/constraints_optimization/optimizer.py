@@ -344,7 +344,10 @@ def apply_no_overlapping_shrink_only(
         s_scale = float(overlap_scale_ratio) * torch.mean(vol).detach()
         s_scale = torch.clamp(s_scale, min=1e-12)
 
-        overlap_pen = torch.triu(torch.log1p((excess / s_scale) ** 2), diagonal=1).sum()
+        mask = torch.triu(torch.ones((N, N), device=mins.device, dtype=mins.dtype), diagonal=1)
+        pair_count = torch.clamp(mask.sum(), min=1.0)
+
+        overlap_pen = (torch.log1p((excess / s_scale) ** 2) * mask).sum() / pair_count
 
         # ---- differentiable value penalty: "space deleted" ----
         # normalized per-box: (vol0 - vol)/vol0, clamped >=0
