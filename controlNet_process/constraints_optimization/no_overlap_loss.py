@@ -38,7 +38,7 @@ def load_json(path: str) -> Any:
 # Heat decode (matches heat_map.py colormap)
 # -----------------------------------------------------------------------------
 
-def heat_from_red_green_black(colors_0_1: np.ndarray) -> np.ndarray:
+def heat_from_red_green_black(colors_0_1: np.ndarray, power: float = 4.0) -> np.ndarray:
     """
     Reverse heat_map.py colormap:
       h<=0.5 : rgb=(0, 2h, 0)         => h=0.5*g
@@ -50,7 +50,9 @@ def heat_from_red_green_black(colors_0_1: np.ndarray) -> np.ndarray:
     r = c[:, 0]
     g = c[:, 1]
     h = np.where(r > 1e-6, 0.5 + 0.5 * r, 0.5 * g)
-    return np.clip(h, 0.0, 1.0)
+    h = np.clip(h, 0.0, 1.0)
+    h = h ** float(power)   # steeper, no cutoff
+    return h
 
 
 # -----------------------------------------------------------------------------
@@ -184,7 +186,7 @@ def value_loss_0_1(items: List[Dict[str, Any]], sum_value0: float) -> float:
     lost = 0.0
     for it in items:
         lost += float(it["value0"] - it["value"])
-    return float(np.clip(lost / max(1e-12, float(sum_value0)), 0.0, 1.0))
+    return float(np.clip(lost / max(1e-12, float(sum_value0 * 0.1)), 0.0, 1.0))
 
 
 # -----------------------------------------------------------------------------
