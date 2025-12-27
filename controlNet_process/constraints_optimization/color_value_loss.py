@@ -2,14 +2,20 @@
 """
 constraints_optimization/color_value_loss.py
 
-Heat decode + value-in-box + normalized color/value loss in [0,1].
+Simple "color/value" loss := amount of space deleted (volume removed), nothing else.
 
-Contains:
-- heat_from_red_green_black (matches heat_map.py colormap)
-- load_heat_ply_points_and_heat
-- to_local
-- value_inside_bounds
-- value_loss_0_1
+Interpretation:
+- Each box has an original local extent extent0 (from input OBB).
+- Current box volume comes from current local bounds (bmin/bmax).
+- Deleted volume = max(0, vol0 - vol).
+- Global loss is normalized to [0,1] by total original volume (with a 0.1 factor to
+  keep behavior similar to the old "budget" style scaling).
+
+Keeps the same function names used by optimizer.py:
+- load_heat_ply_points_and_heat (kept for backward-compat; not used)
+- to_local (kept; not used)
+- value_inside_bounds (kept; returns volume, but optimizer uses it only to fill it["value"])
+- value_loss_0_1 (computes normalized deleted-volume loss)
 """
 
 from typing import Any, Dict, List, Tuple
@@ -22,70 +28,75 @@ except Exception:
 
 
 # -----------------------------------------------------------------------------
-# Heat decode (matches heat_map.py colormap)
-# -----------------------------------------------------------------------------
-
-def heat_from_red_green_black(colors_0_1: np.ndarray, power: float = 4.0) -> np.ndarray:
-    """
-    Reverse heat_map.py colormap:
-      h<=0.5 : rgb=(0, 2h, 0)         => h=0.5*g
-      h>=0.5 : rgb=(2h-1, 2-2h, 0)    => h=0.5+0.5*r
-    """
-    c = np.asarray(colors_0_1, dtype=np.float32)
-    if c.ndim != 2 or c.shape[1] < 2:
-        return np.zeros((c.shape[0],), dtype=np.float32)
-    r = c[:, 0]
-    g = c[:, 1]
-    h = np.where(r > 1e-6, 0.5 + 0.5 * r, 0.5 * g)
-    h = np.clip(h, 0.0, 1.0)
-    h = h ** float(power)   # steeper, no cutoff
-    return h
-
-
-# -----------------------------------------------------------------------------
-# IO for heat PLY
+# Backward-compat stubs (optimizer imports these)
 # -----------------------------------------------------------------------------
 
 def load_heat_ply_points_and_heat(path: str) -> Tuple[np.ndarray, np.ndarray]:
+    """
+    Backward-compat: optimizer still calls this. We return points + dummy zeros.
+    If open3d is unavailable, return empty arrays (safe because we don't use them).
+    """
     if o3d is None:
-        raise RuntimeError("open3d required to read PLY. pip install open3d")
+        return np.zeros((0, 3), dtype=np.float64), np.zeros((0,), dtype=np.float32)
     pcd = o3d.io.read_point_cloud(path)
     pts = np.asarray(pcd.points, dtype=np.float64)
-    cols = np.asarray(pcd.colors, dtype=np.float32)
-    if pts.shape[0] == 0:
-        return pts, np.zeros((0,), dtype=np.float32)
-    heat = heat_from_red_green_black(cols)
-    return pts, heat
+    # second return used to be heat; keep shape consistent
+    return pts, np.zeros((pts.shape[0],), dtype=np.float32)
 
-
-# -----------------------------------------------------------------------------
-# Geometry: WORLD -> LOCAL (anchored at original center0_world with axes R)
-# -----------------------------------------------------------------------------
 
 def to_local(points_world: np.ndarray, center0_world: np.ndarray, R: np.ndarray) -> np.ndarray:
+    """
+    Backward-compat: return a local transform (not used for volume-based loss).
+    """
     c = np.asarray(center0_world, dtype=np.float64).reshape(1, 3)
     Rm = np.asarray(R, dtype=np.float64).reshape(3, 3)
     return (np.asarray(points_world, dtype=np.float64) - c) @ Rm.T
 
 
 # -----------------------------------------------------------------------------
-# Value inside bounds and normalized loss
+# Volume-based "value" proxy
 # -----------------------------------------------------------------------------
 
+def _volume_from_bounds(bmin: np.ndarray, bmax: np.ndarray) -> float:
+    bmin = np.asarray(bmin, dtype=np.float64).reshape(3)
+    bmax = np.asarray(bmax, dtype=np.float64).reshape(3)
+    ext = np.maximum(bmax - bmin, 0.0)
+    return float(ext[0] * ext[1] * ext[2])
+
+
 def value_inside_bounds(local_pts0: np.ndarray, heat_pow: np.ndarray, bmin: np.ndarray, bmax: np.ndarray) -> float:
-    bmin = np.asarray(bmin, dtype=np.float64).reshape(1, 3)
-    bmax = np.asarray(bmax, dtype=np.float64).reshape(1, 3)
-    inside = np.all((local_pts0 >= bmin) & (local_pts0 <= bmax), axis=1)
-    return float(np.sum(np.asarray(heat_pow, dtype=np.float64)[inside]))
+    """
+    Backward-compat signature.
+
+    In the new definition, "value" is just the CURRENT VOLUME of the box
+    implied by (bmin,bmax), independent of points/colors.
+
+    optimizer.py stores:
+      it["value0"] = value_inside_bounds(..., bmin0, bmax0)   -> original volume
+      it["value"]  = value_inside_bounds(..., bmin,  bmax)    -> current volume
+    """
+    return _volume_from_bounds(bmin, bmax)
 
 
 def value_loss_0_1(items: List[Dict[str, Any]], sum_value0: float) -> float:
     """
-    Uses the same normalization you already had:
-      L = clip( lost / (0.1 * sum_value0), 0, 1)
-    where lost = Σ (value0 - value)
+    Global deleted-volume loss in [0,1].
+
+    Each item:
+      value0 = original volume
+      value  = current volume
+      deleted = max(0, value0 - value)
+
+    Normalize by total original volume (sum_value0).
+
+    NOTE: optimizer passes sum_value0 computed from it["value0"].
     """
-    lost = 0.0
+    deleted = 0.0
     for it in items:
-        lost += float(it["value0"] - it["value"])
-    return float(np.clip(lost / max(1e-12, float(sum_value0 * 0.1)), 0.0, 1.0))
+        v0 = float(it.get("value0", 0.0))
+        v = float(it.get("value", 0.0))
+        deleted += max(0.0, v0 - v)
+
+    # Normalize: fraction of total original volume removed.
+    # (No extra "budget" factor; pure geometry.)
+    return float(np.clip(deleted / max(1e-12, float(sum_value0)), 0.0, 1.0))

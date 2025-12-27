@@ -75,7 +75,7 @@ def main():
         min_extent_frac=0.15,
         w_overlap=1.0,
         w_value=1.0,
-        w_same=1.0,  # accepted but ignored (backward compat)
+        w_same=0.0,  # accepted but ignored (backward compat)
         verbose=True,
     )
 
