@@ -1,0 +1,59 @@
+{
+  "label": "unknown_9_0",
+  "obb": {
+    "center": [
+      -0.007969830185174942,
+      -0.05252780579030514,
+      0.9394370913505554
+    ],
+    "R": [
+      [
+        1.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        1.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0,
+        1.0
+      ]
+    ],
+    "extent": [
+      0.06907587498426437,
+      0.04848732426762581,
+      0.03353321552276611
+    ]
+  },
+  "opt_aabb_world": {
+    "min": [
+      -0.04250776767730713,
+      -0.07677146792411804,
+      0.9226704835891724
+    ],
+    "max": [
+      0.026568107306957245,
+      -0.028284143656492233,
+      0.9562036991119385
+    ]
+  },
+  "opt": {
+    "method": "adam_world_aabb_value_exact_cutpoints_STE",
+    "lr": 0.01,
+    "max_iter": 200,
+    "weights": {
+      "w_overlap": 0.2,
+      "w_value": 1.0,
+      "w_same": 1.5
+    },
+    "min_extent_frac": 0.15,
+    "soft_tau_frac": 0.002,
+    "tau_world": 0.0003963395953178406,
+    "note": "Value loss forward is exact sum of cut point values (points inside initial box but outside now). Gradients via STE using soft inside."
+  },
+  "source": "optimizer"
+}

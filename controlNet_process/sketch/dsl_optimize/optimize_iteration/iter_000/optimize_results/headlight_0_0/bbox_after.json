@@ -1,0 +1,59 @@
+{
+  "label": "headlight_0_0",
+  "obb": {
+    "center": [
+      0.027492898516356945,
+      -0.07799318432807922,
+      0.7745020389556885
+    ],
+    "R": [
+      [
+        1.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        1.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0,
+        1.0
+      ]
+    ],
+    "extent": [
+      0.05877413786947727,
+      0.056017160415649414,
+      0.043851256370544434
+    ]
+  },
+  "opt_aabb_world": {
+    "min": [
+      -0.001894170418381691,
+      -0.10600176453590393,
+      0.7525764107704163
+    ],
+    "max": [
+      0.05687996745109558,
+      -0.04998460412025452,
+      0.7964276671409607
+    ]
+  },
+  "opt": {
+    "method": "adam_world_aabb_value_exact_cutpoints_STE",
+    "lr": 0.01,
+    "max_iter": 200,
+    "weights": {
+      "w_overlap": 0.2,
+      "w_value": 1.0,
+      "w_same": 1.5
+    },
+    "min_extent_frac": 0.15,
+    "soft_tau_frac": 0.002,
+    "tau_world": 0.0003963395953178406,
+    "note": "Value loss forward is exact sum of cut point values (points inside initial box but outside now). Gradients via STE using soft inside."
+  },
+  "source": "optimizer"
+}

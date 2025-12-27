@@ -17,6 +17,7 @@ from constraints_optimization.pca_analysis import compute_pca_bounding_boxes
 from constraints_optimization.vis import visualize_heatmaps_with_bboxes
 from constraints_optimization.optimizer import optimize_bounding_boxes
 from constraints_optimization.vis import visualize_heatmaps_with_bboxes_before_after
+from constraints_optimization.save_optimization_results import save_optimization_results
 
 
 SKETCH_ROOT = os.path.join(THIS_DIR, "sketch")
@@ -80,11 +81,21 @@ def main():
     )
 
     # (Optional) visualize optimized
-    visualize_heatmaps_with_bboxes_before_after(
+    # visualize_heatmaps_with_bboxes_before_after(
+    #     heat_dir=HEAT_DIR,
+    #     bbox_json_before=BBOX_JSON,
+    #     bbox_json_after=OPT_BBOX_JSON,
+    #     max_labels_to_show=12,
+    # )
+
+
+    # Step 4: save optimization results per label
+    print("\n[LAUNCH] === Step 4: Save optimization results ===")
+    save_optimization_results(
         heat_dir=HEAT_DIR,
         bbox_json_before=BBOX_JSON,
         bbox_json_after=OPT_BBOX_JSON,
-        max_labels_to_show=12,
+        out_dir=OUT_DIR,
     )
 
 
