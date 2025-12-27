@@ -2,10 +2,11 @@
 """
 constraints_optimization/optimizer.py
 
-(Updated) Responsibility-based optimizer:
-- Instead of only editing the worst-overlap pair, we compute per-box responsibility
-  for each loss term (overlap/value/same) and only try edits on the boxes that
-  actually contribute most to the current objective.
+Responsibility-based shrink-only optimizer.
+
+Now calls losses from:
+- constraints_optimization/overlap_loss.py
+- constraints_optimization/color_value_loss.py
 
 Keeps:
 - Same entry function name + signature: apply_no_overlapping_shrink_only(...)
@@ -23,16 +24,19 @@ from typing import Any, Dict, List, Tuple
 
 import numpy as np
 
-from constraints_optimization.no_overlap_loss import (
-    load_json,
-    load_heat_ply_points_and_heat,
-    to_local,
-    value_inside_bounds,
+from constraints_optimization.overlap_loss import (
     obb_world_aabb_asym,
     center_world_from_bounds,
     extent_from_bounds,
-    objective_from_world_aabbs,
+    overlap_loss_0_1,
     pairwise_overlap_volume,
+)
+
+from constraints_optimization.color_value_loss import (
+    load_heat_ply_points_and_heat,
+    to_local,
+    value_inside_bounds,
+    value_loss_0_1,
 )
 
 from constraints_optimization.same_pair_loss import (
@@ -45,6 +49,11 @@ from constraints_optimization.same_pair_loss import (
 # -----------------------------------------------------------------------------
 # IO
 # -----------------------------------------------------------------------------
+
+def load_json(path: str) -> Any:
+    with open(path, "r") as f:
+        return json.load(f)
+
 
 def _save_json(path: str, obj: Any) -> None:
     os.makedirs(os.path.dirname(path), exist_ok=True)
@@ -213,30 +222,37 @@ def apply_no_overlapping_shrink_only(
         return m
 
     def objective(mins: np.ndarray, maxs: np.ndarray) -> Dict[str, Any]:
-        base = objective_from_world_aabbs(
-            mins=mins,
-            maxs=maxs,
-            items=items,
-            sum_value0=sum_value0,
-            w_overlap=w_overlap,
-            w_value=w_value,
-        )
+        # --- overlap term ---
+        ov_L, inter_sum, ov_denom, overlap_pairs, _, _ = overlap_loss_0_1(mins, maxs)
 
+        # --- value term ---
+        val_L = value_loss_0_1(items, sum_value0)
+
+        ov_term = float(w_overlap) * float(ov_L)
+        val_term = float(w_value) * float(val_L)
+        core = ov_term + val_term
+
+        # --- same-pair term ---
         L_same = same_pair_size_loss_0_1(
             same_pairs=same_pairs,
             label_to_extent=_label_to_extent_current(),
             debug=False,
         )
         same_term = float(w_same) * float(L_same)
+        core = float(core) + float(same_term)
 
-        core = float(base["core_loss"]) + same_term
-
-        base.update({
+        return {
+            "overlap_L": float(ov_L),
+            "value_L": float(val_L),
             "same_L": float(L_same),
+            "overlap_term": float(ov_term),
+            "value_term": float(val_term),
             "same_term": float(same_term),
-            "core_loss": float(core),  # overwrite with new total
-        })
-        return base
+            "core_loss": float(core),
+            "inter_sum": float(inter_sum),
+            "overlap_denom": float(ov_denom),
+            "overlap_pairs": int(overlap_pairs),
+        }
 
     def _can_apply_bounds(it: Dict[str, Any], bmin_new: np.ndarray, bmax_new: np.ndarray) -> bool:
         bmin_new = np.asarray(bmin_new, dtype=np.float64).reshape(3)
@@ -271,7 +287,7 @@ def apply_no_overlapping_shrink_only(
         """
         Assign responsibility mainly to the oversized member of each same_pair
         (shrink-only optimizer).
-        Uses "worst mismatched" pair among candidates so it doesn't hide problems.
+        Uses "worst mismatched" candidate pair so it doesn't hide problems.
         """
         n = len(items)
         r = np.zeros(n, dtype=np.float64)
@@ -297,7 +313,6 @@ def apply_no_overlapping_shrink_only(
             if not cand_a or not cand_b:
                 continue
 
-            # find WORST mismatched candidate pair for responsibility
             worst = None  # (d, la, lb)
             for la in cand_a:
                 ea = label_to_extent[la]
@@ -334,27 +349,19 @@ def apply_no_overlapping_shrink_only(
         if n <= 2:
             return list(range(n)), {"active_k": n}
 
-        # raw responsibilities
         r_ov = _compute_overlap_resp(mins, maxs) if float(w_overlap) > 0.0 else np.zeros(n, dtype=np.float64)
         r_val = _compute_value_resp() if float(w_value) > 0.0 else np.zeros(n, dtype=np.float64)
         r_same = _compute_same_resp(reduce="mean") if (float(w_same) > 0.0 and same_pairs) else np.zeros(n, dtype=np.float64)
 
-        # normalize to comparable scale
         r_ov_n = _normalize_nonneg(r_ov)
         r_val_n = _normalize_nonneg(r_val)
         r_same_n = _normalize_nonneg(r_same)
 
         score = float(w_overlap) * r_ov_n + float(w_value) * r_val_n + float(w_same) * r_same_n
 
-        # choose K adaptively
-        K = int(max(4, min(10, n)))  # keeps eval cost reasonable
-        # if only one term is active, you can shrink K a bit; keep as-is for stability.
-
-        order = np.argsort(-score)  # descending
+        K = int(max(4, min(10, n)))
+        order = np.argsort(-score)
         chosen = [int(i) for i in order[:K] if score[int(i)] > 0.0]
-
-        # fallback: if everything is zero (e.g., no overlap, no value loss yet, same_pairs absent),
-        # try all boxes but with small K to still make progress.
         if not chosen:
             chosen = [int(i) for i in order[:K]]
 
@@ -404,7 +411,6 @@ def apply_no_overlapping_shrink_only(
                 f"(pairs={cur['overlap_pairs']}, inter_sum={cur['inter_sum']:.6g}, step={cur_step:.4g}, active_k={len(active_ids)})"
             )
 
-        # global candidate search, but restricted to active boxes
         candidates = []
         for box_id in active_ids:
             it = items[int(box_id)]
@@ -428,7 +434,6 @@ def apply_no_overlapping_shrink_only(
                     if not _can_apply_bounds(it, bmin_new, bmax_new):
                         continue
 
-                    # try
                     old_value = it["value"]
                     it["bmin"] = bmin_new
                     it["bmax"] = bmax_new
@@ -437,7 +442,6 @@ def apply_no_overlapping_shrink_only(
                     mins_t, maxs_t = compute_world_aabbs()
                     cand = objective(mins_t, maxs_t)
 
-                    # rollback
                     it["bmin"] = bmin_old
                     it["bmax"] = bmax_old
                     it["value"] = old_value
