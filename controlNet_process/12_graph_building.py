@@ -1,44 +1,20 @@
+# 12_graph_building.py  (updated to call graph_building.vis)
 #!/usr/bin/env python3
 """
 12_graph_building.py
 
 Build a simple component graph from optimized bounding boxes.
 
-Inputs (hard-coded iter_000):
-- Iter folder:
-    sketch/dsl_optimize/optimize_iteration/iter_000/
-      optimize_results/<label>/bbox_after.json
-      optimize_results/<label>/heat_map_<label>.ply   (present, not used here)
-- relations.json:
-    sketch/dsl_optimize/relations.json
+Hard-coded iter:
+- sketch/dsl_optimize/optimize_iteration/iter_000/
 
 Outputs:
-- Writes a graph json to:
-    sketch/dsl_optimize/optimize_iteration/iter_000/program_graph.json
+- sketch/dsl_optimize/optimize_iteration/iter_000/program_graph.json
 
-Graph nodes:
-- one node per component label
-- stores bbox center/extent/R and world AABB
-
-Edges:
-1) connectivity: inferred from AABB proximity / contact (not program tokens yet)
-2) attachment: if connected, describe how (face-touch axis, overlap/penetration, containment)
-3) same_pairs copied from relations.json, also mirrored as edges
-
-How connectivity is inferred (robust + easy to tune):
-- Compute WORLD AABB for each node.
-- Define per-axis gap:
-    gap = max(0, max(mnB - mxA, mnA - mxB))
-- If gaps are all ~0 => overlap/penetration
-- Else if max gap <= attach_eps => "touch/near"
-- Else not connected.
-
-Attachment classification:
-- containment: one AABB fully inside another (within eps)
-- overlap: overlap volume > 0 (penetration)
-- face_touch: near along one axis, overlap on the other two axes
-- edge_touch: near along two axes, overlap on one axis
-- point_touch: near along three axes (rare)
+Also calls visualization:
+- per-label screenshots to:
+    sketch/dsl_optimize/optimize_iteration/iter_000/graph_vis/<label>.png
+(overlay bboxes + attachment pins on sketch/3d_reconstruction/fused_model.ply)
 """
 
 import os
@@ -71,8 +47,6 @@ def infer_paths_from_iter_dir(iter_dir: str) -> Tuple[str, str]:
     iter_dir = os.path.abspath(iter_dir)
     optimize_results_dir = os.path.join(iter_dir, "optimize_results")
 
-    # relations.json sits at: .../sketch/dsl_optimize/relations.json
-    # Find ".../sketch/" marker then append dsl_optimize/relations.json
     marker = os.sep + "sketch" + os.sep
     idx = iter_dir.rfind(marker)
     if idx < 0:
@@ -159,28 +133,21 @@ def _contact_axis_and_type(
         "overlaps": overlaps.tolist(),
     }
 
-    # Connected if overlap (penetration) OR near-touch within attach_eps
     connected = (overlap_vol > 0.0) or (max_gap <= float(attach_eps))
     if not connected:
         return False, "none", info
 
-    # Containment (dominant relation)
     if _contains_aabb(mn1, mx1, mn2, mx2, eps=attach_eps):
         return True, "contains(A_contains_B)", info
     if _contains_aabb(mn2, mx2, mn1, mx1, eps=attach_eps):
         return True, "contains(B_contains_A)", info
 
-    # Penetration / overlap
     if overlap_vol > 0.0:
         return True, "overlap_penetration", info
 
-    # Touch / near: determine touch dimensionality by counting small gaps
     near_axes = (gaps <= float(attach_eps) + 1e-12).astype(np.int32)
     near_count = int(np.sum(near_axes))
 
-    # face touch: near along 1 axis
-    # edge touch: near along 2 axes
-    # point touch: near along 3 axes
     if near_count == 1:
         axis = int(np.argmax(near_axes))
         return True, f"face_touch(axis={axis})", info
@@ -190,7 +157,6 @@ def _contact_axis_and_type(
     if near_count >= 3:
         return True, "point_touch", info
 
-    # fallback
     return True, "near", info
 
 
@@ -217,7 +183,6 @@ def load_nodes_from_optimize_results(optimize_results_dir: str) -> List[Node]:
         extent = np.asarray(obb.get("extent", [0, 0, 0]), dtype=np.float64).reshape(3)
         R = np.asarray(obb.get("R", np.eye(3).tolist()), dtype=np.float64).reshape(3, 3)
 
-        # Prefer opt_aabb_world if present (optimizer writes it); else compute from OBB
         opt_aabb = rec.get("opt_aabb_world", None)
         if isinstance(opt_aabb, dict) and "min" in opt_aabb and "max" in opt_aabb:
             aabb_min = np.asarray(opt_aabb["min"], dtype=np.float64).reshape(3)
@@ -248,22 +213,14 @@ def build_graph(
     attach_eps_ratio: float = 0.02,
     attach_eps_abs: float = 0.0,
 ) -> Dict[str, Any]:
-    """
-    attach_eps:
-      default derived from scene scale: attach_eps_ratio * median_extent
-      plus optional absolute epsilon (attach_eps_abs)
-    """
-    # scene scale (median extent length)
     extents = np.array([n.extent for n in nodes], dtype=np.float64)
     med = float(np.median(extents))
     attach_eps = float(attach_eps_abs + attach_eps_ratio * max(1e-12, med))
 
-    # copy same_pairs from relations.json
     rel = load_json(relations_json) if os.path.isfile(relations_json) else {}
     same_pairs = rel.get("same_pairs", []) if isinstance(rel, dict) else []
     neighboring_pairs = rel.get("neighboring_pairs", []) if isinstance(rel, dict) else []
 
-    # nodes table
     node_table = []
     label_to_idx = {}
     for i, n in enumerate(nodes):
@@ -277,7 +234,6 @@ def build_graph(
             "aabb_world": {"min": n.aabb_min.tolist(), "max": n.aabb_max.tolist()},
         })
 
-    # inferred connectivity edges
     edges = []
     N = len(nodes)
     for i in range(N):
@@ -289,7 +245,6 @@ def build_graph(
             )
             if not connected:
                 continue
-
             edges.append({
                 "type": "connected",
                 "a": int(i),
@@ -300,7 +255,6 @@ def build_graph(
                 "metrics": info,
             })
 
-    # same_pairs edges (copied)
     same_edges = []
     for sp in same_pairs:
         a = str(sp.get("a", ""))
@@ -316,7 +270,6 @@ def build_graph(
                 "evidence": sp.get("evidence", ""),
             })
 
-    # neighboring_pairs edges (copied, if you want them in the graph too)
     neighbor_edges = []
     for nb in neighboring_pairs:
         a = str(nb.get("a", ""))
@@ -341,8 +294,8 @@ def build_graph(
         },
         "nodes": node_table,
         "edges": edges + same_edges + neighbor_edges,
-        "same_pairs": same_pairs,                 # copied verbatim
-        "neighboring_pairs": neighboring_pairs,   # copied verbatim
+        "same_pairs": same_pairs,
+        "neighboring_pairs": neighboring_pairs,
     }
     return graph
 
@@ -351,7 +304,6 @@ def build_graph(
 
 def main():
     # Hard-code iter_000 relative to this script's directory.
-    # Assumes this script is run from repo root OR that this file lives where sketch/ is reachable.
     THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 
     iter_dir = os.path.join(
@@ -363,24 +315,15 @@ def main():
     )
 
     ap = argparse.ArgumentParser()
-    ap.add_argument(
-        "--out_json",
-        type=str,
-        default="",
-        help="Optional output json path. Default: <iter_dir>/program_graph.json",
-    )
-    ap.add_argument(
-        "--attach_eps_ratio",
-        type=float,
-        default=0.02,
-        help="Connectivity epsilon as ratio of median bbox extent (default 0.02)",
-    )
-    ap.add_argument(
-        "--attach_eps_abs",
-        type=float,
-        default=0.0,
-        help="Additional absolute epsilon in world units (default 0.0)",
-    )
+    ap.add_argument("--out_json", type=str, default="", help="Optional output json path.")
+    ap.add_argument("--attach_eps_ratio", type=float, default=0.02)
+    ap.add_argument("--attach_eps_abs", type=float, default=0.0)
+
+    # visualization options (called by default)
+    ap.add_argument("--no_vis", action="store_true", help="Skip visualization call.")
+    ap.add_argument("--vis_only_label", type=str, default="", help="Only visualize this label.")
+    ap.add_argument("--vis_max_labels", type=int, default=0, help="Limit number of labels rendered (0 = all).")
+    ap.add_argument("--vis_pin_radius_ratio", type=float, default=0.01, help="Pin radius ratio w.r.t. median extent.")
     args = ap.parse_args()
 
     optimize_results_dir, relations_json = infer_paths_from_iter_dir(iter_dir)
@@ -401,16 +344,30 @@ def main():
     out_json = args.out_json.strip() or os.path.join(os.path.abspath(iter_dir), "program_graph.json")
     save_json(out_json, graph)
 
-    # quick summary
     conn_edges = [e for e in graph["edges"] if e.get("type") == "connected"]
     same_edges = [e for e in graph["edges"] if e.get("type") == "same_pair"]
     neigh_edges = [e for e in graph["edges"] if e.get("type") == "prior_neighboring"]
 
-    print(f"[GRAPH] nodes            : {len(graph['nodes'])}")
-    print(f"[GRAPH] connected edges  : {len(conn_edges)}")
-    print(f"[GRAPH] same_pair edges  : {len(same_edges)}")
+    print(f"[GRAPH] nodes              : {len(graph['nodes'])}")
+    print(f"[GRAPH] connected edges    : {len(conn_edges)}")
+    print(f"[GRAPH] same_pair edges    : {len(same_edges)}")
     print(f"[GRAPH] prior_neighbor edges: {len(neigh_edges)}")
     print(f"[GRAPH] wrote: {out_json}")
+
+    if not args.no_vis:
+        try:
+            from graph_building.vis import run_graph_vis
+            run_graph_vis(
+                iter_dir=os.path.abspath(iter_dir),
+                graph_json=os.path.abspath(out_json),
+                only_label=args.vis_only_label.strip(),
+                max_labels=int(args.vis_max_labels),
+                pin_radius_ratio=float(args.vis_pin_radius_ratio),
+                caller_file=__file__,  # <-- IMPORTANT: makes fused_model.ply relative to 12_graph_building.py
+            )
+
+        except Exception as ex:
+            print("[GRAPH] visualization failed:", str(ex))
 
 
 if __name__ == "__main__":
