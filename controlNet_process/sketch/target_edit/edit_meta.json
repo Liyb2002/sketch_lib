@@ -1,0 +1,43 @@
+{
+  "target_label": "fender_0_0",
+  "source_bbox_after_json": "/Users/yuanboli/Documents/GitHub/sketch_lib/controlNet_process/sketch/dsl_optimize/optimize_iteration/iter_000/optimize_results/fender_0_0/bbox_after.json",
+  "iter_dir": "/Users/yuanboli/Documents/GitHub/sketch_lib/controlNet_process/sketch/dsl_optimize/optimize_iteration/iter_000",
+  "aabb_source": {
+    "source": "opt_aabb_world"
+  },
+  "edit": {
+    "axis": 0,
+    "axis_name": "x",
+    "side": "max",
+    "frac": 0.35255187804674526,
+    "delta": 0.06104793631351479,
+    "sign": 1.0,
+    "before_face_value": 0.12230903655290604,
+    "after_face_value": 0.18335697286642083,
+    "aabb_before": {
+      "min": [
+        -0.050851114094257355,
+        -0.09372518956661224,
+        0.779000997543335
+      ],
+      "max": [
+        0.12230903655290604,
+        0.12943321466445923,
+        0.9596751928329468
+      ]
+    },
+    "aabb_after": {
+      "min": [
+        -0.050851114094257355,
+        -0.09372518956661224,
+        0.779000997543335
+      ],
+      "max": [
+        0.18335697286642083,
+        0.12943321466445923,
+        0.9596751928329468
+      ]
+    }
+  },
+  "note": "Drag ONE world-AABB face (placeholder for future command-driven AEP). Anchors are NOT recomputed."
+}
