@@ -1,4 +1,4 @@
-# 12_graph_building.py  (updated to call graph_building.vis)
+# 12_graph_building.py  (updated: loads thresholds from graph_building/thresholds.py)
 #!/usr/bin/env python3
 """
 12_graph_building.py
@@ -24,6 +24,22 @@ from dataclasses import dataclass
 from typing import Dict, Any, List, Tuple
 
 import numpy as np
+
+# ------------------------ Thresholds ------------------------
+# Only change: load relation thresholds from thresholds.py
+try:
+    from graph_building.thresholds import (
+        same_pair_relation_threshold_confidence,
+        connect_relation_threshold_ratio,
+        connect_relation_threshold_abs,
+        floating_point_eps,
+    )
+except Exception:
+    # Fallback to preserve old behavior if thresholds.py is missing
+    same_pair_relation_threshold_confidence = 0.0
+    connect_relation_threshold_ratio = 0.02
+    connect_relation_threshold_abs = 0.0
+    floating_point_eps = 1e-12
 
 
 # ------------------------ IO ------------------------
@@ -145,7 +161,7 @@ def _contact_axis_and_type(
     if overlap_vol > 0.0:
         return True, "overlap_penetration", info
 
-    near_axes = (gaps <= float(attach_eps) + 1e-12).astype(np.int32)
+    near_axes = (gaps <= float(attach_eps) + float(floating_point_eps)).astype(np.int32)
     near_count = int(np.sum(near_axes))
 
     if near_count == 1:
@@ -210,12 +226,19 @@ def load_nodes_from_optimize_results(optimize_results_dir: str) -> List[Node]:
 def build_graph(
     nodes: List[Node],
     relations_json: str,
-    attach_eps_ratio: float = 0.02,
-    attach_eps_abs: float = 0.0,
+    # defaults now come from thresholds.py (but caller can still override)
+    attach_eps_ratio: float = None,
+    attach_eps_abs: float = None,
 ) -> Dict[str, Any]:
+    # Only change: resolve defaults from thresholds.py
+    if attach_eps_ratio is None:
+        attach_eps_ratio = float(connect_relation_threshold_ratio)
+    if attach_eps_abs is None:
+        attach_eps_abs = float(connect_relation_threshold_abs)
+
     extents = np.array([n.extent for n in nodes], dtype=np.float64)
     med = float(np.median(extents))
-    attach_eps = float(attach_eps_abs + attach_eps_ratio * max(1e-12, med))
+    attach_eps = float(attach_eps_abs + attach_eps_ratio * max(float(floating_point_eps), med))
 
     rel = load_json(relations_json) if os.path.isfile(relations_json) else {}
     same_pairs = rel.get("same_pairs", []) if isinstance(rel, dict) else []
@@ -257,6 +280,10 @@ def build_graph(
 
     same_edges = []
     for sp in same_pairs:
+        # Only change: threshold read from thresholds.py (default 0.0 preserves old behavior)
+        if float(sp.get("confidence", 1.0)) < float(same_pair_relation_threshold_confidence):
+            continue
+
         a = str(sp.get("a", ""))
         b = str(sp.get("b", ""))
         if a in label_to_idx and b in label_to_idx:
@@ -291,6 +318,12 @@ def build_graph(
             "attach_eps_ratio": float(attach_eps_ratio),
             "attach_eps_abs": float(attach_eps_abs),
             "relations_json": os.path.abspath(relations_json) if relations_json else "",
+            "thresholds": {
+                "same_pair_relation_threshold_confidence": float(same_pair_relation_threshold_confidence),
+                "connect_relation_threshold_ratio": float(connect_relation_threshold_ratio),
+                "connect_relation_threshold_abs": float(connect_relation_threshold_abs),
+                "floating_point_eps": float(floating_point_eps),
+            },
         },
         "nodes": node_table,
         "edges": edges + same_edges + neighbor_edges,
@@ -316,8 +349,10 @@ def main():
 
     ap = argparse.ArgumentParser()
     ap.add_argument("--out_json", type=str, default="", help="Optional output json path.")
-    ap.add_argument("--attach_eps_ratio", type=float, default=0.02)
-    ap.add_argument("--attach_eps_abs", type=float, default=0.0)
+
+    # Only change: defaults now come from thresholds.py; keep flags for override
+    ap.add_argument("--attach_eps_ratio", type=float, default=None)
+    ap.add_argument("--attach_eps_abs", type=float, default=None)
 
     # visualization options (called by default)
     ap.add_argument("--no_vis", action="store_true", help="Skip visualization call.")
@@ -327,18 +362,24 @@ def main():
     args = ap.parse_args()
 
     optimize_results_dir, relations_json = infer_paths_from_iter_dir(iter_dir)
+
+    # Only change: resolve and print the thresholds we will use
+    attach_eps_ratio = float(connect_relation_threshold_ratio) if args.attach_eps_ratio is None else float(args.attach_eps_ratio)
+    attach_eps_abs = float(connect_relation_threshold_abs) if args.attach_eps_abs is None else float(args.attach_eps_abs)
+
     print("[GRAPH] iter_dir            :", os.path.abspath(iter_dir))
     print("[GRAPH] optimize_results_dir:", os.path.abspath(optimize_results_dir))
     print("[GRAPH] relations_json      :", os.path.abspath(relations_json))
-    print("[GRAPH] attach_eps_ratio    :", args.attach_eps_ratio)
-    print("[GRAPH] attach_eps_abs      :", args.attach_eps_abs)
+    print("[GRAPH] connect_relation_threshold_ratio:", attach_eps_ratio)
+    print("[GRAPH] connect_relation_threshold_abs  :", attach_eps_abs)
+    print("[GRAPH] same_pair_relation_threshold_confidence:", float(same_pair_relation_threshold_confidence))
 
     nodes = load_nodes_from_optimize_results(optimize_results_dir)
     graph = build_graph(
         nodes=nodes,
         relations_json=relations_json,
-        attach_eps_ratio=float(args.attach_eps_ratio),
-        attach_eps_abs=float(args.attach_eps_abs),
+        attach_eps_ratio=attach_eps_ratio,
+        attach_eps_abs=attach_eps_abs,
     )
 
     out_json = args.out_json.strip() or os.path.join(os.path.abspath(iter_dir), "program_graph.json")
@@ -357,14 +398,14 @@ def main():
     if not args.no_vis:
         try:
             from graph_building.vis import run_graph_vis
-            run_graph_vis(
-                iter_dir=os.path.abspath(iter_dir),
-                graph_json=os.path.abspath(out_json),
-                only_label=args.vis_only_label.strip(),
-                max_labels=int(args.vis_max_labels),
-                pin_radius_ratio=float(args.vis_pin_radius_ratio),
-                caller_file=__file__,  # <-- IMPORTANT: makes fused_model.ply relative to 12_graph_building.py
-            )
+            # run_graph_vis(
+            #     iter_dir=os.path.abspath(iter_dir),
+            #     graph_json=os.path.abspath(out_json),
+            #     only_label=args.vis_only_label.strip(),
+            #     max_labels=int(args.vis_max_labels),
+            #     pin_radius_ratio=float(args.vis_pin_radius_ratio),
+            #     caller_file=__file__,  # <-- IMPORTANT: makes fused_model.ply relative to 12_graph_building.py
+            # )
 
         except Exception as ex:
             print("[GRAPH] visualization failed:", str(ex))

@@ -3,7 +3,13 @@
     "attach_eps": 0.0018151087313890459,
     "attach_eps_ratio": 0.02,
     "attach_eps_abs": 0.0,
-    "relations_json": "/Users/yuanboli/Documents/GitHub/sketch_lib/controlNet_process/sketch/dsl_optimize/relations.json"
+    "relations_json": "/Users/yuanboli/Documents/GitHub/sketch_lib/controlNet_process/sketch/dsl_optimize/relations.json",
+    "thresholds": {
+      "same_pair_relation_threshold_confidence": 0.0,
+      "connect_relation_threshold_ratio": 0.02,
+      "connect_relation_threshold_abs": 0.0,
+      "floating_point_eps": 1e-12
+    }
   },
   "nodes": [
     {
