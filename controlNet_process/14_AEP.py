@@ -13,7 +13,7 @@ Steps:
 3) If neighbor relation is "symmetry" (we treat edge type == "same_pair" as symmetry):
      print "to change!"
 4) If neighbor relation is "connect" (edge type == "connected"):
-     call AEP/connect_change.py to recompute anchor points (pin midpoint between closest points).
+     call AEP/connect_detect.py to recompute anchor points (pin midpoint between closest points).
      If anchor changes -> neighbor needs edit.
      Print old/new anchors if changed; else print "no change".
 """
@@ -25,7 +25,7 @@ from typing import Any, Dict, List, Tuple
 import numpy as np
 
 from thresholds import floating_point_eps
-from AEP.connect_change import compute_anchor_change
+from AEP.connect_detect import compute_anchor_change
 
 
 # ------------------------ IO ------------------------
