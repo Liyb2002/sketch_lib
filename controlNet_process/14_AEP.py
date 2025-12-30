@@ -210,6 +210,34 @@ def main() -> None:
         # symmetry
         if et == "same_pair":
             print(f"[SYM]  {target_label}  <->  {nb} : to change!")
+
+            # Apply translation-only same_pair edit (orientation-aware delta mapping)
+            from AEP.same_pair_neighbor_edits import translate_same_pair_neighbor
+
+            if nb not in label2node:
+                print(f"       [SYM] neighbor missing in nodes (skip)")
+                continue
+
+            # Use current stored neighbor aabb as "before"
+            mnB_before, mxB_before = _node_aabb(label2node[nb])
+
+            mnB_after, mxB_after, deltaB = translate_same_pair_neighbor(
+                mnA_before=mnA_before,
+                mxA_before=mxA_before,
+                mnA_after=mnA_after,
+                mxA_after=mxA_after,
+                mnB=mnB_before,
+                mxB=mxB_before,
+                nodeA=label2node[target_label],
+                nodeB=label2node[nb],
+            )
+
+            changed_neighbors.add(nb)
+            after_aabbs[nb] = {"min": mnB_after.tolist(), "max": mxB_after.tolist()}
+
+            print("       same_pair_delta:", deltaB.tolist())
+            print("       B_before_aabb  :", {"min": mnB_before.tolist(), "max": mxB_before.tolist()})
+            print("       B_after_aabb   :", {"min": mnB_after.tolist(),  "max": mxB_after.tolist()})
             continue
 
         # connected
