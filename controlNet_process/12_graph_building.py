@@ -220,6 +220,37 @@ def load_nodes_from_optimize_results(optimize_results_dir: str) -> List[Node]:
 
     return nodes
 
+def _resolve_label_to_node_idx(label: str, label_to_idx: Dict[str, int]) -> int | None:
+    """
+    Map a relation label like 'wheel_0' to an actual node label like 'wheel_0_0'.
+
+    Strategy:
+      1) exact match
+      2) if not found, match all keys that start with label + "_"
+         - if label+"_0" exists, prefer it
+         - else if exactly one match exists, use it
+         - else return None (ambiguous / missing)
+    """
+    if label in label_to_idx:
+        return label_to_idx[label]
+
+    prefix = label + "_"
+    matches = [k for k in label_to_idx.keys() if k.startswith(prefix)]
+    if not matches:
+        return None
+
+    preferred = label + "_0"
+    if preferred in label_to_idx:
+        return label_to_idx[preferred]
+
+    if len(matches) == 1:
+        return label_to_idx[matches[0]]
+
+    # Ambiguous: multiple instances exist (e.g. wheel_0_0, wheel_0_1, ...)
+    # Deterministic choice: smallest index (or you can return None + warn)
+    matches_sorted = sorted(matches, key=lambda k: label_to_idx[k])
+    return label_to_idx[matches_sorted[0]]
+
 
 # ------------------------ Graph build ------------------------
 
@@ -281,21 +312,25 @@ def build_graph(
     same_edges = []
     for sp in same_pairs:
         # Only change: threshold read from thresholds.py (default 0.0 preserves old behavior)
-        if float(sp.get("confidence", 1.0)) < float(same_pair_relation_threshold_confidence):
-            continue
+        # if float(sp.get("confidence", 1.0)) < float(same_pair_relation_threshold_confidence):
+        #     continue
 
-        a = str(sp.get("a", ""))
-        b = str(sp.get("b", ""))
-        if a in label_to_idx and b in label_to_idx:
-            same_edges.append({
-                "type": "same_pair",
-                "a": int(label_to_idx[a]),
-                "b": int(label_to_idx[b]),
-                "a_label": a,
-                "b_label": b,
-                "confidence": float(sp.get("confidence", 1.0)),
-                "evidence": sp.get("evidence", ""),
-            })
+        a_raw = str(sp.get("a", "")).strip()
+        b_raw = str(sp.get("b", "")).strip()
+
+        ai = _resolve_label_to_node_idx(a_raw, label_to_idx)
+        bi = _resolve_label_to_node_idx(b_raw, label_to_idx)
+        same_edges.append({
+            "type": "same_pair",
+            "a": int(ai),
+            "b": int(bi),
+            "a_label": nodes[ai].label,  # store actual node labels for clarity
+            "b_label": nodes[bi].label,
+            "relation_a": a_raw,         # keep original relation labels too
+            "relation_b": b_raw,
+            "confidence": float(sp.get("confidence", 1.0)),
+            "evidence": sp.get("evidence", ""),
+        })
 
     neighbor_edges = []
     for nb in neighboring_pairs:

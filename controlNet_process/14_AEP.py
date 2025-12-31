@@ -202,11 +202,12 @@ def main() -> None:
     print()
 
     for e in edges:
+        
         et = str(e.get("type", ""))
         nb = _other_label(e, target_label)
         if not nb or nb not in label2node:
             continue
-
+    
         # symmetry
         if et == "same_pair":
             print(f"[SYM]  {target_label}  <->  {nb} : to change!")
@@ -242,41 +243,41 @@ def main() -> None:
 
         # connected
         if et == "connected":
-            mnB_before, mxB_before = _node_aabb(label2node[nb])
+            # mnB_before, mxB_before = _node_aabb(label2node[nb])
 
-            changed, old_pin, new_pin_tmp = compute_anchor_change(
-                mnA_before=mnA_before,
-                mxA_before=mxA_before,
-                mnA_after=mnA_after,
-                mxA_after=mxA_after,
-                mnB=mnB_before,
-                mxB=mxB_before,
-                eps=float(floating_point_eps),
-            )
+            # changed, old_pin, new_pin_tmp = compute_anchor_change(
+            #     mnA_before=mnA_before,
+            #     mxA_before=mxA_before,
+            #     mnA_after=mnA_after,
+            #     mxA_after=mxA_after,
+            #     mnB=mnB_before,
+            #     mxB=mxB_before,
+            #     eps=float(floating_point_eps),
+            # )
 
-            if not changed:
-                print(f"[CONN] {target_label}  <->  {nb} : no change")
-                continue
+            # if not changed:
+            #     print(f"[CONN] {target_label}  <->  {nb} : no change")
+            #     continue
 
-            print(f"[CONN] {target_label}  <->  {nb} : to change!")
-            print("       old_anchor(A_before,B_before):", old_pin.tolist())
-            print("       new_anchor(A_after,B_before) :", new_pin_tmp.tolist())
+            # print(f"[CONN] {target_label}  <->  {nb} : to change!")
+            # print("       old_anchor(A_before,B_before):", old_pin.tolist())
+            # print("       new_anchor(A_after,B_before) :", new_pin_tmp.tolist())
 
-            mnB_after, mxB_after, delta = translate_neighbor_by_target_delta(
-                mnA_before=mnA_before,
-                mxA_before=mxA_before,
-                mnA_after=mnA_after,
-                mxA_after=mxA_after,
-                mnB=mnB_before,
-                mxB=mxB_before,
-            )
+            # mnB_after, mxB_after, delta = translate_neighbor_by_target_delta(
+            #     mnA_before=mnA_before,
+            #     mxA_before=mxA_before,
+            #     mnA_after=mnA_after,
+            #     mxA_after=mxA_after,
+            #     mnB=mnB_before,
+            #     mxB=mxB_before,
+            # )
 
-            changed_neighbors.add(nb)
-            after_aabbs[nb] = {"min": mnB_after.tolist(), "max": mxB_after.tolist()}
+            # changed_neighbors.add(nb)
+            # after_aabbs[nb] = {"min": mnB_after.tolist(), "max": mxB_after.tolist()}
 
-            print("       neighbor_delta:", delta.tolist())
-            print("       B_before_aabb :", {"min": mnB_before.tolist(), "max": mxB_before.tolist()})
-            print("       B_after_aabb  :", {"min": mnB_after.tolist(),  "max": mxB_after.tolist()})
+            # print("       neighbor_delta:", delta.tolist())
+            # print("       B_before_aabb :", {"min": mnB_before.tolist(), "max": mxB_before.tolist()})
+            # print("       B_after_aabb  :", {"min": mnB_after.tolist(),  "max": mxB_after.tolist()})
             continue
 
     print()

@@ -1558,6 +1558,17 @@
           0.014941871166229248
         ]
       }
+    },
+    {
+      "type": "same_pair",
+      "a": 15,
+      "b": 16,
+      "a_label": "wheel_0_0",
+      "b_label": "wheel_1_0",
+      "relation_a": "wheel_0",
+      "relation_b": "wheel_1",
+      "confidence": 1.0,
+      "evidence": "both wheels"
     }
   ],
   "same_pairs": [
