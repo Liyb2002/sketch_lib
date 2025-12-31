@@ -1,6 +1,6 @@
 {
-  "target_label": "fender_0_0",
-  "source_bbox_after_json": "/Users/yuanboli/Documents/GitHub/sketch_lib/controlNet_process/sketch/dsl_optimize/optimize_iteration/iter_000/optimize_results/fender_0_0/bbox_after.json",
+  "target_label": "wheel_0_0",
+  "source_bbox_after_json": "/Users/yuanboli/Documents/GitHub/sketch_lib/controlNet_process/sketch/dsl_optimize/optimize_iteration/iter_000/optimize_results/wheel_0_0/bbox_after.json",
   "iter_dir": "/Users/yuanboli/Documents/GitHub/sketch_lib/controlNet_process/sketch/dsl_optimize/optimize_iteration/iter_000",
   "aabb_source": {
     "source": "opt_aabb_world"
@@ -8,34 +8,34 @@
   "edit": {
     "axis": 2,
     "axis_name": "z",
-    "side": "min",
-    "frac": 0.23575309502236289,
-    "delta": 0.0425945007302008,
+    "side": "max",
+    "frac": 0.2310107175499681,
+    "delta": 0.039155874464580395,
     "sign": 1.0,
-    "before_face_value": 0.779000997543335,
-    "after_face_value": 0.8215954982735357,
+    "before_face_value": 0.9414110779762268,
+    "after_face_value": 0.9805669524408072,
     "aabb_before": {
       "min": [
-        -0.050851114094257355,
-        -0.09372518956661224,
-        0.779000997543335
+        -0.042442791163921356,
+        0.07006067037582397,
+        0.7719129920005798
       ],
       "max": [
-        0.12230903655290604,
-        0.12943321466445923,
-        0.9596751928329468
+        0.0655713677406311,
+        0.21515285968780518,
+        0.9414110779762268
       ]
     },
     "aabb_after": {
       "min": [
-        -0.050851114094257355,
-        -0.09372518956661224,
-        0.8215954982735357
+        -0.042442791163921356,
+        0.07006067037582397,
+        0.7719129920005798
       ],
       "max": [
-        0.12230903655290604,
-        0.12943321466445923,
-        0.9596751928329468
+        0.0655713677406311,
+        0.21515285968780518,
+        0.9805669524408072
       ]
     }
   },

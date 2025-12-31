@@ -475,7 +475,7 @@ def _write_target_edit(
 
 # ------------------------ Main ------------------------
 
-def main() -> None:
+def main(target_label: str | None = None) -> None:
     random.seed()
 
     if o3d is None:
@@ -495,8 +495,23 @@ def main() -> None:
     print("[EDIT] out_dir  :", out_dir)
 
     # pick target label
+    # --------------------------------------------------
+    # pick target label (forced or random)
+    # --------------------------------------------------
     cands = _collect_candidate_labels(opt_dir)
-    label, bbox_after_path = _pick_random_non_unknown(cands)
+    label_to_path = {lab: p for lab, p in cands}
+
+    if target_label is not None:
+        if target_label not in label_to_path:
+            raise RuntimeError(
+                f"Forced target_label '{target_label}' not found in optimize_results."
+            )
+        label = target_label
+        bbox_after_path = label_to_path[label]
+        print(f"[EDIT] using forced target_label: {label}")
+    else:
+        label, bbox_after_path = _pick_random_non_unknown(cands)
+        print(f"[EDIT] randomly picked target_label: {label}")
 
     # load target bbox record (this is the "before")
     before_rec = _read_bbox_after_record(bbox_after_path)
@@ -552,4 +567,7 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    target_label = "wheel_0_0"
+    # target_label = None   # ← uncomment to randomize
+
+    main(target_label)
