@@ -243,41 +243,41 @@ def main() -> None:
 
         # connected
         if et == "connected":
-            # mnB_before, mxB_before = _node_aabb(label2node[nb])
+            mnB_before, mxB_before = _node_aabb(label2node[nb])
 
-            # changed, old_pin, new_pin_tmp = compute_anchor_change(
-            #     mnA_before=mnA_before,
-            #     mxA_before=mxA_before,
-            #     mnA_after=mnA_after,
-            #     mxA_after=mxA_after,
-            #     mnB=mnB_before,
-            #     mxB=mxB_before,
-            #     eps=float(floating_point_eps),
-            # )
+            changed, old_pin, new_pin_tmp = compute_anchor_change(
+                mnA_before=mnA_before,
+                mxA_before=mxA_before,
+                mnA_after=mnA_after,
+                mxA_after=mxA_after,
+                mnB=mnB_before,
+                mxB=mxB_before,
+                eps=float(floating_point_eps),
+            )
 
-            # if not changed:
-            #     print(f"[CONN] {target_label}  <->  {nb} : no change")
-            #     continue
+            if not changed:
+                print(f"[CONN] {target_label}  <->  {nb} : no change")
+                continue
 
-            # print(f"[CONN] {target_label}  <->  {nb} : to change!")
-            # print("       old_anchor(A_before,B_before):", old_pin.tolist())
-            # print("       new_anchor(A_after,B_before) :", new_pin_tmp.tolist())
+            print(f"[CONN] {target_label}  <->  {nb} : to change!")
+            print("       old_anchor(A_before,B_before):", old_pin.tolist())
+            print("       new_anchor(A_after,B_before) :", new_pin_tmp.tolist())
 
-            # mnB_after, mxB_after, delta = translate_neighbor_by_target_delta(
-            #     mnA_before=mnA_before,
-            #     mxA_before=mxA_before,
-            #     mnA_after=mnA_after,
-            #     mxA_after=mxA_after,
-            #     mnB=mnB_before,
-            #     mxB=mxB_before,
-            # )
+            mnB_after, mxB_after, delta = translate_neighbor_by_target_delta(
+                mnA_before=mnA_before,
+                mxA_before=mxA_before,
+                mnA_after=mnA_after,
+                mxA_after=mxA_after,
+                mnB=mnB_before,
+                mxB=mxB_before,
+            )
 
-            # changed_neighbors.add(nb)
-            # after_aabbs[nb] = {"min": mnB_after.tolist(), "max": mxB_after.tolist()}
+            changed_neighbors.add(nb)
+            after_aabbs[nb] = {"min": mnB_after.tolist(), "max": mxB_after.tolist()}
 
-            # print("       neighbor_delta:", delta.tolist())
-            # print("       B_before_aabb :", {"min": mnB_before.tolist(), "max": mxB_before.tolist()})
-            # print("       B_after_aabb  :", {"min": mnB_after.tolist(),  "max": mxB_after.tolist()})
+            print("       neighbor_delta:", delta.tolist())
+            print("       B_before_aabb :", {"min": mnB_before.tolist(), "max": mxB_before.tolist()})
+            print("       B_after_aabb  :", {"min": mnB_after.tolist(),  "max": mxB_after.tolist()})
             continue
 
     print()
@@ -291,6 +291,42 @@ def main() -> None:
         after_aabbs=after_aabbs,
         changed_neighbors=changed_neighbors,
     )
+
+
+    # ------------------------ Save per-label AABBs (all labels) ------------------------
+
+    out_path = os.path.join(target_dir, "all_labels_aabbs.json")
+
+    # labels whose bbox changed in this run (target always counts as changed)
+    changed_labels = set(changed_neighbors)
+    changed_labels.add(target_label)
+
+    out = {
+        "target_label": target_label,
+        "changed_labels": sorted(list(changed_labels)),
+        "labels": {}
+    }
+
+    # Save for every label we have in before_aabbs (target + all incident neighbors)
+    for lab in sorted(before_aabbs.keys()):
+        b = before_aabbs[lab]  # {"min": [...], "max": [...]}
+        a = after_aabbs.get(lab, b)
+
+        if lab in changed_labels:
+            out["labels"][lab] = {
+                "before": b,
+                "after": a,
+            }
+        else:
+            out["labels"][lab] = {
+                "aabb": b
+            }
+
+    os.makedirs(os.path.dirname(out_path), exist_ok=True)
+    with open(out_path, "w") as f:
+        json.dump(out, f, indent=2)
+
+    print("[AEP][SAVE] per-label AABBs:", os.path.abspath(out_path))
 
 
 if __name__ == "__main__":
