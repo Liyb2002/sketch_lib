@@ -307,19 +307,37 @@ def main() -> None:
         "labels": {}
     }
 
-    # Save for every label we have in before_aabbs (target + all incident neighbors)
-    for lab in sorted(before_aabbs.keys()):
-        b = before_aabbs[lab]  # {"min": [...], "max": [...]}
-        a = after_aabbs.get(lab, b)
+    # Iterate over ALL labels in the graph (not just target + incident neighbors)
+    for lab in sorted(label2node.keys()):
+        node = label2node[lab]
+
+        # Default "original" bbox comes from graph
+        mn0, mx0 = _node_aabb(node)
+        original = {"min": mn0.tolist(), "max": mx0.tolist()}
 
         if lab in changed_labels:
+            # For changed labels, store before/after.
+
+            if lab == target_label:
+                # Target "before" may come from bbox_before.json (if present), else graph
+                b = {"min": mnA_before.tolist(), "max": mxA_before.tolist()}
+                a = {"min": mnA_after.tolist(),  "max": mxA_after.tolist()}
+            else:
+                # Neighbor changes were computed and stored in before_aabbs/after_aabbs.
+                # But be robust: fall back to graph if missing for any reason.
+                b = before_aabbs.get(lab, original)
+                a = after_aabbs.get(lab, b)
+
             out["labels"][lab] = {
+                "is_changed": True,
                 "before": b,
                 "after": a,
             }
         else:
+            # Unchanged labels: only store original bbox
             out["labels"][lab] = {
-                "aabb": b
+                "is_changed": False,
+                "aabb": original
             }
 
     os.makedirs(os.path.dirname(out_path), exist_ok=True)
