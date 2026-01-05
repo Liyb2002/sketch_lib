@@ -18,6 +18,7 @@ from constraints_optimization.vis import visualize_heatmaps_with_bboxes
 from constraints_optimization.optimizer import optimize_bounding_boxes
 from constraints_optimization.vis import visualize_heatmaps_with_bboxes_before_after
 from constraints_optimization.save_optimization_results import save_optimization_results
+from constraints_optimization.save_new_segmentation import vis_overlay_points_with_new_bbox
 
 
 SKETCH_ROOT = os.path.join(THIS_DIR, "sketch")
