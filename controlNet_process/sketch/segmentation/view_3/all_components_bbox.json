@@ -1,0 +1,89 @@
+{
+  "view": "view_3",
+  "image": "sketch/views_realistic/view_3.png",
+  "image_size": {
+    "width": 320,
+    "height": 320
+  },
+  "score_thresh": 0.05,
+  "min_area_pct": 0.001,
+  "bbox_scale": 1.1,
+  "detections": [
+    {
+      "label": "wheel_0",
+      "score": 0.9447435736656189,
+      "box_xyxy": [
+        153.2121124267578,
+        183.3936767578125,
+        202.17996215820312,
+        255.0648193359375
+      ],
+      "box_xywh": [
+        153.2121124267578,
+        183.3936767578125,
+        48.96784973144531,
+        71.671142578125
+      ],
+      "mask_path": "wheel_0_mask.png",
+      "overlay_path": "wheel_0_overlay.png",
+      "crop_path": "wheel_0.png"
+    },
+    {
+      "label": "wheel_1",
+      "score": 0.9231021404266357,
+      "box_xyxy": [
+        130.64878845214844,
+        217.60581970214844,
+        158.1235809326172,
+        257.1105651855469
+      ],
+      "box_xywh": [
+        130.64878845214844,
+        217.60581970214844,
+        27.47479248046875,
+        39.50474548339844
+      ],
+      "mask_path": "wheel_1_mask.png",
+      "overlay_path": "wheel_1_overlay.png",
+      "crop_path": "wheel_1.png"
+    },
+    {
+      "label": "fender_0",
+      "score": 0.6035414934158325,
+      "box_xyxy": [
+        120.65522003173828,
+        87.30134582519531,
+        221.05831909179688,
+        220.26535034179688
+      ],
+      "box_xywh": [
+        120.65522003173828,
+        87.30134582519531,
+        100.4030990600586,
+        132.96400451660156
+      ],
+      "mask_path": "fender_0_mask.png",
+      "overlay_path": "fender_0_overlay.png",
+      "crop_path": "fender_0.png"
+    },
+    {
+      "label": "handlebar_0",
+      "score": 0.6074888110160828,
+      "box_xyxy": [
+        82.08430480957031,
+        81.22962188720703,
+        107.36895751953125,
+        95.1710205078125
+      ],
+      "box_xywh": [
+        82.08430480957031,
+        81.22962188720703,
+        25.284652709960938,
+        13.941398620605469
+      ],
+      "mask_path": "handlebar_0_mask.png",
+      "overlay_path": "handlebar_0_overlay.png",
+      "crop_path": "handlebar_0.png"
+    }
+  ]
+}

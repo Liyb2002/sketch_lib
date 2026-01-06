@@ -1,0 +1,127 @@
+{
+  "view": "view_1",
+  "image": "sketch/views_realistic/view_1.png",
+  "image_size": {
+    "width": 320,
+    "height": 320
+  },
+  "score_thresh": 0.05,
+  "min_area_pct": 0.001,
+  "bbox_scale": 1.1,
+  "detections": [
+    {
+      "label": "wheel_0",
+      "score": 0.9744150638580322,
+      "box_xyxy": [
+        29.028644561767578,
+        162.81002807617188,
+        122.9454345703125,
+        255.45654296875
+      ],
+      "box_xywh": [
+        29.028644561767578,
+        162.81002807617188,
+        93.91679000854492,
+        92.64651489257812
+      ],
+      "mask_path": "wheel_0_mask.png",
+      "overlay_path": "wheel_0_overlay.png",
+      "crop_path": "wheel_0.png"
+    },
+    {
+      "label": "wheel_1",
+      "score": 0.9626294374465942,
+      "box_xyxy": [
+        189.41297912597656,
+        210.328369140625,
+        261.5566711425781,
+        256.6163635253906
+      ],
+      "box_xywh": [
+        189.41297912597656,
+        210.328369140625,
+        72.14369201660156,
+        46.287994384765625
+      ],
+      "mask_path": "wheel_1_mask.png",
+      "overlay_path": "wheel_1_overlay.png",
+      "crop_path": "wheel_1.png"
+    },
+    {
+      "label": "fender_0",
+      "score": 0.6669869422912598,
+      "box_xyxy": [
+        60.829505920410156,
+        65.91438293457031,
+        138.86444091796875,
+        205.10223388671875
+      ],
+      "box_xywh": [
+        60.829505920410156,
+        65.91438293457031,
+        78.0349349975586,
+        139.18785095214844
+      ],
+      "mask_path": "fender_0_mask.png",
+      "overlay_path": "fender_0_overlay.png",
+      "crop_path": "fender_0.png"
+    },
+    {
+      "label": "headlight_0",
+      "score": 0.8137431740760803,
+      "box_xyxy": [
+        73.7686767578125,
+        47.93266296386719,
+        89.32506561279297,
+        75.33820343017578
+      ],
+      "box_xywh": [
+        73.7686767578125,
+        47.93266296386719,
+        15.556388854980469,
+        27.405540466308594
+      ],
+      "mask_path": "headlight_0_mask.png",
+      "overlay_path": "headlight_0_overlay.png",
+      "crop_path": "headlight_0.png"
+    },
+    {
+      "label": "handlebar_0",
+      "score": 0.7140775918960571,
+      "box_xyxy": [
+        139.19949340820312,
+        35.502113342285156,
+        170.0810546875,
+        50.54867172241211
+      ],
+      "box_xywh": [
+        139.19949340820312,
+        35.502113342285156,
+        30.881561279296875,
+        15.046558380126953
+      ],
+      "mask_path": "handlebar_0_mask.png",
+      "overlay_path": "handlebar_0_overlay.png",
+      "crop_path": "handlebar_0.png"
+    },
+    {
+      "label": "seat_0",
+      "score": 0.9233812689781189,
+      "box_xyxy": [
+        157.33433532714844,
+        113.15742492675781,
+        250.89663696289062,
+        140.93125915527344
+      ],
+      "box_xywh": [
+        157.33433532714844,
+        113.15742492675781,
+        93.56230163574219,
+        27.773834228515625
+      ],
+      "mask_path": "seat_0_mask.png",
+      "overlay_path": "seat_0_overlay.png",
+      "crop_path": "seat_0.png"
+    }
+  ]
+}

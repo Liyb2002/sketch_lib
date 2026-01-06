@@ -1,0 +1,89 @@
+{
+  "view": "view_4",
+  "image": "sketch/views_realistic/view_4.png",
+  "image_size": {
+    "width": 320,
+    "height": 320
+  },
+  "score_thresh": 0.05,
+  "min_area_pct": 0.001,
+  "bbox_scale": 1.1,
+  "detections": [
+    {
+      "label": "wheel_0",
+      "score": 0.964911937713623,
+      "box_xyxy": [
+        201.39886474609375,
+        158.45449829101562,
+        256.5511169433594,
+        223.87466430664062
+      ],
+      "box_xywh": [
+        201.39886474609375,
+        158.45449829101562,
+        55.152252197265625,
+        65.420166015625
+      ],
+      "mask_path": "wheel_0_mask.png",
+      "overlay_path": "wheel_0_overlay.png",
+      "crop_path": "wheel_0.png"
+    },
+    {
+      "label": "wheel_1",
+      "score": 0.9604943990707397,
+      "box_xyxy": [
+        43.168582916259766,
+        237.56289672851562,
+        128.3480682373047,
+        278.6756591796875
+      ],
+      "box_xywh": [
+        43.168582916259766,
+        237.56289672851562,
+        85.17948532104492,
+        41.112762451171875
+      ],
+      "mask_path": "wheel_1_mask.png",
+      "overlay_path": "wheel_1_overlay.png",
+      "crop_path": "wheel_1.png"
+    },
+    {
+      "label": "handlebar_0",
+      "score": 0.764401376247406,
+      "box_xyxy": [
+        152.67202758789062,
+        48.918663024902344,
+        250.97093200683594,
+        79.40450286865234
+      ],
+      "box_xywh": [
+        152.67202758789062,
+        48.918663024902344,
+        98.29890441894531,
+        30.48583984375
+      ],
+      "mask_path": "handlebar_0_mask.png",
+      "overlay_path": "handlebar_0_overlay.png",
+      "crop_path": "handlebar_0.png"
+    },
+    {
+      "label": "seat_0",
+      "score": 0.9460652470588684,
+      "box_xyxy": [
+        58.33708953857422,
+        112.98760986328125,
+        160.70411682128906,
+        161.22787475585938
+      ],
+      "box_xywh": [
+        58.33708953857422,
+        112.98760986328125,
+        102.36702728271484,
+        48.240264892578125
+      ],
+      "mask_path": "seat_0_mask.png",
+      "overlay_path": "seat_0_overlay.png",
+      "crop_path": "seat_0.png"
+    }
+  ]
+}

@@ -28,7 +28,7 @@ VIEWS_DIR = BASE_PATH / "views_realistic"
 PROGRAM_DIR = BASE_PATH / "program"
 SEG_OUTPUT_DIR = BASE_PATH / "segmentation"
 
-SCORE_THRESH = 0.05 
+SCORE_THRESH = 0.05
 MIN_AREA_PCT = 0.001
 BBOX_SCALE   = 1.1
 
@@ -43,14 +43,14 @@ def load_inventory() -> Dict[str, int]:
     if not json_path.exists():
         print(f"[ERROR] Inventory file not found at: {json_path}")
         return {}
-        
+
     try:
         with open(json_path, "r") as f:
             data = json.load(f)
-            
+
         components = data.get("components", [])
         inventory = {}
-        
+
         for c in components:
             name = c.get("name", "").strip()
             count = c.get("count", 1)
@@ -89,10 +89,10 @@ def save_filtered_components(
     scores_np = scores.detach().cpu().numpy()
 
     valid_candidates = []
-    for i, (mask, box, score) in enumerate(zip(masks_np, boxes_np, scores_np)):
+    for mask, box, score in zip(masks_np, boxes_np, scores_np):
         if score < SCORE_THRESH:
             continue
-        
+
         mask_bin = mask > 0.5
         if int(mask_bin.sum()) < img_area * MIN_AREA_PCT:
             continue
@@ -110,7 +110,7 @@ def save_filtered_components(
     for idx, cand in enumerate(top_candidates):
         mask_bin = cand["mask_bin"]
         x0, y0, x1, y1 = map(float, cand["box"])
-        
+
         results.append({
             "label": label_slug,
             "score": cand["score"],
@@ -121,7 +121,7 @@ def save_filtered_components(
 
         cx, cy = 0.5 * (x0 + x1), 0.5 * (y0 + y1)
         w, h = (x1 - x0) * BBOX_SCALE, (y1 - y0) * BBOX_SCALE
-        
+
         nx0, ny0 = max(0, int(cx - w / 2)), max(0, int(cy - h / 2))
         nx1, ny1 = min(W, int(cx + w / 2)), min(H, int(cy + h / 2))
 
@@ -147,20 +147,22 @@ def process_view(
     processor: Sam3Processor,
 ):
     print(f"\n--- Processing View: {img_path.name} ---")
-    
-    view_name = img_path.stem 
+
+    view_name = img_path.stem
     view_out_dir = SEG_OUTPUT_DIR / view_name
-    
+
+    # Clean run: remove old outputs for this view
     if view_out_dir.exists():
         import shutil
         shutil.rmtree(view_out_dir)
     view_out_dir.mkdir(parents=True, exist_ok=True)
 
     image = Image.open(img_path).convert("RGB")
+    W, H = image.size
     state = processor.set_image(image)
 
     colors = [
-        (255, 0, 0), (0, 255, 0), (0, 0, 255), (255, 255, 0), 
+        (255, 0, 0), (0, 255, 0), (0, 0, 255), (255, 255, 0),
         (255, 0, 255), (0, 255, 255), (255, 128, 0), (128, 0, 255)
     ]
 
@@ -171,8 +173,7 @@ def process_view(
     for label, count_limit in inventory.items():
         output = processor.set_text_prompt(state=state, prompt=label)
         masks, boxes, scores = output["masks"], output["boxes"], output["scores"]
-        
-        # Pass to filter
+
         results = save_filtered_components(
             label=label,
             limit=count_limit,
@@ -186,8 +187,8 @@ def process_view(
         if results:
             found_labels.append(f"{label} ({len(results)}/{count_limit})")
             all_results.extend(results)
-            
-            # Generate Overlays
+
+            # Generate overlays
             for r in results:
                 overlay = image.copy().convert("RGBA")
                 mask = r["mask_bin"]
@@ -200,13 +201,14 @@ def process_view(
         else:
             missing_labels.append(label)
 
-    # Status Printing
+    # Status printing
     print(f"  [FOUND]:   {', '.join(found_labels) if found_labels else 'None'}")
     print(f"  [MISSING]: {', '.join(missing_labels) if missing_labels else 'None'}")
 
     if all_results:
         bbox_img = image.copy()
         draw = ImageDraw.Draw(bbox_img)
+
         for i, r in enumerate(all_results):
             x0, y0, x1, y1 = r["box"]
             col = colors[i % len(colors)]
@@ -214,21 +216,49 @@ def process_view(
             text = f"{r['label']}_{r['index']}"
             bbox = draw.textbbox((x0, y0), text)
             draw.rectangle(bbox, fill=col)
-            draw.text((x0, y0), text, fill=(255,255,255))
+            draw.text((x0, y0), text, fill=(255, 255, 255))
+
         bbox_img.save(view_out_dir / "all_components_bbox.png")
+
+        # ---------------- Save bbox JSON (label matches filename stem) ----------------
+        bbox_records = []
+        for r in all_results:
+            x0, y0, x1, y1 = r["box"]
+            stem = f"{r['label']}_{int(r['index'])}"  # matches saved files
+
+            bbox_records.append({
+                "label": stem,  # e.g. "wheel_0"
+                "score": float(r["score"]),
+                "box_xyxy": [float(x0), float(y0), float(x1), float(y1)],
+                "box_xywh": [float(x0), float(y0), float(x1 - x0), float(y1 - y0)],
+                "mask_path": f"{stem}_mask.png",
+                "overlay_path": f"{stem}_overlay.png",
+                "crop_path": f"{stem}.png",
+            })
+
+        with open(view_out_dir / "all_components_bbox.json", "w") as f:
+            json.dump({
+                "view": view_name,
+                "image": str(img_path),
+                "image_size": {"width": int(W), "height": int(H)},
+                "score_thresh": float(SCORE_THRESH),
+                "min_area_pct": float(MIN_AREA_PCT),
+                "bbox_scale": float(BBOX_SCALE),
+                "detections": bbox_records,
+            }, f, indent=2)
 
 
 def main():
     if not VIEWS_DIR.exists():
         raise SystemExit(f"Views directory not found: {VIEWS_DIR}")
-    
+
     inventory = load_inventory()
     if not inventory:
         raise SystemExit("No inventory found. Run Step 1 (Inference) first.")
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
     print(f"[SAM3] Loading model on {device}...")
-    
+
     model = build_sam3_image_model()
     model.to(device)
     model.eval()
