@@ -1,0 +1,85 @@
+{
+  "view": "view_1",
+  "image": "sketch/views_realistic/view_1.png",
+  "image_size": {
+    "width": 320,
+    "height": 320
+  },
+  "changed_labels": [
+    {
+      "label": "wheel_0",
+      "original_box_xyxy": [
+        29.028644561767578,
+        162.81002807617188,
+        122.9454345703125,
+        255.45654296875
+      ],
+      "new_box_xyxy": [
+        29.028644561767585,
+        162.81002807617188,
+        135.2073226506062,
+        261.22358209029574
+      ],
+      "tentative_change_normalized": {
+        "scale_x": 1.1305611922977568,
+        "scale_y": 1.0622477718480023,
+        "trans_x": 0.06528059614887842,
+        "trans_y": 0.031123885924001022
+      },
+      "source_files": {
+        "segmentation_bbox_json": "sketch/segmentation/view_1/all_components_bbox.json",
+        "tentative_change_json": "sketch/target_edit/2d_projection/view_1/changed_labels_2d_bbox.json"
+      }
+    },
+    {
+      "label": "wheel_1",
+      "original_box_xyxy": [
+        189.41297912597656,
+        210.328369140625,
+        261.5566711425781,
+        256.6163635253906
+      ],
+      "new_box_xyxy": [
+        184.4043483992842,
+        208.49314807979658,
+        265.81212497456966,
+        258.00767723320257
+      ],
+      "tentative_change_normalized": {
+        "scale_x": 1.1284115672448822,
+        "scale_y": 1.069705650709772,
+        "trans_x": -0.005219977475837371,
+        "trans_y": -0.004795059268786861
+      },
+      "source_files": {
+        "segmentation_bbox_json": "sketch/segmentation/view_1/all_components_bbox.json",
+        "tentative_change_json": "sketch/target_edit/2d_projection/view_1/changed_labels_2d_bbox.json"
+      }
+    },
+    {
+      "label": "fender_0",
+      "original_box_xyxy": [
+        60.829505920410156,
+        65.91438293457031,
+        138.86444091796875,
+        205.10223388671875
+      ],
+      "new_box_xyxy": [
+        65.49212866215373,
+        70.71709138588838,
+        142.81087056661147,
+        208.01483432792136
+      ],
+      "tentative_change_normalized": {
+        "scale_x": 0.9908221478864143,
+        "scale_y": 0.986420452667487,
+        "trans_x": 0.05516152727400643,
+        "trans_y": 0.02771545375455629
+      },
+      "source_files": {
+        "segmentation_bbox_json": "sketch/segmentation/view_1/all_components_bbox.json",
+        "tentative_change_json": "sketch/target_edit/2d_projection/view_1/changed_labels_2d_bbox.json"
+      }
+    }
+  ]
+}

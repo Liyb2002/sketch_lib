@@ -1,0 +1,60 @@
+{
+  "view": "view_2",
+  "image": "sketch/views_realistic/view_2.png",
+  "image_size": {
+    "width": 320,
+    "height": 320
+  },
+  "changed_labels": [
+    {
+      "label": "wheel_0",
+      "original_box_xyxy": [
+        34.73727035522461,
+        161.8315887451172,
+        105.41755676269531,
+        234.59678649902344
+      ],
+      "new_box_xyxy": [
+        34.73727035522462,
+        161.8315887451172,
+        115.4806517588041,
+        241.10222751550378
+      ],
+      "tentative_change_normalized": {
+        "scale_x": 1.142374847465886,
+        "scale_y": 1.0894031929725787,
+        "trans_x": 0.07118742373294308,
+        "trans_y": 0.0447015964862893
+      },
+      "source_files": {
+        "segmentation_bbox_json": "sketch/segmentation/view_2/all_components_bbox.json",
+        "tentative_change_json": "sketch/target_edit/2d_projection/view_2/changed_labels_2d_bbox.json"
+      }
+    },
+    {
+      "label": "wheel_1",
+      "original_box_xyxy": [
+        203.97080993652344,
+        225.8896484375,
+        289.8951416015625,
+        263.6038513183594
+      ],
+      "new_box_xyxy": [
+        198.1953211423582,
+        224.53293056936832,
+        296.5089830073516,
+        265.35742232893364
+      ],
+      "tentative_change_normalized": {
+        "scale_x": 1.1441888456956755,
+        "scale_y": 1.0824699620069258,
+        "trans_x": 0.0048784354523239756,
+        "trans_y": 0.005261322156221292
+      },
+      "source_files": {
+        "segmentation_bbox_json": "sketch/segmentation/view_2/all_components_bbox.json",
+        "tentative_change_json": "sketch/target_edit/2d_projection/view_2/changed_labels_2d_bbox.json"
+      }
+    }
+  ]
+}
