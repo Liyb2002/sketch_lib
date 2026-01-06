@@ -1,17 +1,16 @@
 #!/usr/bin/env python3
 """
-launcher_vis_all_heatmaps_plus_opt_aabb.py
+launcher_save_optimized_components_ply.py
 
-For each label entry in:
+Reads:
   sketch/dsl_optimize/optimize_iteration/iter_000/heat_map/pca_bboxes/pca_bboxes_optimized.json
 
-Visualize:
-  - the per-label heatmap point cloud (entry["heat_ply"])
-  - the optimized world AABB (entry["opt_aabb_world"]) if present
-    (fallback to entry["aabb"] if opt_aabb_world missing)
-
-If the heatmap PLY does not exist, print:
-  [MISS] <label> : heatmap ply not found at <path>
+For each label:
+  - loads its heatmap PLY (entry["heat_ply"])
+  - keeps ALL points, but recolors points OUTSIDE the chosen AABB to BLACK
+    (opt_aabb_world preferred; fallback to aabb min_bound/max_bound)
+  - saves a per-label .ply into:
+      sketch/dsl_optimize/optimize_iteration/iter_000/optimized_components/<label>.ply
 """
 
 import os
@@ -20,17 +19,18 @@ import sys
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(THIS_DIR)
 
-from constraints_optimization.save_new_segmentation import vis_all_labels_heatmap_with_opt_aabb
+from constraints_optimization.save_new_segmentation import save_optimized_component_plys
 
 SKETCH_ROOT = os.path.join(THIS_DIR, "sketch")
 DSL_DIR     = os.path.join(SKETCH_ROOT, "dsl_optimize")
 
 ITER_ID = 0
 OUT_DIR = os.path.join(DSL_DIR, "optimize_iteration", f"iter_{ITER_ID:03d}")
-HEAT_DIR = os.path.join(OUT_DIR, "heat_map")
 
-PCA_BBOX_DIR = os.path.join(HEAT_DIR, "pca_bboxes")
-PCA_BBOX_OPT_JSON = os.path.join(PCA_BBOX_DIR, "pca_bboxes_optimized.json")
+HEAT_DIR = os.path.join(OUT_DIR, "heat_map")
+PCA_BBOX_OPT_JSON = os.path.join(HEAT_DIR, "pca_bboxes", "pca_bboxes_optimized.json")
+
+OPT_COMPONENT_DIR = os.path.join(OUT_DIR, "optimized_components")
 
 
 def main():
@@ -38,11 +38,13 @@ def main():
         raise FileNotFoundError(f"Missing: {PCA_BBOX_OPT_JSON}")
 
     print("[LAUNCH] pca_bboxes_optimized:", PCA_BBOX_OPT_JSON)
+    print("[LAUNCH] out_dir            :", OPT_COMPONENT_DIR)
 
-    vis_all_labels_heatmap_with_opt_aabb(
+    save_optimized_component_plys(
         pca_bboxes_optimized_json=PCA_BBOX_OPT_JSON,
-        show_obb=False,
+        out_dir=OPT_COMPONENT_DIR,
         prefer_opt_aabb=True,
+        overwrite=True,
     )
 
 
