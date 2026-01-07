@@ -11,16 +11,16 @@
     {
       "label": "handlebar_0",
       "box_xyxy": [
-        119.0,
-        51.0,
-        141.0,
-        63.0
+        43.0,
+        57.0,
+        155.0,
+        95.0
       ],
       "box_xywh": [
-        119.0,
-        51.0,
-        22.0,
-        12.0
+        43.0,
+        57.0,
+        112.0,
+        38.0
       ],
       "mask_path": "handlebar_0_mask.png",
       "overlay_path": "handlebar_0_overlay.png",
@@ -30,16 +30,16 @@
     {
       "label": "seat_0",
       "box_xyxy": [
-        158.0,
-        113.0,
-        269.0,
+        146.0,
+        111.0,
+        284.0,
         152.0
       ],
       "box_xywh": [
-        158.0,
-        113.0,
+        146.0,
         111.0,
-        39.0
+        138.0,
+        41.0
       ],
       "mask_path": "seat_0_mask.png",
       "overlay_path": "seat_0_overlay.png",
@@ -49,16 +49,16 @@
     {
       "label": "wheel_0",
       "box_xyxy": [
-        35.0,
-        162.0,
-        105.0,
-        234.0
+        42.0,
+        170.0,
+        103.0,
+        229.0
       ],
       "box_xywh": [
-        35.0,
-        162.0,
-        70.0,
-        72.0
+        42.0,
+        170.0,
+        61.0,
+        59.0
       ],
       "mask_path": "wheel_0_mask.png",
       "overlay_path": "wheel_0_overlay.png",
@@ -68,16 +68,16 @@
     {
       "label": "wheel_1",
       "box_xyxy": [
-        204.0,
-        225.0,
-        290.0,
-        263.0
+        194.0,
+        233.0,
+        283.0,
+        269.0
       ],
       "box_xywh": [
-        204.0,
-        225.0,
-        86.0,
-        38.0
+        194.0,
+        233.0,
+        89.0,
+        36.0
       ],
       "mask_path": "wheel_1_mask.png",
       "overlay_path": "wheel_1_overlay.png",

@@ -9,37 +9,18 @@
   "bbox_scale": 1.0,
   "detections": [
     {
-      "label": "fender_0",
-      "box_xyxy": [
-        137.0,
-        100.0,
-        215.0,
-        253.0
-      ],
-      "box_xywh": [
-        137.0,
-        100.0,
-        78.0,
-        153.0
-      ],
-      "mask_path": "fender_0_mask.png",
-      "overlay_path": "fender_0_overlay.png",
-      "crop_path": "fender_0.png",
-      "is_empty": false
-    },
-    {
       "label": "handlebar_0",
       "box_xyxy": [
-        93.0,
-        81.0,
-        122.0,
-        93.0
+        199.0,
+        88.0,
+        270.0,
+        106.0
       ],
       "box_xywh": [
-        93.0,
-        81.0,
-        29.0,
-        12.0
+        199.0,
+        88.0,
+        71.0,
+        18.0
       ],
       "mask_path": "handlebar_0_mask.png",
       "overlay_path": "handlebar_0_overlay.png",
@@ -49,16 +30,16 @@
     {
       "label": "headlight_0",
       "box_xyxy": [
-        167.0,
-        88.0,
-        199.0,
+        156.0,
+        89.0,
+        196.0,
         119.0
       ],
       "box_xywh": [
-        167.0,
-        88.0,
-        32.0,
-        31.0
+        156.0,
+        89.0,
+        40.0,
+        30.0
       ],
       "mask_path": "headlight_0_mask.png",
       "overlay_path": "headlight_0_overlay.png",
@@ -66,37 +47,18 @@
       "is_empty": false
     },
     {
-      "label": "seat_0",
-      "box_xyxy": [
-        124.0,
-        95.0,
-        143.0,
-        123.0
-      ],
-      "box_xywh": [
-        124.0,
-        95.0,
-        19.0,
-        28.0
-      ],
-      "mask_path": "seat_0_mask.png",
-      "overlay_path": "seat_0_overlay.png",
-      "crop_path": "seat_0.png",
-      "is_empty": false
-    },
-    {
       "label": "wheel_0",
       "box_xyxy": [
-        155.0,
-        208.0,
-        205.0,
-        307.0
+        148.0,
+        219.0,
+        189.0,
+        303.0
       ],
       "box_xywh": [
-        155.0,
-        208.0,
-        50.0,
-        99.0
+        148.0,
+        219.0,
+        41.0,
+        84.0
       ],
       "mask_path": "wheel_0_mask.png",
       "overlay_path": "wheel_0_overlay.png",
