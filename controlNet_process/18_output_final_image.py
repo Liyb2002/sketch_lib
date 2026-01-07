@@ -1,24 +1,20 @@
 #!/usr/bin/env python3
 # 18_output_final_image.py
 """
-Step 1 (verification only) — silhouette overlay in pure red.
+Step 2: REMOVE pixels using silhouette masks (verification-passed version).
 
-You said the mask file is an "overlay mask" (typically a cropped mask/image),
-so we:
-1) Load original view image:    sketch/views/view_{x}.png
-2) Read bbox_edits.json:        sketch/final_results/view_{x}/bbox_edits.json
+For each view:
+1) Load original image:              sketch/views/view_{x}.png
+2) Read bbox edits:                  sketch/final_results/view_{x}/bbox_edits.json
 3) For each changed label:
-   - Load overlay mask image:   sketch/segmentation_original_image/view_{x}/{label}_mask.png
-     (this can be cropped or full-size; can be RGB/RGBA/L)
-   - Convert it to a silhouette (binary mask) by thresholding non-white (or alpha>0)
-   - Place this silhouette onto the full image canvas at the ORIGINAL bbox location
-     using original_box_xyxy from bbox_edits.json
-   - Paint silhouette pixels as pure red (255,0,0) on the original image
+   - Load overlay mask image:        sketch/segmentation_original_image/view_{x}/{label}_mask.png
+   - Convert overlay mask -> silhouette
+   - Resize silhouette to ORIGINAL bbox size
+   - Place silhouette at ORIGINAL bbox location
+4) Remove pixels under silhouette (paint PURE WHITE)
 
 Output:
-  sketch/final_results/view_{x}/mask_remove_overlay.png
-
-Nothing else. No whitening, no resizing, no pasting components.
+  sketch/final_results/view_{x}/mask_removed.png
 """
 
 import os
@@ -73,20 +69,12 @@ def clamp(v: int, lo: int, hi: int) -> int:
     return max(lo, min(hi, v))
 
 def xyxy_float_to_int_box(box_xyxy: List[float], W: int, H: int) -> Tuple[int,int,int,int]:
-    """
-    Convert float bbox to int pixel bbox:
-      left/top = floor, right/bot = ceil, then clamp.
-    """
     x0, y0, x1, y1 = [float(x) for x in box_xyxy]
-    xi0 = int(np.floor(x0))
-    yi0 = int(np.floor(y0))
-    xi1 = int(np.ceil(x1))
-    yi1 = int(np.ceil(y1))
 
-    xi0 = clamp(xi0, 0, W)
-    xi1 = clamp(xi1, 0, W)
-    yi0 = clamp(yi0, 0, H)
-    yi1 = clamp(yi1, 0, H)
+    xi0 = clamp(int(np.floor(x0)), 0, W)
+    yi0 = clamp(int(np.floor(y0)), 0, H)
+    xi1 = clamp(int(np.ceil(x1)), 0, W)
+    yi1 = clamp(int(np.ceil(y1)), 0, H)
 
     if xi1 <= xi0:
         xi1 = min(W, xi0 + 1)
@@ -100,27 +88,25 @@ def xyxy_float_to_int_box(box_xyxy: List[float], W: int, H: int) -> Tuple[int,in
 
 def overlay_mask_to_silhouette(mask_img: np.ndarray) -> np.ndarray:
     """
-    Convert an "overlay mask" image to a binary silhouette (uint8 0/255).
+    Convert overlay mask image to silhouette (uint8 0 or 255).
 
-    Heuristics:
-    - If RGBA: use alpha > 0 as foreground (preferred).
-    - Else: treat "non-white" pixels as foreground:
-        any(channel < 250) -> foreground
-      (works for typical white background crops)
+    Rules:
+    - RGBA: alpha > 0
+    - RGB:  non-white pixels
+    - L:    >0
     """
     if mask_img.ndim == 2:
-        # grayscale
         fg = mask_img > 0
-        return (fg.astype(np.uint8) * 255)
+        return fg.astype(np.uint8) * 255
 
     if mask_img.shape[-1] == 4:
         alpha = mask_img[..., 3]
         fg = alpha > 0
-        return (fg.astype(np.uint8) * 255)
+        return fg.astype(np.uint8) * 255
 
-    rgb = mask_img[..., :3].astype(np.uint8)
-    fg = np.any(rgb < 250, axis=-1)  # non-white
-    return (fg.astype(np.uint8) * 255)
+    rgb = mask_img[..., :3]
+    fg = np.any(rgb < 250, axis=-1)
+    return fg.astype(np.uint8) * 255
 
 
 # ------------------------ Main ------------------------
@@ -136,62 +122,56 @@ def main(
         view = f"view_{vid}"
 
         img_path = os.path.join(views_dir, f"{view}.png")
-        if not os.path.isfile(img_path):
-            raise FileNotFoundError(f"Missing original image: {img_path}")
-
         edits_path = os.path.join(edits_root, view, "bbox_edits.json")
-        if not os.path.isfile(edits_path):
-            raise FileNotFoundError(f"Missing bbox edits: {edits_path}")
+        seg_view_dir = os.path.join(seg_orig_root, view)
 
-        seg_orig_view_dir = os.path.join(seg_orig_root, view)
-        if not os.path.isdir(seg_orig_view_dir):
-            raise FileNotFoundError(f"Missing folder: {seg_orig_view_dir}")
+        if not os.path.isfile(img_path):
+            raise FileNotFoundError(img_path)
+        if not os.path.isfile(edits_path):
+            raise FileNotFoundError(edits_path)
+        if not os.path.isdir(seg_view_dir):
+            raise FileNotFoundError(seg_view_dir)
 
         img_rgb = to_rgb(load_image_any(img_path)).copy()
         H, W = img_rgb.shape[:2]
 
         edits = load_json(edits_path)
         changed = edits.get("changed_labels", [])
-        if not isinstance(changed, list):
-            raise ValueError(f"Invalid schema: {edits_path} changed_labels must be list")
 
-        # Full-canvas union silhouette
-        union = np.zeros((H, W), dtype=np.uint8)
+        # Full canvas removal mask
+        removal = np.zeros((H, W), dtype=np.uint8)
 
         for item in changed:
-            if not isinstance(item, dict):
-                continue
             label = str(item.get("label", ""))
             orig_box = item.get("original_box_xyxy", None)
             if not label or not (isinstance(orig_box, list) and len(orig_box) == 4):
                 continue
 
-            mask_path = os.path.join(seg_orig_view_dir, f"{label}_mask.png")
+            mask_path = os.path.join(seg_view_dir, f"{label}_mask.png")
             if not os.path.isfile(mask_path):
-                print(f"[skip] missing overlay mask: {mask_path}")
+                print(f"[skip] missing mask: {mask_path}")
                 continue
 
             mask_img = load_image_any(mask_path)
-            sil = overlay_mask_to_silhouette(mask_img)  # (h,w) uint8 0/255
+            sil = overlay_mask_to_silhouette(mask_img)
 
-            # Place silhouette at ORIGINAL bbox location.
-            # We assume the overlay mask corresponds to that component crop, so it should be resized to bbox size.
             x0, y0, x1, y1 = xyxy_float_to_int_box(orig_box, W, H)
-            bw = max(1, x1 - x0)
-            bh = max(1, y1 - y0)
+            bw, bh = x1 - x0, y1 - y0
+            if bw <= 0 or bh <= 0:
+                continue
 
             sil_rs = resize_nearest(sil, bw, bh)
+            removal[y0:y1, x0:x1] = np.maximum(
+                removal[y0:y1, x0:x1],
+                sil_rs
+            )
 
-            # Paste into union
-            union[y0:y1, x0:x1] = np.maximum(union[y0:y1, x0:x1], sil_rs)
-
-        # Paint silhouette as pure red on the image
-        m = union > 0
-        img_rgb[m] = np.array([255, 0, 0], dtype=np.uint8)
+        # REMOVE = paint white
+        img_rgb[removal > 0] = np.array([255, 255, 255], dtype=np.uint8)
 
         out_dir = os.path.join(out_root, view)
         ensure_dir(out_dir)
-        out_path = os.path.join(out_dir, "mask_remove_overlay.png")
+        out_path = os.path.join(out_dir, "mask_removed.png")
         save_image_rgb(out_path, img_rgb)
 
         print(f"[ok] {view} -> {out_path}")
@@ -200,22 +180,10 @@ def main(
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--num_views", type=int, default=6)
-    parser.add_argument("--views_dir", default="sketch/views", help="Contains view_{x}.png")
-    parser.add_argument(
-        "--seg_orig_root",
-        default="sketch/segmentation_original_image",
-        help="Contains view_{x}/{label}_mask.png overlay masks",
-    )
-    parser.add_argument(
-        "--edits_root",
-        default="sketch/final_results",
-        help="Contains view_{x}/bbox_edits.json",
-    )
-    parser.add_argument(
-        "--out_root",
-        default="sketch/final_results",
-        help="Output root; writes to view_{x}/mask_remove_overlay.png",
-    )
+    parser.add_argument("--views_dir", default="sketch/views")
+    parser.add_argument("--seg_orig_root", default="sketch/segmentation_original_image")
+    parser.add_argument("--edits_root", default="sketch/final_results")
+    parser.add_argument("--out_root", default="sketch/final_results")
     args = parser.parse_args()
 
     main(
