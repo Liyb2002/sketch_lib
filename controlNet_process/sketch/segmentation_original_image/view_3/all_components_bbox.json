@@ -1,0 +1,88 @@
+{
+  "view": "view_3",
+  "image": "sketch/views/view_3.png",
+  "image_size": {
+    "width": 320,
+    "height": 320
+  },
+  "mask_source_dir": "sketch/segmentation/view_3",
+  "bbox_scale": 1.0,
+  "detections": [
+    {
+      "label": "fender_0",
+      "box_xyxy": [
+        118.0,
+        88.0,
+        221.0,
+        219.0
+      ],
+      "box_xywh": [
+        118.0,
+        88.0,
+        103.0,
+        131.0
+      ],
+      "mask_path": "fender_0_mask.png",
+      "overlay_path": "fender_0_overlay.png",
+      "crop_path": "fender_0.png",
+      "is_empty": false
+    },
+    {
+      "label": "handlebar_0",
+      "box_xyxy": [
+        82.0,
+        81.0,
+        108.0,
+        95.0
+      ],
+      "box_xywh": [
+        82.0,
+        81.0,
+        26.0,
+        14.0
+      ],
+      "mask_path": "handlebar_0_mask.png",
+      "overlay_path": "handlebar_0_overlay.png",
+      "crop_path": "handlebar_0.png",
+      "is_empty": false
+    },
+    {
+      "label": "wheel_0",
+      "box_xyxy": [
+        153.0,
+        183.0,
+        202.0,
+        255.0
+      ],
+      "box_xywh": [
+        153.0,
+        183.0,
+        49.0,
+        72.0
+      ],
+      "mask_path": "wheel_0_mask.png",
+      "overlay_path": "wheel_0_overlay.png",
+      "crop_path": "wheel_0.png",
+      "is_empty": false
+    },
+    {
+      "label": "wheel_1",
+      "box_xyxy": [
+        131.0,
+        218.0,
+        158.0,
+        257.0
+      ],
+      "box_xywh": [
+        131.0,
+        218.0,
+        27.0,
+        39.0
+      ],
+      "mask_path": "wheel_1_mask.png",
+      "overlay_path": "wheel_1_overlay.png",
+      "crop_path": "wheel_1.png",
+      "is_empty": false
+    }
+  ]
+}

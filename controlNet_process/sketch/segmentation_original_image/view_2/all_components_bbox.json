@@ -1,0 +1,88 @@
+{
+  "view": "view_2",
+  "image": "sketch/views/view_2.png",
+  "image_size": {
+    "width": 320,
+    "height": 320
+  },
+  "mask_source_dir": "sketch/segmentation/view_2",
+  "bbox_scale": 1.0,
+  "detections": [
+    {
+      "label": "handlebar_0",
+      "box_xyxy": [
+        119.0,
+        51.0,
+        141.0,
+        63.0
+      ],
+      "box_xywh": [
+        119.0,
+        51.0,
+        22.0,
+        12.0
+      ],
+      "mask_path": "handlebar_0_mask.png",
+      "overlay_path": "handlebar_0_overlay.png",
+      "crop_path": "handlebar_0.png",
+      "is_empty": false
+    },
+    {
+      "label": "seat_0",
+      "box_xyxy": [
+        158.0,
+        113.0,
+        269.0,
+        152.0
+      ],
+      "box_xywh": [
+        158.0,
+        113.0,
+        111.0,
+        39.0
+      ],
+      "mask_path": "seat_0_mask.png",
+      "overlay_path": "seat_0_overlay.png",
+      "crop_path": "seat_0.png",
+      "is_empty": false
+    },
+    {
+      "label": "wheel_0",
+      "box_xyxy": [
+        35.0,
+        162.0,
+        105.0,
+        234.0
+      ],
+      "box_xywh": [
+        35.0,
+        162.0,
+        70.0,
+        72.0
+      ],
+      "mask_path": "wheel_0_mask.png",
+      "overlay_path": "wheel_0_overlay.png",
+      "crop_path": "wheel_0.png",
+      "is_empty": false
+    },
+    {
+      "label": "wheel_1",
+      "box_xyxy": [
+        204.0,
+        225.0,
+        290.0,
+        263.0
+      ],
+      "box_xywh": [
+        204.0,
+        225.0,
+        86.0,
+        38.0
+      ],
+      "mask_path": "wheel_1_mask.png",
+      "overlay_path": "wheel_1_overlay.png",
+      "crop_path": "wheel_1.png",
+      "is_empty": false
+    }
+  ]
+}
