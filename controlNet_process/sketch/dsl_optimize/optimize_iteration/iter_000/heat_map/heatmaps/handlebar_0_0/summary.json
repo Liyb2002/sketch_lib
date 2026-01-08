@@ -8,5 +8,5 @@
   "heat_point_mean": 0.0516153909265995,
   "heat_point_p95": 0.6666666865348816,
   "heat_point_max": 1.0,
-  "heat_ply": "/home/yli581/Desktop/sketch_lib/controlNet_process/sketch/dsl_optimize/optimize_iteration/iter_000/heat_map/heatmaps/handlebar_0_0/heat_map_handlebar_0_0.ply"
+  "heat_ply": "/Users/yuanboli/Documents/GitHub/sketch_lib/controlNet_process/sketch/dsl_optimize/optimize_iteration/iter_000/heat_map/heatmaps/handlebar_0_0/heat_map_handlebar_0_0.ply"
 }

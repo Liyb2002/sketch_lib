@@ -122,34 +122,35 @@ def _voxel_inv(points: np.ndarray, voxel_size: float) -> Tuple[np.ndarray, np.nd
 
 # ---------------- color map ----------------
 
-def _color_heat_red_green_black(h: np.ndarray) -> np.ndarray:
+def _color_heat_red_green_black(
+    h: np.ndarray,
+    *,
+    red_start: float = 0.8,   # red starts AFTER this
+    red_gamma: float = 2.0,   # how fast red ramps up
+) -> np.ndarray:
     """
-    Piecewise color map:
-      h=0   -> black
-      h=0.5 -> green
-      h=1   -> red
-    Linear interpolation:
-      [0, 0.5]: black -> green
-      [0.5, 1]: green -> red
+    Smooth gradient with delayed redness:
+      - h <= red_start : NO red
+      - h ≈ 0.75       : green
+      - h > red_start  : weak red → strong red near 1
     """
     h = np.clip(h.astype(np.float32), 0.0, 1.0)
-    rgb = np.zeros((h.shape[0], 3), dtype=np.float32)
 
-    lo = h <= 0.5
-    hi = ~lo
+    # --- Red: delayed + sharpened
+    r = np.zeros_like(h)
+    mask = h > red_start
+    r[mask] = (h[mask] - red_start) / (1.0 - red_start)
+    r = np.power(r, red_gamma)
 
-    # 0..0.5 : black -> green
-    t = np.zeros_like(h)
-    t[lo] = (h[lo] / 0.5)  # 0..1
-    rgb[lo, 1] = t[lo]     # green channel
+    # --- Green: stays strong until ~0.8, then fades
+    g = 1.0 - r
+    g *= np.clip(h / red_start, 0.0, 1.0)
 
-    # 0.5..1 : green -> red
-    t2 = np.zeros_like(h)
-    t2[hi] = (h[hi] - 0.5) / 0.5  # 0..1
-    rgb[hi, 0] = t2[hi]           # red rises
-    rgb[hi, 1] = 1.0 - t2[hi]     # green falls
+    # --- Blue: none
+    b = np.zeros_like(h)
 
-    return rgb
+    rgb = np.stack([r, g, b], axis=1)
+    return np.clip(rgb, 0.0, 1.0)
 
 
 # ---------------- Open3D helpers ----------------
@@ -171,6 +172,11 @@ def _show_pcd(title: str, points: np.ndarray, colors_0_1: np.ndarray) -> None:
     pcd.colors = o3d.utility.Vector3dVector(np.clip(colors_0_1, 0.0, 1.0).astype(np.float64))
     o3d.visualization.draw_geometries([pcd], window_name=title)
 
+def _to_blue_mask(colors_0_1: np.ndarray, eps: float = 1e-6) -> np.ndarray:
+    non_black = (colors_0_1[:, 0] > eps) | (colors_0_1[:, 1] > eps) | (colors_0_1[:, 2] > eps)
+    out = np.zeros_like(colors_0_1, dtype=np.float32)
+    out[non_black, 2] = 1.0  # blue
+    return out
 
 # ---------------- Public API ----------------
 
@@ -295,6 +301,8 @@ def build_label_heatmaps(
             title = (f"HeatMap | {lab} | voxel={info['voxel_size']:.4g} "
                      f"| mean={info['heat_point_mean']:.3f} p95={info['heat_point_p95']:.3f}")
             print(f"[HEAT_MAP][VIS] opening: {title}")
+            colors_vis = _to_blue_mask(colors)   # TEMP DEBUG VIS
+            # _show_pcd(title, pts, colors_vis)
             _show_pcd(title, pts, colors)
 
         if show_combined:
