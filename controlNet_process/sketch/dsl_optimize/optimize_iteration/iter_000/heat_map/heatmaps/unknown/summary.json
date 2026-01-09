@@ -1,11 +1,11 @@
 {
   "label": "unknown",
-  "label_point_count": 3214,
+  "label_point_count": 1633,
   "voxel_size": 0.002136356383562088,
   "voxels_total": 55301,
-  "voxels_with_label": 2151,
-  "voxels_full_label": 1686,
-  "heat_point_mean": 0.041287172585725784,
+  "voxels_with_label": 1491,
+  "voxels_full_label": 1333,
+  "heat_point_mean": 0.020977582782506943,
   "heat_point_p95": 0.0,
   "heat_point_max": 1.0,
   "heat_ply": "/Users/yuanboli/Documents/GitHub/sketch_lib/controlNet_process/sketch/dsl_optimize/optimize_iteration/iter_000/heat_map/heatmaps/unknown/heat_map_unknown.ply"

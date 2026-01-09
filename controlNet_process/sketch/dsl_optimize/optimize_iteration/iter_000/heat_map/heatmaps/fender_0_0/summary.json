@@ -1,11 +1,11 @@
 {
   "label": "fender_0_0",
-  "label_point_count": 16767,
+  "label_point_count": 14975,
   "voxel_size": 0.002136356383562088,
   "voxels_total": 55301,
-  "voxels_with_label": 12488,
-  "voxels_full_label": 12075,
-  "heat_point_mean": 0.21538954973220825,
+  "voxels_with_label": 10982,
+  "voxels_full_label": 10544,
+  "heat_point_mean": 0.19236944615840912,
   "heat_point_p95": 1.0,
   "heat_point_max": 1.0,
   "heat_ply": "/Users/yuanboli/Documents/GitHub/sketch_lib/controlNet_process/sketch/dsl_optimize/optimize_iteration/iter_000/heat_map/heatmaps/fender_0_0/heat_map_fender_0_0.ply"

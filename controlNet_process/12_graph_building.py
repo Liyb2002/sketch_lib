@@ -433,14 +433,14 @@ def main():
     if not args.no_vis:
         try:
             from graph_building.vis import run_graph_vis
-            # run_graph_vis(
-            #     iter_dir=os.path.abspath(iter_dir),
-            #     graph_json=os.path.abspath(out_json),
-            #     only_label=args.vis_only_label.strip(),
-            #     max_labels=int(args.vis_max_labels),
-            #     pin_radius_ratio=float(args.vis_pin_radius_ratio),
-            #     caller_file=__file__,  # <-- IMPORTANT: makes fused_model.ply relative to 12_graph_building.py
-            # )
+            run_graph_vis(
+                iter_dir=os.path.abspath(iter_dir),
+                graph_json=os.path.abspath(out_json),
+                only_label=args.vis_only_label.strip(),
+                max_labels=int(args.vis_max_labels),
+                pin_radius_ratio=float(args.vis_pin_radius_ratio),
+                caller_file=__file__,  # <-- IMPORTANT: makes fused_model.ply relative to 12_graph_building.py
+            )
 
         except Exception as ex:
             print("[GRAPH] visualization failed:", str(ex))
