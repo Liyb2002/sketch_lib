@@ -12,8 +12,10 @@ Per view:
       - silhouette = alpha>0 OR non-white
       - resize silhouette to ORIGINAL bbox size
       - paste silhouette into canvas at ORIGINAL bbox location
-   B) Remove: paint white where removal mask is 1
-   C) Insert:
+   B) (Improved) Dilate removal mask by N pixels to remove halos
+   C) Remove: paint white where removal mask is 1
+   D) Save intermediate: removed_original.png
+   E) Insert:
       - load component: sketch/segmentation_original_image/view_{x}/{label}.png
       - resize component to NEW bbox size
       - paste into NEW bbox location
@@ -21,13 +23,14 @@ Per view:
         * if component has alpha, alpha composite directly
 
 Output:
+  sketch/final_results/view_{x}/removed_original.png
   sketch/final_results/view_{x}/final_image.png
 """
 
 import os
 import json
 import argparse
-from typing import Any, List, Tuple, Optional
+from typing import Any, List, Tuple, Dict
 
 import numpy as np
 
@@ -63,6 +66,12 @@ def save_image_rgb(path: str, img_rgb: np.ndarray) -> None:
     ensure_dir(os.path.dirname(path))
     Image.fromarray(img_rgb.astype(np.uint8), mode="RGB").save(path)
 
+def save_mask_l(path: str, mask_u8: np.ndarray) -> None:
+    """Optional: save a grayscale mask image (0..255)."""
+    from PIL import Image
+    ensure_dir(os.path.dirname(path))
+    Image.fromarray(mask_u8.astype(np.uint8), mode="L").save(path)
+
 def resize_bicubic(img: np.ndarray, new_w: int, new_h: int) -> np.ndarray:
     from PIL import Image
     pil = Image.fromarray(img)
@@ -74,6 +83,19 @@ def resize_nearest(mask_u8: np.ndarray, new_w: int, new_h: int) -> np.ndarray:
     im = Image.fromarray(mask_u8.astype(np.uint8), mode="L")
     im2 = im.resize((int(new_w), int(new_h)), resample=Image.NEAREST)
     return np.array(im2)
+
+def dilate_mask(mask_u8: np.ndarray, radius_px: int) -> np.ndarray:
+    """
+    Binary dilation for a uint8 mask (0..255). Returns uint8 (0 or 255).
+    Uses PIL MaxFilter (fast, no extra deps).
+    """
+    if radius_px <= 0:
+        return mask_u8
+    from PIL import Image, ImageFilter
+    k = int(2 * radius_px + 1)  # must be odd
+    im = Image.fromarray(((mask_u8 > 0).astype(np.uint8) * 255), mode="L")
+    im2 = im.filter(ImageFilter.MaxFilter(size=k))
+    return np.array(im2, dtype=np.uint8)
 
 def alpha_composite(dst_rgb: np.ndarray, src_rgba: np.ndarray, x0: int, y0: int) -> None:
     """
@@ -122,7 +144,7 @@ def paste_with_alpha(dst_rgb: np.ndarray, src_rgb: np.ndarray, alpha_u8: np.ndar
 def clamp(v: int, lo: int, hi: int) -> int:
     return max(lo, min(hi, v))
 
-def xyxy_float_to_int_box(box_xyxy: List[float], W: int, H: int) -> Tuple[int,int,int,int]:
+def xyxy_float_to_int_box(box_xyxy: List[float], W: int, H: int) -> Tuple[int, int, int, int]:
     x0, y0, x1, y1 = [float(x) for x in box_xyxy]
     xi0 = clamp(int(np.floor(x0)), 0, W)
     yi0 = clamp(int(np.floor(y0)), 0, H)
@@ -164,6 +186,8 @@ def main(
     seg_orig_root: str,
     edits_root: str,
     out_root: str,
+    removal_dilate_px: int = 5,
+    save_removal_mask: bool = False,
 ):
     for vid in range(num_views):
         view = f"view_{vid}"
@@ -172,6 +196,7 @@ def main(
         edits_path = os.path.join(edits_root, view, "bbox_edits.json")
         seg_view_dir = os.path.join(seg_orig_root, view)
 
+        # NEW: if any view input is missing, skip instead of crashing
         if not os.path.isfile(img_path):
             print(f"[skip] missing view image: {img_path}")
             continue
@@ -188,13 +213,17 @@ def main(
         edits = load_json(edits_path)
         changed = edits.get("changed_labels", [])
         if not isinstance(changed, list):
-            raise ValueError(f"Invalid schema: {edits_path} changed_labels must be list")
+            print(f"[skip] invalid schema: {edits_path} changed_labels must be list")
+            continue
+
+        out_dir = os.path.join(out_root, view)
+        ensure_dir(out_dir)
 
         # ---------- PASS 1: build full removal mask + remove ----------
         removal = np.zeros((H, W), dtype=np.uint8)
 
         # Store per-label silhouettes resized for NEW bbox (used for alpha if needed)
-        new_alpha_by_label = {}
+        new_alpha_by_label: Dict[str, np.ndarray] = {}
 
         for item in changed:
             if not isinstance(item, dict):
@@ -202,7 +231,11 @@ def main(
             label = str(item.get("label", ""))
             orig_box = item.get("original_box_xyxy", None)
             new_box = item.get("new_box_xyxy", None)
-            if not label or not (isinstance(orig_box, list) and len(orig_box) == 4) or not (isinstance(new_box, list) and len(new_box) == 4):
+            if (
+                not label
+                or not (isinstance(orig_box, list) and len(orig_box) == 4)
+                or not (isinstance(new_box, list) and len(new_box) == 4)
+            ):
                 continue
 
             mask_path = os.path.join(seg_view_dir, f"{label}_mask.png")
@@ -218,17 +251,23 @@ def main(
             sil_orig = resize_nearest(sil, bw, bh)
             removal[oy0:oy1, ox0:ox1] = np.maximum(removal[oy0:oy1, ox0:ox1], sil_orig)
 
-            # also prepare alpha for insertion at NEW bbox
+            # prepare alpha for insertion at NEW bbox
             nx0, ny0, nx1, ny1 = xyxy_float_to_int_box(new_box, W, H)
             nw, nh = nx1 - nx0, ny1 - ny0
             sil_new = resize_nearest(sil, nw, nh)
             new_alpha_by_label[label] = sil_new
 
+        # NEW: dilate removal mask to remove halo / outer layer
+        removal = dilate_mask(removal, radius_px=removal_dilate_px)
+
+        # Optional: save the removal mask itself
+        if save_removal_mask:
+            save_mask_l(os.path.join(out_dir, "removal_mask.png"), removal)
+
         # remove
         img_rgb[removal > 0] = np.array([255, 255, 255], dtype=np.uint8)
-        # --- SAVE INTERMEDIATE: after removal, before insertion ---
-        out_dir = os.path.join(out_root, view)
-        ensure_dir(out_dir)
+
+        # NEW: save intermediate after removal, before insertion
         removed_path = os.path.join(out_dir, "removed_original.png")
         save_image_rgb(removed_path, img_rgb)
         print(f"[ok] {view} -> {removed_path} (after removal)")
@@ -252,7 +291,7 @@ def main(
             if nw <= 0 or nh <= 0:
                 continue
 
-            comp = load_image_any(comp_path)  # RGB/RGBA
+            comp = load_image_any(comp_path)  # RGB/RGBA/L
             comp_rs = resize_bicubic(comp, nw, nh)
 
             if comp_rs.ndim == 3 and comp_rs.shape[-1] == 4:
@@ -263,18 +302,15 @@ def main(
                 comp_rgb = to_rgb(comp_rs)
                 alpha_u8 = new_alpha_by_label.get(label, None)
                 if alpha_u8 is None:
-                    # fallback: overwrite (not recommended, but better than nothing)
+                    # fallback: overwrite
                     x1 = min(W, nx0 + nw)
                     y1 = min(H, ny0 + nh)
                     img_rgb[ny0:y1, nx0:x1, :] = comp_rgb[:(y1 - ny0), :(x1 - nx0), :]
                 else:
                     paste_with_alpha(img_rgb, comp_rgb, alpha_u8, nx0, ny0)
 
-        out_dir = os.path.join(out_root, view)
-        ensure_dir(out_dir)
         out_path = os.path.join(out_dir, "final_image.png")
         save_image_rgb(out_path, img_rgb)
-
         print(f"[ok] {view} -> {out_path}")
 
 
@@ -285,6 +321,13 @@ if __name__ == "__main__":
     parser.add_argument("--seg_orig_root", default="sketch/segmentation_original_image")
     parser.add_argument("--edits_root", default="sketch/final_results")
     parser.add_argument("--out_root", default="sketch/final_results")
+
+    # NEW options
+    parser.add_argument("--removal_dilate_px", type=int, default=5,
+                        help="Dilation radius in pixels for removal mask (removes halo).")
+    parser.add_argument("--save_removal_mask", action="store_true",
+                        help="Also save removal_mask.png per view (debug).")
+
     args = parser.parse_args()
 
     main(
@@ -293,4 +336,6 @@ if __name__ == "__main__":
         seg_orig_root=args.seg_orig_root,
         edits_root=args.edits_root,
         out_root=args.out_root,
+        removal_dilate_px=args.removal_dilate_px,
+        save_removal_mask=args.save_removal_mask,
     )
