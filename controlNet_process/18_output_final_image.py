@@ -226,6 +226,12 @@ def main(
 
         # remove
         img_rgb[removal > 0] = np.array([255, 255, 255], dtype=np.uint8)
+        # --- SAVE INTERMEDIATE: after removal, before insertion ---
+        out_dir = os.path.join(out_root, view)
+        ensure_dir(out_dir)
+        removed_path = os.path.join(out_dir, "removed_original.png")
+        save_image_rgb(removed_path, img_rgb)
+        print(f"[ok] {view} -> {removed_path} (after removal)")
 
         # ---------- PASS 2: insert resized components ----------
         for item in changed:
