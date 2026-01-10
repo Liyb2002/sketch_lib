@@ -173,11 +173,14 @@ def main(
         seg_view_dir = os.path.join(seg_orig_root, view)
 
         if not os.path.isfile(img_path):
-            raise FileNotFoundError(img_path)
+            print(f"[skip] missing view image: {img_path}")
+            continue
         if not os.path.isfile(edits_path):
-            raise FileNotFoundError(edits_path)
+            print(f"[skip] missing bbox edits: {edits_path}")
+            continue
         if not os.path.isdir(seg_view_dir):
-            raise FileNotFoundError(seg_view_dir)
+            print(f"[skip] missing segmentation dir: {seg_view_dir}")
+            continue
 
         img_rgb = to_rgb(load_image_any(img_path)).copy()
         H, W = img_rgb.shape[:2]

@@ -143,9 +143,9 @@ def main(
         seg_path = find_segmentation_bbox_file(view_seg_dir)
 
         if not os.path.isfile(tentative_path):
-            raise FileNotFoundError(f"Missing tentative file: {tentative_path}")
+            continue
         if not os.path.isfile(seg_path):
-            raise FileNotFoundError(f"Missing segmentation bbox file: {seg_path}")
+            continue
 
         tentative = load_json(tentative_path)
         seg = load_json(seg_path)
@@ -177,7 +177,7 @@ def main(
 
         detections = seg.get("detections", [])
         if not isinstance(detections, list):
-            raise ValueError(f"Invalid segmentation schema in {seg_path}: 'detections' must be a list")
+            continue
 
         changed_labels_out = []
         for det in detections:
