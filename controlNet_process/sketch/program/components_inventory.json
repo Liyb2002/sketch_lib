@@ -5,67 +5,119 @@
     {
       "component_id": "C01",
       "name": "Wheel",
-      "count": 2
+      "count": 2,
+      "synonyms": [
+        "wheel",
+        "tyre"
+      ]
     },
     {
       "component_id": "C02",
       "name": "Fork",
-      "count": 1
+      "count": 1,
+      "synonyms": [
+        "fork",
+        "steering"
+      ]
     },
     {
       "component_id": "C03",
       "name": "Fender",
-      "count": 2
+      "count": 2,
+      "synonyms": [
+        "fender",
+        "guard"
+      ]
     },
     {
       "component_id": "C04",
       "name": "Headlight",
-      "count": 1
+      "count": 1,
+      "synonyms": [
+        "headlight",
+        "lamp"
+      ]
     },
     {
       "component_id": "C05",
       "name": "Handlebar",
-      "count": 1
+      "count": 1,
+      "synonyms": [
+        "handlebar",
+        "bar"
+      ]
     },
     {
       "component_id": "C06",
       "name": "Seat",
-      "count": 1
+      "count": 1,
+      "synonyms": [
+        "seat",
+        "saddle"
+      ]
     },
     {
       "component_id": "C07",
       "name": "Exhaust",
-      "count": 1
+      "count": 1,
+      "synonyms": [
+        "exhaust",
+        "pipe"
+      ]
     },
     {
       "component_id": "C08",
       "name": "Engine",
-      "count": 1
+      "count": 1,
+      "synonyms": [
+        "engine",
+        "motor"
+      ]
     },
     {
       "component_id": "C09",
       "name": "Pad",
-      "count": 2
+      "count": 2,
+      "synonyms": [
+        "pad",
+        "brake"
+      ]
     },
     {
       "component_id": "C10",
       "name": "Disc",
-      "count": 2
+      "count": 2,
+      "synonyms": [
+        "disc",
+        "brake"
+      ]
     },
     {
       "component_id": "C11",
       "name": "Chain",
-      "count": 1
+      "count": 1,
+      "synonyms": [
+        "chain",
+        "sprocket"
+      ]
     },
     {
       "component_id": "C12",
       "name": "Guard",
-      "count": 1
+      "count": 1,
+      "synonyms": [
+        "guard",
+        "cover"
+      ]
     },
     {
       "component_id": "C13",
       "name": "Tank",
-      "count": 1
+      "count": 1,
+      "synonyms": [
+        "tank",
+        "fuel"
+      ]
     }
   ]
 }
