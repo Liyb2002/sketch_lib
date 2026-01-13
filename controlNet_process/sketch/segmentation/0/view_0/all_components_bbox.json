@@ -1,0 +1,119 @@
+{
+  "instance": "0",
+  "view": "view_0",
+  "image": "sketch/views_realistic/0/view_0.png",
+  "image_size": {
+    "width": 320,
+    "height": 320
+  },
+  "score_thresh": 0.05,
+  "min_area_pct": 0.001,
+  "bbox_scale": 1.1,
+  "detections": [
+    {
+      "label": "wheel_0",
+      "canonical_name": "Wheel",
+      "prompt_used": "wheel",
+      "score": 0.9454787969589233,
+      "box_xyxy": [
+        160.61734008789062,
+        218.31419372558594,
+        186.72348022460938,
+        302.72027587890625
+      ],
+      "box_xywh": [
+        160.61734008789062,
+        218.31419372558594,
+        26.10614013671875,
+        84.40608215332031
+      ],
+      "mask_path": "wheel_0_mask.png",
+      "overlay_path": "wheel_0_overlay.png",
+      "crop_path": "wheel_0.png"
+    },
+    {
+      "label": "fender_0",
+      "canonical_name": "Fender",
+      "prompt_used": "fender",
+      "score": 0.5507954955101013,
+      "box_xyxy": [
+        127.1630859375,
+        103.03459167480469,
+        203.4149932861328,
+        254.96136474609375
+      ],
+      "box_xywh": [
+        127.1630859375,
+        103.03459167480469,
+        76.25190734863281,
+        151.92677307128906
+      ],
+      "mask_path": "fender_0_mask.png",
+      "overlay_path": "fender_0_overlay.png",
+      "crop_path": "fender_0.png"
+    },
+    {
+      "label": "headlight_0",
+      "canonical_name": "Headlight",
+      "prompt_used": "headlight",
+      "score": 0.838093101978302,
+      "box_xyxy": [
+        156.08242797851562,
+        89.45464324951172,
+        193.09664916992188,
+        120.36454010009766
+      ],
+      "box_xywh": [
+        156.08242797851562,
+        89.45464324951172,
+        37.01422119140625,
+        30.909896850585938
+      ],
+      "mask_path": "headlight_0_mask.png",
+      "overlay_path": "headlight_0_overlay.png",
+      "crop_path": "headlight_0.png"
+    },
+    {
+      "label": "handlebar_0",
+      "canonical_name": "Handlebar",
+      "prompt_used": "handlebar",
+      "score": 0.6338796019554138,
+      "box_xyxy": [
+        199.30686950683594,
+        87.71297454833984,
+        269.49346923828125,
+        104.27542114257812
+      ],
+      "box_xywh": [
+        199.30686950683594,
+        87.71297454833984,
+        70.18659973144531,
+        16.56244659423828
+      ],
+      "mask_path": "handlebar_0_mask.png",
+      "overlay_path": "handlebar_0_overlay.png",
+      "crop_path": "handlebar_0.png"
+    },
+    {
+      "label": "engine_0",
+      "canonical_name": "Engine",
+      "prompt_used": "motor",
+      "score": 0.7625616788864136,
+      "box_xyxy": [
+        71.35169982910156,
+        85.16989135742188,
+        269.62200927734375,
+        302.58441162109375
+      ],
+      "box_xywh": [
+        71.35169982910156,
+        85.16989135742188,
+        198.2703094482422,
+        217.41452026367188
+      ],
+      "mask_path": "engine_0_mask.png",
+      "overlay_path": "engine_0_overlay.png",
+      "crop_path": "engine_0.png"
+    }
+  ]
+}

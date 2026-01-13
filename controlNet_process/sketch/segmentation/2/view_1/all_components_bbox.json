@@ -1,0 +1,182 @@
+{
+  "instance": "2",
+  "view": "view_1",
+  "image": "sketch/views_realistic/2/view_1.png",
+  "image_size": {
+    "width": 320,
+    "height": 320
+  },
+  "score_thresh": 0.05,
+  "min_area_pct": 0.001,
+  "bbox_scale": 1.1,
+  "detections": [
+    {
+      "label": "wheel_0",
+      "canonical_name": "Wheel",
+      "prompt_used": "wheel",
+      "score": 0.9663611054420471,
+      "box_xyxy": [
+        75.19878387451172,
+        197.2053680419922,
+        126.73954010009766,
+        293.9354248046875
+      ],
+      "box_xywh": [
+        75.19878387451172,
+        197.2053680419922,
+        51.54075622558594,
+        96.73005676269531
+      ],
+      "mask_path": "wheel_0_mask.png",
+      "overlay_path": "wheel_0_overlay.png",
+      "crop_path": "wheel_0.png"
+    },
+    {
+      "label": "wheel_1",
+      "canonical_name": "Wheel",
+      "prompt_used": "wheel",
+      "score": 0.9334387183189392,
+      "box_xyxy": [
+        202.15248107910156,
+        197.21510314941406,
+        238.60379028320312,
+        266.9201354980469
+      ],
+      "box_xywh": [
+        202.15248107910156,
+        197.21510314941406,
+        36.45130920410156,
+        69.70503234863281
+      ],
+      "mask_path": "wheel_1_mask.png",
+      "overlay_path": "wheel_1_overlay.png",
+      "crop_path": "wheel_1.png"
+    },
+    {
+      "label": "fender_0",
+      "canonical_name": "Fender",
+      "prompt_used": "fender",
+      "score": 0.6611459851264954,
+      "box_xyxy": [
+        79.31158447265625,
+        160.1071319580078,
+        136.69287109375,
+        232.42974853515625
+      ],
+      "box_xywh": [
+        79.31158447265625,
+        160.1071319580078,
+        57.38128662109375,
+        72.32261657714844
+      ],
+      "mask_path": "fender_0_mask.png",
+      "overlay_path": "fender_0_overlay.png",
+      "crop_path": "fender_0.png"
+    },
+    {
+      "label": "fender_1",
+      "canonical_name": "Fender",
+      "prompt_used": "fender",
+      "score": 0.6569470167160034,
+      "box_xyxy": [
+        79.50552368164062,
+        161.23818969726562,
+        124.36958312988281,
+        199.04916381835938
+      ],
+      "box_xywh": [
+        79.50552368164062,
+        161.23818969726562,
+        44.86405944824219,
+        37.81097412109375
+      ],
+      "mask_path": "fender_1_mask.png",
+      "overlay_path": "fender_1_overlay.png",
+      "crop_path": "fender_1.png"
+    },
+    {
+      "label": "headlight_0",
+      "canonical_name": "Headlight",
+      "prompt_used": "headlight",
+      "score": 0.77470862865448,
+      "box_xyxy": [
+        121.21497344970703,
+        46.5030632019043,
+        134.9245147705078,
+        78.29463195800781
+      ],
+      "box_xywh": [
+        121.21497344970703,
+        46.5030632019043,
+        13.709541320800781,
+        31.791568756103516
+      ],
+      "mask_path": "headlight_0_mask.png",
+      "overlay_path": "headlight_0_overlay.png",
+      "crop_path": "headlight_0.png"
+    },
+    {
+      "label": "handlebar_0",
+      "canonical_name": "Handlebar",
+      "prompt_used": "handlebar",
+      "score": 0.6789288520812988,
+      "box_xyxy": [
+        152.72610473632812,
+        63.181209564208984,
+        174.29623413085938,
+        71.85426330566406
+      ],
+      "box_xywh": [
+        152.72610473632812,
+        63.181209564208984,
+        21.57012939453125,
+        8.673053741455078
+      ],
+      "mask_path": "handlebar_0_mask.png",
+      "overlay_path": "handlebar_0_overlay.png",
+      "crop_path": "handlebar_0.png"
+    },
+    {
+      "label": "seat_0",
+      "canonical_name": "Seat",
+      "prompt_used": "seat",
+      "score": 0.8086438179016113,
+      "box_xyxy": [
+        157.41690063476562,
+        105.40480041503906,
+        226.666748046875,
+        157.91470336914062
+      ],
+      "box_xywh": [
+        157.41690063476562,
+        105.40480041503906,
+        69.24984741210938,
+        52.50990295410156
+      ],
+      "mask_path": "seat_0_mask.png",
+      "overlay_path": "seat_0_overlay.png",
+      "crop_path": "seat_0.png"
+    },
+    {
+      "label": "engine_0",
+      "canonical_name": "Engine",
+      "prompt_used": "motor",
+      "score": 0.92843097448349,
+      "box_xyxy": [
+        75.03251647949219,
+        20.092039108276367,
+        248.30335998535156,
+        294.2231750488281
+      ],
+      "box_xywh": [
+        75.03251647949219,
+        20.092039108276367,
+        173.27084350585938,
+        274.13113594055176
+      ],
+      "mask_path": "engine_0_mask.png",
+      "overlay_path": "engine_0_overlay.png",
+      "crop_path": "engine_0.png"
+    }
+  ]
+}

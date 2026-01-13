@@ -1,0 +1,119 @@
+{
+  "instance": "1",
+  "view": "view_2",
+  "image": "sketch/views_realistic/1/view_2.png",
+  "image_size": {
+    "width": 320,
+    "height": 320
+  },
+  "score_thresh": 0.05,
+  "min_area_pct": 0.001,
+  "bbox_scale": 1.1,
+  "detections": [
+    {
+      "label": "wheel_0",
+      "canonical_name": "Wheel",
+      "prompt_used": "wheel",
+      "score": 0.9646472930908203,
+      "box_xyxy": [
+        40.1768684387207,
+        162.32835388183594,
+        102.83360290527344,
+        230.94911193847656
+      ],
+      "box_xywh": [
+        40.1768684387207,
+        162.32835388183594,
+        62.656734466552734,
+        68.62075805664062
+      ],
+      "mask_path": "wheel_0_mask.png",
+      "overlay_path": "wheel_0_overlay.png",
+      "crop_path": "wheel_0.png"
+    },
+    {
+      "label": "wheel_1",
+      "canonical_name": "Wheel",
+      "prompt_used": "wheel",
+      "score": 0.9551809430122375,
+      "box_xyxy": [
+        193.9533233642578,
+        232.6790771484375,
+        283.35284423828125,
+        270.99139404296875
+      ],
+      "box_xywh": [
+        193.9533233642578,
+        232.6790771484375,
+        89.39952087402344,
+        38.31231689453125
+      ],
+      "mask_path": "wheel_1_mask.png",
+      "overlay_path": "wheel_1_overlay.png",
+      "crop_path": "wheel_1.png"
+    },
+    {
+      "label": "handlebar_0",
+      "canonical_name": "Handlebar",
+      "prompt_used": "handlebar",
+      "score": 0.6361558437347412,
+      "box_xyxy": [
+        57.03246307373047,
+        74.94979858398438,
+        74.15138244628906,
+        95.5966796875
+      ],
+      "box_xywh": [
+        57.03246307373047,
+        74.94979858398438,
+        17.118919372558594,
+        20.646881103515625
+      ],
+      "mask_path": "handlebar_0_mask.png",
+      "overlay_path": "handlebar_0_overlay.png",
+      "crop_path": "handlebar_0.png"
+    },
+    {
+      "label": "seat_0",
+      "canonical_name": "Seat",
+      "prompt_used": "seat",
+      "score": 0.8814730048179626,
+      "box_xyxy": [
+        145.13372802734375,
+        110.63031005859375,
+        282.16314697265625,
+        154.1804656982422
+      ],
+      "box_xywh": [
+        145.13372802734375,
+        110.63031005859375,
+        137.0294189453125,
+        43.55015563964844
+      ],
+      "mask_path": "seat_0_mask.png",
+      "overlay_path": "seat_0_overlay.png",
+      "crop_path": "seat_0.png"
+    },
+    {
+      "label": "engine_0",
+      "canonical_name": "Engine",
+      "prompt_used": "motor",
+      "score": 0.8864407539367676,
+      "box_xyxy": [
+        40.356895446777344,
+        43.93462371826172,
+        306.0745849609375,
+        271.060791015625
+      ],
+      "box_xywh": [
+        40.356895446777344,
+        43.93462371826172,
+        265.71768951416016,
+        227.12616729736328
+      ],
+      "mask_path": "engine_0_mask.png",
+      "overlay_path": "engine_0_overlay.png",
+      "crop_path": "engine_0.png"
+    }
+  ]
+}
