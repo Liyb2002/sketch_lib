@@ -5,121 +5,120 @@
     "width": 320,
     "height": 320
   },
-  "mask_source_dir": "sketch/segmentation/view_5",
-  "bbox_scale": 1.0,
+  "mask_source_dir": "sketch/segmentation/0/view_5",
   "detections": [
     {
-      "label": "fender_0",
+      "label": "engine_0",
       "box_xyxy": [
-        210.0,
-        65.0,
-        282.0,
-        200.0
+        31.0,
+        41.0,
+        308.0,
+        256.0
       ],
       "box_xywh": [
-        210.0,
-        65.0,
-        72.0,
-        135.0
+        31.0,
+        41.0,
+        277.0,
+        215.0
       ],
-      "mask_path": "fender_0_mask.png",
-      "overlay_path": "fender_0_overlay.png",
-      "crop_path": "fender_0.png",
+      "mask_path": "engine_0_mask.png",
+      "overlay_path": "engine_0_overlay.png",
+      "image_path": "engine_0.png",
       "is_empty": false
     },
     {
       "label": "handlebar_0",
       "box_xyxy": [
-        165.0,
-        53.0,
-        198.0,
-        67.0
+        164.0,
+        55.0,
+        192.0,
+        68.0
       ],
       "box_xywh": [
-        165.0,
-        53.0,
-        33.0,
-        14.0
+        164.0,
+        55.0,
+        28.0,
+        13.0
       ],
       "mask_path": "handlebar_0_mask.png",
       "overlay_path": "handlebar_0_overlay.png",
-      "crop_path": "handlebar_0.png",
+      "image_path": "handlebar_0.png",
       "is_empty": false
     },
     {
       "label": "headlight_0",
       "box_xyxy": [
-        226.0,
-        54.0,
+        227.0,
+        53.0,
         260.0,
-        80.0
+        79.0
       ],
       "box_xywh": [
-        226.0,
-        54.0,
-        34.0,
+        227.0,
+        53.0,
+        33.0,
         26.0
       ],
       "mask_path": "headlight_0_mask.png",
       "overlay_path": "headlight_0_overlay.png",
-      "crop_path": "headlight_0.png",
+      "image_path": "headlight_0.png",
       "is_empty": false
     },
     {
       "label": "seat_0",
       "box_xyxy": [
-        60.0,
+        59.0,
         110.0,
         173.0,
-        136.0
+        137.0
       ],
       "box_xywh": [
-        60.0,
+        59.0,
         110.0,
-        113.0,
-        26.0
+        114.0,
+        27.0
       ],
       "mask_path": "seat_0_mask.png",
       "overlay_path": "seat_0_overlay.png",
-      "crop_path": "seat_0.png",
+      "image_path": "seat_0.png",
       "is_empty": false
     },
     {
       "label": "wheel_0",
       "box_xyxy": [
-        217.0,
-        162.0,
-        309.0,
-        249.0
+        218.0,
+        159.0,
+        308.0,
+        251.0
       ],
       "box_xywh": [
-        217.0,
-        162.0,
-        92.0,
-        87.0
+        218.0,
+        159.0,
+        90.0,
+        92.0
       ],
       "mask_path": "wheel_0_mask.png",
       "overlay_path": "wheel_0_overlay.png",
-      "crop_path": "wheel_0.png",
+      "image_path": "wheel_0.png",
       "is_empty": false
     },
     {
       "label": "wheel_1",
       "box_xyxy": [
-        45.0,
-        213.0,
-        128.0,
-        254.0
+        46.0,
+        212.0,
+        127.0,
+        256.0
       ],
       "box_xywh": [
-        45.0,
-        213.0,
-        83.0,
-        41.0
+        46.0,
+        212.0,
+        81.0,
+        44.0
       ],
       "mask_path": "wheel_1_mask.png",
       "overlay_path": "wheel_1_overlay.png",
-      "crop_path": "wheel_1.png",
+      "image_path": "wheel_1.png",
       "is_empty": false
     }
   ]

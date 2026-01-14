@@ -1,6 +1,8 @@
 {
   "labels_in_order": [
+    "engine_0",
     "fender_0",
+    "fork_0",
     "handlebar_0",
     "headlight_0",
     "seat_0",
@@ -8,83 +10,107 @@
     "wheel_1"
   ],
   "label_to_id": {
-    "fender_0": 0,
-    "handlebar_0": 1,
-    "headlight_0": 2,
-    "seat_0": 3,
-    "wheel_0": 4,
-    "wheel_1": 5
+    "engine_0": 0,
+    "fender_0": 1,
+    "fork_0": 2,
+    "handlebar_0": 3,
+    "headlight_0": 4,
+    "seat_0": 5,
+    "wheel_0": 6,
+    "wheel_1": 7
   },
   "label_to_color_bgr": {
+    "engine_0": [
+      55,
+      55,
+      255
+    ],
     "fender_0": [
       55,
-      55,
+      202,
       255
+    ],
+    "fork_0": [
+      55,
+      255,
+      162
     ],
     "handlebar_0": [
-      55,
-      248,
-      255
+      102,
+      255,
+      55
     ],
     "headlight_0": [
-      55,
-      255,
-      62
-    ],
-    "seat_0": [
       248,
       255,
+      55
+    ],
+    "seat_0": [
+      255,
+      115,
       55
     ],
     "wheel_0": [
       255,
-      62,
-      55
+      55,
+      148
     ],
     "wheel_1": [
-      255,
+      215,
       55,
-      248
+      255
     ]
   },
   "label_to_color_rgb": {
-    "fender_0": [
+    "engine_0": [
       255,
       55,
       55
     ],
-    "handlebar_0": [
+    "fender_0": [
       255,
-      248,
+      202,
       55
+    ],
+    "fork_0": [
+      162,
+      255,
+      55
+    ],
+    "handlebar_0": [
+      55,
+      255,
+      102
     ],
     "headlight_0": [
-      62,
-      255,
-      55
-    ],
-    "seat_0": [
       55,
       255,
       248
     ],
-    "wheel_0": [
+    "seat_0": [
       55,
-      62,
+      115,
+      255
+    ],
+    "wheel_0": [
+      148,
+      55,
       255
     ],
     "wheel_1": [
-      248,
+      255,
       55,
-      255
+      215
     ]
   },
   "color_bgr_to_label": {
-    "55,55,255": "fender_0",
-    "55,248,255": "handlebar_0",
-    "55,255,62": "headlight_0",
-    "248,255,55": "seat_0",
-    "255,62,55": "wheel_0",
-    "255,55,248": "wheel_1"
+    "55,55,255": "engine_0",
+    "55,202,255": "fender_0",
+    "55,255,162": "fork_0",
+    "102,255,55": "handlebar_0",
+    "248,255,55": "headlight_0",
+    "255,115,55": "seat_0",
+    "255,55,148": "wheel_0",
+    "215,55,255": "wheel_1"
   }
 }

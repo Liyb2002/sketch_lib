@@ -5,45 +5,63 @@
     "width": 320,
     "height": 320
   },
-  "mask_source_dir": "sketch/segmentation/view_4",
-  "bbox_scale": 1.0,
+  "mask_source_dir": "sketch/segmentation/0/view_4",
   "detections": [
+    {
+      "label": "engine_0",
+      "box_xyxy": [
+        18.0,
+        53.0,
+        284.0,
+        273.0
+      ],
+      "box_xywh": [
+        18.0,
+        53.0,
+        266.0,
+        220.0
+      ],
+      "mask_path": "engine_0_mask.png",
+      "overlay_path": "engine_0_overlay.png",
+      "image_path": "engine_0.png",
+      "is_empty": false
+    },
     {
       "label": "fender_0",
       "box_xyxy": [
         258.0,
-        155.0,
+        154.0,
         271.0,
         176.0
       ],
       "box_xywh": [
         258.0,
-        155.0,
+        154.0,
         13.0,
-        21.0
+        22.0
       ],
       "mask_path": "fender_0_mask.png",
       "overlay_path": "fender_0_overlay.png",
-      "crop_path": "fender_0.png",
+      "image_path": "fender_0.png",
       "is_empty": false
     },
     {
       "label": "handlebar_0",
       "box_xyxy": [
         153.0,
-        56.0,
-        274.0,
-        82.0
+        54.0,
+        288.0,
+        83.0
       ],
       "box_xywh": [
         153.0,
-        56.0,
-        121.0,
-        26.0
+        54.0,
+        135.0,
+        29.0
       ],
       "mask_path": "handlebar_0_mask.png",
       "overlay_path": "handlebar_0_overlay.png",
-      "crop_path": "handlebar_0.png",
+      "image_path": "handlebar_0.png",
       "is_empty": false
     },
     {
@@ -52,55 +70,55 @@
         34.0,
         111.0,
         179.0,
-        159.0
+        158.0
       ],
       "box_xywh": [
         34.0,
         111.0,
         145.0,
-        48.0
+        47.0
       ],
       "mask_path": "seat_0_mask.png",
       "overlay_path": "seat_0_overlay.png",
-      "crop_path": "seat_0.png",
+      "image_path": "seat_0.png",
       "is_empty": false
     },
     {
       "label": "wheel_0",
       "box_xyxy": [
-        43.0,
-        229.0,
-        140.0,
-        273.0
-      ],
-      "box_xywh": [
-        43.0,
-        229.0,
-        97.0,
-        44.0
-      ],
-      "mask_path": "wheel_0_mask.png",
-      "overlay_path": "wheel_0_overlay.png",
-      "crop_path": "wheel_0.png",
-      "is_empty": false
-    },
-    {
-      "label": "wheel_1",
-      "box_xyxy": [
-        212.0,
+        211.0,
         167.0,
         268.0,
         221.0
       ],
       "box_xywh": [
-        212.0,
+        211.0,
         167.0,
-        56.0,
+        57.0,
         54.0
+      ],
+      "mask_path": "wheel_0_mask.png",
+      "overlay_path": "wheel_0_overlay.png",
+      "image_path": "wheel_0.png",
+      "is_empty": false
+    },
+    {
+      "label": "wheel_1",
+      "box_xyxy": [
+        43.0,
+        230.0,
+        140.0,
+        273.0
+      ],
+      "box_xywh": [
+        43.0,
+        230.0,
+        97.0,
+        43.0
       ],
       "mask_path": "wheel_1_mask.png",
       "overlay_path": "wheel_1_overlay.png",
-      "crop_path": "wheel_1.png",
+      "image_path": "wheel_1.png",
       "is_empty": false
     }
   ]

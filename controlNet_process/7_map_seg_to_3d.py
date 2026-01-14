@@ -17,7 +17,7 @@ THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 SKETCH_ROOT = os.path.join(THIS_DIR, "sketch")
 
 SCENE_DIR = os.path.join(SKETCH_ROOT, "3d_reconstruction")
-SEG_DIR   = os.path.join(SKETCH_ROOT, "segmentation")
+SEG_DIR   = os.path.join(SKETCH_ROOT, "segmentation_original_image")
 
 # (1) output folder should be partfield_overlay
 OUTPUT_DIR = os.path.join(SKETCH_ROOT, "partfield_overlay")

@@ -5,26 +5,63 @@
     "width": 320,
     "height": 320
   },
-  "mask_source_dir": "sketch/segmentation/view_0",
-  "bbox_scale": 1.0,
+  "mask_source_dir": "sketch/segmentation/0/view_0",
   "detections": [
+    {
+      "label": "engine_0",
+      "box_xyxy": [
+        72.0,
+        87.0,
+        269.0,
+        302.0
+      ],
+      "box_xywh": [
+        72.0,
+        87.0,
+        197.0,
+        215.0
+      ],
+      "mask_path": "engine_0_mask.png",
+      "overlay_path": "engine_0_overlay.png",
+      "image_path": "engine_0.png",
+      "is_empty": false
+    },
+    {
+      "label": "fender_0",
+      "box_xyxy": [
+        127.0,
+        104.0,
+        203.0,
+        254.0
+      ],
+      "box_xywh": [
+        127.0,
+        104.0,
+        76.0,
+        150.0
+      ],
+      "mask_path": "fender_0_mask.png",
+      "overlay_path": "fender_0_overlay.png",
+      "image_path": "fender_0.png",
+      "is_empty": false
+    },
     {
       "label": "handlebar_0",
       "box_xyxy": [
-        199.0,
+        200.0,
         88.0,
         270.0,
-        106.0
+        103.0
       ],
       "box_xywh": [
-        199.0,
+        200.0,
         88.0,
-        71.0,
-        18.0
+        70.0,
+        15.0
       ],
       "mask_path": "handlebar_0_mask.png",
       "overlay_path": "handlebar_0_overlay.png",
-      "crop_path": "handlebar_0.png",
+      "image_path": "handlebar_0.png",
       "is_empty": false
     },
     {
@@ -32,37 +69,37 @@
       "box_xyxy": [
         156.0,
         89.0,
-        196.0,
-        119.0
+        193.0,
+        120.0
       ],
       "box_xywh": [
         156.0,
         89.0,
-        40.0,
-        30.0
+        37.0,
+        31.0
       ],
       "mask_path": "headlight_0_mask.png",
       "overlay_path": "headlight_0_overlay.png",
-      "crop_path": "headlight_0.png",
+      "image_path": "headlight_0.png",
       "is_empty": false
     },
     {
       "label": "wheel_0",
       "box_xyxy": [
-        148.0,
+        161.0,
         219.0,
-        189.0,
+        187.0,
         303.0
       ],
       "box_xywh": [
-        148.0,
+        161.0,
         219.0,
-        41.0,
+        26.0,
         84.0
       ],
       "mask_path": "wheel_0_mask.png",
       "overlay_path": "wheel_0_overlay.png",
-      "crop_path": "wheel_0.png",
+      "image_path": "wheel_0.png",
       "is_empty": false
     }
   ]
