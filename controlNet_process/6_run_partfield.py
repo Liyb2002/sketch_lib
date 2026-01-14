@@ -447,6 +447,11 @@ def main():
     print(f"  - {out_k20_ply_recon}")
     print("\n✅ Done.")
 
+    # -------------------------
+    # 7) CLEANUP: remove sketch/partfield_test
+    # -------------------------
+    shutil.rmtree(OUT_ROOT, ignore_errors=True)
+
 
 if __name__ == "__main__":
     main()
