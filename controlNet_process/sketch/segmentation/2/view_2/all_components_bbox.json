@@ -53,27 +53,6 @@
       "crop_path": "wheel_1.png"
     },
     {
-      "label": "fork_0",
-      "canonical_name": "Fork",
-      "prompt_used": "steering",
-      "score": 0.5149263143539429,
-      "box_xyxy": [
-        43.03752899169922,
-        53.6595344543457,
-        156.7245330810547,
-        94.16024017333984
-      ],
-      "box_xywh": [
-        43.03752899169922,
-        53.6595344543457,
-        113.68700408935547,
-        40.50070571899414
-      ],
-      "mask_path": "fork_0_mask.png",
-      "overlay_path": "fork_0_overlay.png",
-      "crop_path": "fork_0.png"
-    },
-    {
       "label": "handlebar_0",
       "canonical_name": "Handlebar",
       "prompt_used": "handlebar",

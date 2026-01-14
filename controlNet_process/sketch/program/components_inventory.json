@@ -13,11 +13,11 @@
     },
     {
       "component_id": "C02",
-      "name": "Fork",
-      "count": 1,
+      "name": "Cargo",
+      "count": 2,
       "synonyms": [
-        "fork",
-        "steering"
+        "Underseat compartment",
+        "Cargo"
       ]
     },
     {
@@ -57,15 +57,6 @@
       ]
     },
     {
-      "component_id": "C07",
-      "name": "Exhaust",
-      "count": 1,
-      "synonyms": [
-        "exhaust",
-        "pipe"
-      ]
-    },
-    {
       "component_id": "C08",
       "name": "Storage",
       "count": 1,
@@ -74,15 +65,7 @@
         "compartment"
       ]
     },
-    {
-      "component_id": "C09",
-      "name": "Pad",
-      "count": 2,
-      "synonyms": [
-        "pad",
-        "brake"
-      ]
-    },
+   
     {
       "component_id": "C10",
       "name": "Disc",
@@ -90,33 +73,6 @@
       "synonyms": [
         "disc",
         "brake"
-      ]
-    },
-    {
-      "component_id": "C11",
-      "name": "Chain",
-      "count": 1,
-      "synonyms": [
-        "chain",
-        "sprocket"
-      ]
-    },
-    {
-      "component_id": "C12",
-      "name": "Guard",
-      "count": 1,
-      "synonyms": [
-        "guard",
-        "cover"
-      ]
-    },
-    {
-      "component_id": "C13",
-      "name": "Tank",
-      "count": 1,
-      "synonyms": [
-        "tank",
-        "fuel"
       ]
     }
   ]

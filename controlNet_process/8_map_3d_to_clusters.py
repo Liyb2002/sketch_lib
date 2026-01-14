@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-vis_cluster_label_assignment.py
+vis_cluster_label_assignment.py  (with "all labels must be used" rule)
 
 Inputs:
 - sketch/3d_reconstruction/clustering_k20_points.npy   (cluster id per point)
@@ -8,19 +8,29 @@ Inputs:
 - sketch/partfield_overlay/merged_label_ids.npy        (semantic label id per point, -1 = unlabeled)
 - sketch/partfield_overlay/label_color_map.json        (label names + colors)
 
-Logic:
-For each cluster:
-- find majority semantic label among points with sem_id>=0
-- occupation = majority_count / total_points_in_cluster
-- if occupation > 0.50 => assign that label
-- else => assign unknown_k (one unknown per such cluster)
+Rules:
+A) Base assignment:
+   For each cluster:
+   - find majority semantic label among sem_id>=0 points
+   - occupation = majority_count / total_points_in_cluster
+   - if occupation > 0.50 => assign that label
+   - else => unknown_k (one unknown per such cluster)
+
+B) Additional rule (requested):
+   Every known label must be used at least once.
+   If a label has no cluster assigned after (A), we assign it the cluster where that label
+   has the highest occupation (fraction of cluster points).
+   Preference order when picking a cluster for a missing label:
+     1) unknown clusters first
+     2) clusters belonging to labels that have >=2 clusters (can spare one)
+     3) any cluster (last resort)
 
 Visualization:
-- For each known label: show all points whose cluster is assigned to that label (colored), others black.
-- Then show all unknown clusters together (colored), others black.
+- For each known label: show all clusters assigned to that label (colored), others black.
+- For unknowns: show them together (each unknown cluster distinct color), others black.
 
-Also prints:
-- cluster -> assigned label (and stats)
+Print:
+- cluster -> assigned label (with stats)
 - label -> clusters
 """
 
@@ -39,7 +49,7 @@ OVERLAY_DIR = os.path.join(SKETCH_ROOT, "partfield_overlay")
 SEM_NPY = os.path.join(OVERLAY_DIR, "merged_label_ids.npy")
 LABEL_COLOR_JSON = os.path.join(OVERLAY_DIR, "label_color_map.json")
 
-THRESH = 0.50  # > 50%
+THRESH = 0.50  # majority fraction must be > 0.50
 
 
 def load_points(ply_path: str) -> np.ndarray:
@@ -51,7 +61,7 @@ def load_points(ply_path: str) -> np.ndarray:
 
 
 def distinct_colors_rgb01(n: int) -> np.ndarray:
-    """Deterministic distinct-ish colors for unknowns, (n,3) in [0,1]."""
+    """Deterministic distinct-ish colors for unknown clusters, (n,3) in [0,1]."""
     if n <= 0:
         return np.zeros((0, 3), dtype=np.float64)
     cols = []
@@ -75,6 +85,15 @@ def distinct_colors_rgb01(n: int) -> np.ndarray:
         rgb = 0.25 + 0.75 * rgb
         cols.append(np.clip(rgb, 0.0, 1.0))
     return np.stack(cols, axis=0)
+
+
+def invert_mapping(cluster_to_assigned: dict[int, str]) -> dict[str, list[int]]:
+    label_to_clusters = {}
+    for cid, name in cluster_to_assigned.items():
+        label_to_clusters.setdefault(name, []).append(int(cid))
+    for k in label_to_clusters:
+        label_to_clusters[k] = sorted(label_to_clusters[k])
+    return label_to_clusters
 
 
 def main():
@@ -103,14 +122,36 @@ def main():
         b, g, r = label_to_color_bgr[lab]
         known_rgb01[i] = np.array([r, g, b], dtype=np.float64) / 255.0
 
-    # ---- compute cluster -> assigned label (or unknown) ----
     cluster_ids = np.unique(clusters).tolist()
 
-    cluster_to_assigned = {}   # cid -> name
-    cluster_stats = {}         # cid -> stats
-    unlabeled_clusters = []    # cids that become unknown_k
+    # Precompute per-cluster sizes
+    cluster_sizes = {int(cid): int((clusters == cid).sum()) for cid in cluster_ids}
+
+    # Precompute occupation matrix (cluster -> label -> count and frac)
+    # occ_frac[(cid, lid)] = (# points in cluster cid whose sem_id==lid) / (size of cluster cid)
+    occ_count = {}  # (cid, lid) -> count
+    occ_frac = {}   # (cid, lid) -> frac
 
     for cid in cluster_ids:
+        cid = int(cid)
+        idx = np.where(clusters == cid)[0]
+        n_cluster = int(idx.size)
+        if n_cluster == 0:
+            continue
+        sem_in = sem_ids[idx]
+        for lid in np.unique(sem_in[sem_in >= 0]):
+            lid = int(lid)
+            c = int((sem_in == lid).sum())
+            occ_count[(cid, lid)] = c
+            occ_frac[(cid, lid)] = float(c) / float(n_cluster)
+
+    # ---- A) Base assignment: majority > 0.5 -> label else unknown_k ----
+    cluster_to_assigned: dict[int, str] = {}
+    cluster_stats: dict[int, dict] = {}
+    unknown_candidate_clusters: list[int] = []
+
+    for cid in cluster_ids:
+        cid = int(cid)
         idx = np.where(clusters == cid)[0]
         n_cluster = int(idx.size)
         if n_cluster == 0:
@@ -120,8 +161,8 @@ def main():
         valid_sem = sem_in[sem_in >= 0]
 
         if valid_sem.size == 0:
-            unlabeled_clusters.append(int(cid))
-            cluster_stats[int(cid)] = {
+            unknown_candidate_clusters.append(cid)
+            cluster_stats[cid] = {
                 "n_points": n_cluster,
                 "majority_label": None,
                 "majority_count": 0,
@@ -132,38 +173,118 @@ def main():
 
         vals, counts = np.unique(valid_sem, return_counts=True)
         j = int(np.argmax(counts))
-        maj_sem_id = int(vals[j])
+        maj_lid = int(vals[j])
         maj_count = int(counts[j])
-        maj_frac = float(maj_count) / float(n_cluster)  # fraction of ALL points in cluster
+        maj_frac = float(maj_count) / float(n_cluster)
 
-        if maj_frac > THRESH:
-            name = labels_in_order[maj_sem_id]
-            cluster_to_assigned[int(cid)] = name
-        else:
-            unlabeled_clusters.append(int(cid))
-
-        cluster_stats[int(cid)] = {
+        cluster_stats[cid] = {
             "n_points": n_cluster,
-            "majority_label_id": maj_sem_id,
-            "majority_label": labels_in_order[maj_sem_id],
+            "majority_label_id": maj_lid,
+            "majority_label": labels_in_order[maj_lid],
             "majority_count": maj_count,
             "majority_frac_of_cluster": maj_frac,
             "n_semantic_labeled_points_in_cluster": int(valid_sem.size),
         }
 
-    unlabeled_clusters = sorted(unlabeled_clusters)
-    unknown_name_by_cluster = {cid: f"unknown_{k}" for k, cid in enumerate(unlabeled_clusters)}
+        if maj_frac > THRESH:
+            cluster_to_assigned[cid] = labels_in_order[maj_lid]
+        else:
+            unknown_candidate_clusters.append(cid)
+
+    unknown_candidate_clusters = sorted(unknown_candidate_clusters)
+
+    # Assign unknown_0, unknown_1... to those unknown candidates (temporary; may get reassigned in pass B)
+    unknown_name_by_cluster = {cid: f"unknown_{k}" for k, cid in enumerate(unknown_candidate_clusters)}
     for cid, uname in unknown_name_by_cluster.items():
-        cluster_to_assigned[int(cid)] = uname
+        cluster_to_assigned[cid] = uname
 
-    # ---- invert mapping: label -> clusters ----
-    label_to_clusters = {}
-    for cid, name in cluster_to_assigned.items():
-        label_to_clusters.setdefault(name, []).append(int(cid))
-    for name in label_to_clusters:
-        label_to_clusters[name] = sorted(label_to_clusters[name])
+    # ---- B) Ensure ALL known labels are used at least once ----
+    # Find missing known labels
+    label_to_clusters = invert_mapping(cluster_to_assigned)
 
-    # ---- print cluster -> label ----
+    missing_labels = [lab for lab in labels_in_order if lab not in label_to_clusters or len(label_to_clusters[lab]) == 0]
+
+    if missing_labels:
+        print("\n[INFO] Missing labels (will force-assign):", missing_labels)
+
+    # Helper: current cluster "owner" label
+    def owner_label(cid: int) -> str:
+        return cluster_to_assigned.get(cid, "")
+
+    def is_unknown_name(name: str) -> bool:
+        return name.startswith("unknown_")
+
+    def pick_best_cluster_for_label(missing_lab: str) -> int | None:
+        """Pick cluster with highest occupation for this label, using preference order."""
+        lid = labels_in_order.index(missing_lab)
+
+        # Compute best occupation among all clusters
+        # We'll gather candidates with their frac
+        best_any = None
+        best_any_frac = -1.0
+
+        best_unknown = None
+        best_unknown_frac = -1.0
+
+        best_stealable = None
+        best_stealable_frac = -1.0
+
+        # Recompute label_to_clusters each call to be accurate after reassignments
+        current_label_to_clusters = invert_mapping(cluster_to_assigned)
+
+        for cid in cluster_ids:
+            cid = int(cid)
+            frac = occ_frac.get((cid, lid), 0.0)
+            if frac <= 0.0:
+                continue
+
+            # Any cluster
+            if frac > best_any_frac:
+                best_any_frac = frac
+                best_any = cid
+
+            # Unknown clusters preferred
+            if is_unknown_name(owner_label(cid)):
+                if frac > best_unknown_frac:
+                    best_unknown_frac = frac
+                    best_unknown = cid
+                continue
+
+            # Stealable: belongs to a label that has >=2 clusters
+            owner = owner_label(cid)
+            owner_clusters = current_label_to_clusters.get(owner, [])
+            if len(owner_clusters) >= 2:
+                if frac > best_stealable_frac:
+                    best_stealable_frac = frac
+                    best_stealable = cid
+
+        if best_unknown is not None:
+            return best_unknown
+        if best_stealable is not None:
+            return best_stealable
+        return best_any  # last resort (may steal the only cluster from someone)
+
+    # Force-assign each missing label
+    for lab in missing_labels:
+        cid = pick_best_cluster_for_label(lab)
+        if cid is None:
+            print(f"[WARN] Could not find any cluster with nonzero occupation for label '{lab}'. Skipping.")
+            continue
+        prev = cluster_to_assigned.get(cid, None)
+        cluster_to_assigned[cid] = lab
+        print(f"[FORCE] label '{lab}' assigned cluster {cid} (was '{prev}')")
+
+    # Rebuild final label_to_clusters after forcing
+    label_to_clusters = invert_mapping(cluster_to_assigned)
+
+    # Rebuild unknown list (whatever is still unknown after forcing)
+    unknown_keys = sorted([k for k in label_to_clusters.keys() if is_unknown_name(k)])
+    unknown_clusters_final = []
+    for uk in unknown_keys:
+        unknown_clusters_final.extend(label_to_clusters.get(uk, []))
+    unknown_clusters_final = sorted(set(unknown_clusters_final))
+
+    # ---- Print cluster -> label ----
     print("\n=== cluster -> assigned label ===")
     for cid in sorted(cluster_to_assigned.keys()):
         name = cluster_to_assigned[cid]
@@ -173,26 +294,23 @@ def main():
         if frac is None:
             print(f"cluster {cid:>3} -> {name}")
         else:
-            # show both: assigned and the winning candidate + fraction
             print(f"cluster {cid:>3} -> {name:>12}   (winner={maj}, frac={frac:.3f}, n={st.get('n_points',0)})")
 
-    # ---- print label -> clusters (known first, then unknowns) ----
+    # ---- Print label -> clusters ----
     print("\n=== label -> clusters ===")
     for lab in labels_in_order:
         cids = label_to_clusters.get(lab, [])
-        if cids:
-            print(f"{lab}: {cids}")
-    unk_key_list = [f"unknown_{k}" for k in range(len(unlabeled_clusters))]
-    if unk_key_list:
+        print(f"{lab}: {cids}")
+
+    if unknown_keys:
         print("\nUnknowns:")
-        for uk in unk_key_list:
+        for uk in unknown_keys:
             print(f"{uk}: {label_to_clusters.get(uk, [])}")
 
-    # ---- visualization helpers ----
-    unknown_colors = distinct_colors_rgb01(len(unlabeled_clusters))
+    # ---- Visualization ----
+    unknown_colors = distinct_colors_rgb01(max(1, len(unknown_keys)))  # used per unknown group key
 
     def make_pcd(mask: np.ndarray, colors: np.ndarray) -> o3d.geometry.PointCloud:
-        """mask selects points to color; others black."""
         cols = np.zeros((pts.shape[0], 3), dtype=np.float64)
         cols[mask] = colors[mask]
         pcd = o3d.geometry.PointCloud()
@@ -200,21 +318,13 @@ def main():
         pcd.colors = o3d.utility.Vector3dVector(cols)
         return pcd
 
-    # Precompute per-point assigned name
-    # (each point inherits from its cluster assignment)
-    assigned_name_per_point = np.empty((pts.shape[0],), dtype=object)
-    for cid in cluster_ids:
-        name = cluster_to_assigned.get(int(cid), "unknown_unseen")
-        assigned_name_per_point[clusters == cid] = name
-
-    # ---- show each known label once ----
+    # Show each known label once: all its clusters together
     for lab_id, lab in enumerate(labels_in_order):
         cids = label_to_clusters.get(lab, [])
         if not cids:
             continue
-
         mask = np.isin(clusters, np.array(cids, dtype=np.int32))
-        # color all selected points with that label's color
+
         colors = np.zeros((pts.shape[0], 3), dtype=np.float64)
         colors[mask] = known_rgb01[lab_id]
 
@@ -223,22 +333,26 @@ def main():
         print(f"\n[VIS] {title}")
         o3d.visualization.draw_geometries([pcd], window_name=title)
 
-    # ---- show all unknowns together ----
-    if unlabeled_clusters:
-        mask_any_unk = np.isin(clusters, np.array(unlabeled_clusters, dtype=np.int32))
+    # Show unknowns together: all unknown clusters shown in one view.
+    if unknown_keys:
+        # Color unknown points by unknown group key (unknown_0, unknown_1...) to separate them.
         colors = np.zeros((pts.shape[0], 3), dtype=np.float64)
+        mask_any = np.zeros((pts.shape[0],), dtype=bool)
 
-        # each unknown cluster gets its own color, but all shown in one view
-        for k, cid in enumerate(unlabeled_clusters):
-            m = (clusters == cid)
-            colors[m] = unknown_colors[k]
+        for i, uk in enumerate(unknown_keys):
+            cids = label_to_clusters.get(uk, [])
+            if not cids:
+                continue
+            m = np.isin(clusters, np.array(cids, dtype=np.int32))
+            colors[m] = unknown_colors[i % unknown_colors.shape[0]]
+            mask_any |= m
 
-        pcd = make_pcd(mask_any_unk, colors)
-        title = f"Unknown clusters together (count={len(unlabeled_clusters)})"
+        pcd = make_pcd(mask_any, colors)
+        title = f"Unknown clusters together (groups={len(unknown_keys)}, clusters={unknown_clusters_final})"
         print(f"\n[VIS] {title}")
         o3d.visualization.draw_geometries([pcd], window_name=title)
     else:
-        print("\n[VIS] No unknown clusters (all clusters assigned to known labels).")
+        print("\n[VIS] No unknown clusters left (all clusters assigned to known labels).")
 
 
 if __name__ == "__main__":

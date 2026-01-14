@@ -8,25 +8,6 @@
   "mask_source_dir": "sketch/segmentation/0/view_2",
   "detections": [
     {
-      "label": "fork_0",
-      "box_xyxy": [
-        42.0,
-        57.0,
-        156.0,
-        94.0
-      ],
-      "box_xywh": [
-        42.0,
-        57.0,
-        114.0,
-        37.0
-      ],
-      "mask_path": "fork_0_mask.png",
-      "overlay_path": "fork_0_overlay.png",
-      "image_path": "fork_0.png",
-      "is_empty": false
-    },
-    {
       "label": "handlebar_0",
       "box_xyxy": [
         42.0,
