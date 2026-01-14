@@ -8,25 +8,6 @@
   "mask_source_dir": "sketch/segmentation/0/view_0",
   "detections": [
     {
-      "label": "engine_0",
-      "box_xyxy": [
-        72.0,
-        87.0,
-        269.0,
-        302.0
-      ],
-      "box_xywh": [
-        72.0,
-        87.0,
-        197.0,
-        215.0
-      ],
-      "mask_path": "engine_0_mask.png",
-      "overlay_path": "engine_0_overlay.png",
-      "image_path": "engine_0.png",
-      "is_empty": false
-    },
-    {
       "label": "fender_0",
       "box_xyxy": [
         127.0,

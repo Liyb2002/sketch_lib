@@ -114,27 +114,6 @@
       "mask_path": "seat_0_mask.png",
       "overlay_path": "seat_0_overlay.png",
       "crop_path": "seat_0.png"
-    },
-    {
-      "label": "engine_0",
-      "canonical_name": "Engine",
-      "prompt_used": "motor",
-      "score": 0.9154391288757324,
-      "box_xyxy": [
-        40.93475341796875,
-        53.75591278076172,
-        305.86431884765625,
-        270.3688049316406
-      ],
-      "box_xywh": [
-        40.93475341796875,
-        53.75591278076172,
-        264.9295654296875,
-        216.6128921508789
-      ],
-      "mask_path": "engine_0_mask.png",
-      "overlay_path": "engine_0_overlay.png",
-      "crop_path": "engine_0.png"
     }
   ]
 }

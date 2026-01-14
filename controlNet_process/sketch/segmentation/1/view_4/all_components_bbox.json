@@ -116,25 +116,25 @@
       "crop_path": "seat_0.png"
     },
     {
-      "label": "engine_0",
-      "canonical_name": "Engine",
-      "prompt_used": "motor",
-      "score": 0.92375648021698,
+      "label": "storage_0",
+      "canonical_name": "Storage",
+      "prompt_used": "compartment",
+      "score": 0.5122465491294861,
       "box_xyxy": [
-        18.964214324951172,
-        53.117008209228516,
-        271.98675537109375,
-        274.1459045410156
+        193.091064453125,
+        78.93631744384766,
+        234.49278259277344,
+        174.697509765625
       ],
       "box_xywh": [
-        18.964214324951172,
-        53.117008209228516,
-        253.02254104614258,
-        221.0288963317871
+        193.091064453125,
+        78.93631744384766,
+        41.40171813964844,
+        95.76119232177734
       ],
-      "mask_path": "engine_0_mask.png",
-      "overlay_path": "engine_0_overlay.png",
-      "crop_path": "engine_0.png"
+      "mask_path": "storage_0_mask.png",
+      "overlay_path": "storage_0_overlay.png",
+      "crop_path": "storage_0.png"
     }
   ]
 }

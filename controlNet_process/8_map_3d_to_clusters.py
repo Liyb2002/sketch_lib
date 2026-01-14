@@ -1,391 +1,245 @@
 #!/usr/bin/env python3
+"""
+vis_cluster_label_assignment.py
+
+Inputs:
+- sketch/3d_reconstruction/clustering_k20_points.npy   (cluster id per point)
+- sketch/3d_reconstruction/clustering_k20_points.ply   (points)
+- sketch/partfield_overlay/merged_label_ids.npy        (semantic label id per point, -1 = unlabeled)
+- sketch/partfield_overlay/label_color_map.json        (label names + colors)
+
+Logic:
+For each cluster:
+- find majority semantic label among points with sem_id>=0
+- occupation = majority_count / total_points_in_cluster
+- if occupation > 0.50 => assign that label
+- else => assign unknown_k (one unknown per such cluster)
+
+Visualization:
+- For each known label: show all points whose cluster is assigned to that label (colored), others black.
+- Then show all unknown clusters together (colored), others black.
+
+Also prints:
+- cluster -> assigned label (and stats)
+- label -> clusters
+"""
+
 import os
 import json
 import numpy as np
 import open3d as o3d
-import matplotlib.pyplot as plt
 
-from constraints_extraction.merge_unknowns import merge_unknowns
+THIS_DIR = os.path.dirname(os.path.abspath(__file__))
+SKETCH_ROOT = os.path.join(THIS_DIR, "sketch")
 
-# This code maps each cluster to a semantic label.
-# clusters can be split in this code
-# NEW: keep unlabeled regions as explicit clusters: unknown_0, unknown_1, ...
-# NEW: merge neighboring unknown clusters at CLUSTER level using AABB distance.
+CLUSTER_NPY = os.path.join(SKETCH_ROOT, "3d_reconstruction", "clustering_k20_points.npy")
+CLUSTER_PLY = os.path.join(SKETCH_ROOT, "3d_reconstruction", "clustering_k20_points.ply")
 
-# -----------------------------------------------------------------------------
-# CONFIG
-# -----------------------------------------------------------------------------
-ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
+OVERLAY_DIR = os.path.join(SKETCH_ROOT, "partfield_overlay")
+SEM_NPY = os.path.join(OVERLAY_DIR, "merged_label_ids.npy")
+LABEL_COLOR_JSON = os.path.join(OVERLAY_DIR, "label_color_map.json")
 
-SCENE_DIR = os.path.join(ROOT_DIR, "sketch", "3d_reconstruction")
-PARTFIELD_OVERLAY_DIR = os.path.join(ROOT_DIR, "sketch", "partfield_overlay")
+THRESH = 0.50  # > 50%
 
-# Inputs
-FUSED_PLY_PATH = os.path.join(SCENE_DIR, "fused_model.ply")
-CLUSTERS_PATH  = os.path.join(SCENE_DIR, "clustering_k20.npy")
 
-MERGED_LABELED_PLY = os.path.join(PARTFIELD_OVERLAY_DIR, "merged_labeled.ply")
-LABEL_COLOR_MAP_JSON = os.path.join(PARTFIELD_OVERLAY_DIR, "label_color_map.json")
+def load_points(ply_path: str) -> np.ndarray:
+    pcd = o3d.io.read_point_cloud(ply_path)
+    pts = np.asarray(pcd.points, dtype=np.float64)
+    if pts.ndim != 2 or pts.shape[1] != 3 or pts.shape[0] == 0:
+        raise RuntimeError(f"Bad/empty point cloud: {ply_path}")
+    return pts
 
-# Outputs
-OUTPUT_DIR = os.path.join(ROOT_DIR, "sketch", "clusters")
-os.makedirs(OUTPUT_DIR, exist_ok=True)
 
-FINAL_PLY_PATH  = os.path.join(OUTPUT_DIR, "labeled_clusters.ply")
-FINAL_JSON_PATH = os.path.join(OUTPUT_DIR, "cluster_to_label.json")
-FINAL_NPY_PATH  = os.path.join(OUTPUT_DIR, "final_cluster_ids.npy")
-
-# Thresholds
-MERGE_THRESHOLD  = 0.90
-IGNORE_THRESHOLD = 0.10
-
-# NEW: unknown cluster merging threshold (AABB gap)
-# If two unknown entities' AABBs are within this gap, merge them.
-UNKNOWN_MERGE_GAP_AUTO = True          # recommended
-UNKNOWN_MERGE_GAP_FRAC = 0.01          # gap = bbox_diagonal * frac
-UNKNOWN_MERGE_GAP_ABS  = 0.02          # used if AUTO=False (units of your point cloud)
-
-# -----------------------------------------------------------------------------
-# HELPERS
-# -----------------------------------------------------------------------------
-def generate_palette(unique_labels):
-    """Stable palette for labels."""
-    palette = {}
-    cmap = plt.get_cmap("tab20")
-    sorted_labels = sorted(list(unique_labels))
-    for i, label in enumerate(sorted_labels):
-        if label.startswith("unknown"):
-            palette[label] = [0.2, 0.2, 0.2]
+def distinct_colors_rgb01(n: int) -> np.ndarray:
+    """Deterministic distinct-ish colors for unknowns, (n,3) in [0,1]."""
+    if n <= 0:
+        return np.zeros((0, 3), dtype=np.float64)
+    cols = []
+    for i in range(n):
+        h = (i / max(1, n)) * 6.0
+        c = 1.0
+        x = c * (1.0 - abs((h % 2.0) - 1.0))
+        if 0 <= h < 1:
+            rgb = (c, x, 0)
+        elif 1 <= h < 2:
+            rgb = (x, c, 0)
+        elif 2 <= h < 3:
+            rgb = (0, c, x)
+        elif 3 <= h < 4:
+            rgb = (0, x, c)
+        elif 4 <= h < 5:
+            rgb = (x, 0, c)
         else:
-            palette[label] = list(cmap(i % 20)[:3])  # RGB in [0,1]
-    return palette
+            rgb = (c, 0, x)
+        rgb = np.array(rgb, dtype=np.float64)
+        rgb = 0.25 + 0.75 * rgb
+        cols.append(np.clip(rgb, 0.0, 1.0))
+    return np.stack(cols, axis=0)
 
-def parse_label_color_map(path):
-    """
-    Expects label_color_map.json created by your voting script, containing:
-      - labels_in_order
-      - label_to_color_rgb (0-255 ints in RGB order)
-      - color_bgr_to_label (string key "b,g,r")
-    We'll mainly use color_bgr_to_label for exact matching.
-    """
-    with open(path, "r") as f:
-        m = json.load(f)
 
-    color_bgr_to_label = m.get("color_bgr_to_label", {})
-    labels_in_order = m.get("labels_in_order", [])
-
-    label_to_rgb01 = {}
-    label_to_color_rgb = m.get("label_to_color_rgb", {})
-    for lab, rgb in label_to_color_rgb.items():
-        r, g, b = rgb
-        label_to_rgb01[lab] = np.array([r, g, b], dtype=np.float32) / 255.0
-
-    return color_bgr_to_label, labels_in_order, label_to_rgb01
-
-def label_from_color_rgb01(rgb01, color_bgr_to_label, label_to_rgb01, max_dist=0.05):
-    """
-    Convert a point color (rgb in [0,1]) into a label.
-    Prefer exact match through BGR string if possible, otherwise nearest match.
-    """
-    if float(rgb01.sum()) < 0.05:
-        return "unknown"
-
-    rgb255 = np.clip(np.round(rgb01 * 255.0), 0, 255).astype(np.uint8)
-    r, g, b = int(rgb255[0]), int(rgb255[1]), int(rgb255[2])
-    key = f"{b},{g},{r}"
-    if key in color_bgr_to_label:
-        return color_bgr_to_label[key]
-
-    best = "unknown"
-    best_d = max_dist
-    for lab, ref in label_to_rgb01.items():
-        d = float(np.linalg.norm(rgb01 - ref))
-        if d < best_d:
-            best_d = d
-            best = lab
-    return best
-
-def aabb_of_points(pts):
-    mn = pts.min(axis=0)
-    mx = pts.max(axis=0)
-    return mn, mx
-
-def aabb_gap_distance(a_min, a_max, b_min, b_max):
-    """
-    Euclidean distance between two AABBs (0 if they overlap/touch).
-    """
-    dx = max(0.0, max(b_min[0] - a_max[0], a_min[0] - b_max[0]))
-    dy = max(0.0, max(b_min[1] - a_max[1], a_min[1] - b_max[1]))
-    dz = max(0.0, max(b_min[2] - a_max[2], a_min[2] - b_max[2]))
-    return float(np.sqrt(dx*dx + dy*dy + dz*dz))
-
-def union_find_init(n):
-    parent = np.arange(n, dtype=np.int32)
-    rank = np.zeros(n, dtype=np.int8)
-
-    def find(x):
-        while parent[x] != x:
-            parent[x] = parent[parent[x]]
-            x = parent[x]
-        return x
-
-    def union(a, b):
-        ra, rb = find(a), find(b)
-        if ra == rb:
-            return
-        if rank[ra] < rank[rb]:
-            parent[ra] = rb
-        elif rank[ra] > rank[rb]:
-            parent[rb] = ra
-        else:
-            parent[rb] = ra
-            rank[ra] += 1
-
-    return find, union, parent
-
-# -----------------------------------------------------------------------------
-# MAIN
-# -----------------------------------------------------------------------------
 def main():
-    print(f"[INFO] Loading geometry: {FUSED_PLY_PATH}")
-    if not os.path.exists(FUSED_PLY_PATH):
-        raise RuntimeError(f"Missing fused model: {FUSED_PLY_PATH}")
+    # ---- checks ----
+    for p in [CLUSTER_NPY, CLUSTER_PLY, SEM_NPY, LABEL_COLOR_JSON]:
+        if not os.path.isfile(p):
+            raise FileNotFoundError(f"Missing: {p}")
 
-    pcd_orig = o3d.io.read_point_cloud(FUSED_PLY_PATH)
-    points = np.asarray(pcd_orig.points)  # Points from the point cloud
-    num_points = points.shape[0]
-    print(f"[INFO] Points: {num_points}")
+    clusters = np.load(CLUSTER_NPY).reshape(-1).astype(np.int32)
+    sem_ids = np.load(SEM_NPY).reshape(-1).astype(np.int32)
+    if clusters.shape[0] != sem_ids.shape[0]:
+        raise ValueError(f"Length mismatch: clusters={clusters.shape[0]} vs sem_ids={sem_ids.shape[0]}")
 
-    print(f"[INFO] Loading original clusters: {CLUSTERS_PATH}")
-    if not os.path.exists(CLUSTERS_PATH):
-        raise RuntimeError(f"Missing clusters file: {CLUSTERS_PATH}")
-    orig_cluster_ids = np.load(CLUSTERS_PATH).reshape(-1)
-    if orig_cluster_ids.shape[0] != num_points:
-        raise RuntimeError(
-            f"Cluster id length {orig_cluster_ids.shape[0]} != fused points {num_points}. "
-            "Your clustering must be generated from fused_model.ply in the same point order."
-        )
+    pts = load_points(CLUSTER_PLY)
+    if pts.shape[0] != clusters.shape[0]:
+        raise ValueError(f"Point count mismatch: ply_points={pts.shape[0]} vs clusters={clusters.shape[0]}")
 
-    # -------------------------------------------------------------------------
-    # 1) Load merged labeled point cloud (already voted across views)
-    # -------------------------------------------------------------------------
-    print(f"[INFO] Loading merged labeled PLY: {MERGED_LABELED_PLY}")
-    if not os.path.exists(MERGED_LABELED_PLY):
-        raise RuntimeError(f"Missing merged labeled ply: {MERGED_LABELED_PLY}")
+    with open(LABEL_COLOR_JSON, "r") as f:
+        lmap = json.load(f)
+    labels_in_order = lmap["labels_in_order"]
+    label_to_color_bgr = lmap["label_to_color_bgr"]  # label -> [b,g,r]
 
-    pcd_merged = o3d.io.read_point_cloud(MERGED_LABELED_PLY)
-    merged_colors = np.asarray(pcd_merged.colors)
-    if merged_colors.shape[0] != num_points:
-        raise RuntimeError(
-            f"merged_labeled.ply points {merged_colors.shape[0]} != fused_model points {num_points}. "
-            "These must match point-for-point."
-        )
+    # known label colors in RGB01 aligned to labels_in_order
+    known_rgb01 = np.zeros((len(labels_in_order), 3), dtype=np.float64)
+    for i, lab in enumerate(labels_in_order):
+        b, g, r = label_to_color_bgr[lab]
+        known_rgb01[i] = np.array([r, g, b], dtype=np.float64) / 255.0
 
-    print(f"[INFO] Loading label-color map: {LABEL_COLOR_MAP_JSON}")
-    if not os.path.exists(LABEL_COLOR_MAP_JSON):
-        raise RuntimeError(f"Missing label_color_map.json: {LABEL_COLOR_MAP_JSON}")
+    # ---- compute cluster -> assigned label (or unknown) ----
+    cluster_ids = np.unique(clusters).tolist()
 
-    color_bgr_to_label, labels_in_order, label_to_rgb01 = parse_label_color_map(LABEL_COLOR_MAP_JSON)
+    cluster_to_assigned = {}   # cid -> name
+    cluster_stats = {}         # cid -> stats
+    unlabeled_clusters = []    # cids that become unknown_k
 
-    # Convert per-point color -> label (still per-point, but just a simple loop; no neighborhood ops)
-    raw_point_labels = np.array(["unknown"] * num_points, dtype=object)
-    for i in range(num_points):
-        raw_point_labels[i] = label_from_color_rgb01(
-            merged_colors[i].astype(np.float32),
-            color_bgr_to_label=color_bgr_to_label,
-            label_to_rgb01=label_to_rgb01,
-            max_dist=0.05,
-        )
-
-    global_semantic_registry = set(labels_in_order) if labels_in_order else set(raw_point_labels.tolist())
-    global_semantic_registry.add("unknown")
-
-    # -------------------------------------------------------------------------
-    # 2) Apply your 90/10 cluster regrouping rules
-    # -------------------------------------------------------------------------
-    print("[INFO] Applying cluster regrouping rules (>=90% merge, 10-90 split, <=10 remove)...")
-
-    refined_labels = raw_point_labels.copy()
-    unique_orig_clusters = np.unique(orig_cluster_ids)
-
-    for cid in unique_orig_clusters:
-        if cid < 0:
+    for cid in cluster_ids:
+        idx = np.where(clusters == cid)[0]
+        n_cluster = int(idx.size)
+        if n_cluster == 0:
             continue
 
-        idxs = np.where(orig_cluster_ids == cid)[0]
-        total = idxs.shape[0]
-        if total == 0:
-            continue
+        sem_in = sem_ids[idx]
+        valid_sem = sem_in[sem_in >= 0]
 
-        lbls = refined_labels[idxs]
-        non_unknown = lbls[lbls != "unknown"]
-        if non_unknown.size == 0:
-            continue
-
-        uniq, cnts = np.unique(non_unknown, return_counts=True)
-        ratios = {lab: (c / total) for lab, c in zip(uniq, cnts)}
-
-        dom_label = max(ratios, key=ratios.get)
-        dom_ratio = ratios[dom_label]
-
-        # (1) >= 90% => whole cluster becomes dom_label
-        if dom_ratio >= MERGE_THRESHOLD:
-            refined_labels[idxs] = dom_label
-            continue
-
-        # (3) <= 10% fragments of any label get removed -> unknown
-        for lab, ratio in ratios.items():
-            if ratio <= IGNORE_THRESHOLD:
-                kill = idxs[refined_labels[idxs] == lab]
-                refined_labels[kill] = "unknown"
-
-    # -------------------------------------------------------------------------
-    # 3) Create labeled clusters: one new cluster per (orig_cluster_id, label) excluding unknown
-    # -------------------------------------------------------------------------
-    print("[INFO] Creating labeled clusters + registry (excluding unknown for now)...")
-
-    final_cluster_ids = np.full((num_points,), -1, dtype=np.int32)
-    registry = {}
-    new_id = 0
-
-    # We'll build palette later after we know unknown_* labels too.
-    for cid in unique_orig_clusters:
-        if cid < 0:
-            continue
-        idxs = np.where(orig_cluster_ids == cid)[0]
-        if idxs.size == 0:
-            continue
-
-        labs = np.unique(refined_labels[idxs])
-        for lab in labs:
-            if lab == "unknown":
-                continue
-            sub = idxs[refined_labels[idxs] == lab]
-            if sub.size == 0:
-                continue
-
-            final_cluster_ids[sub] = new_id
-            registry[new_id] = {
-                "label": str(lab),
-                "original_cluster_id": int(cid),
-                "point_count": int(sub.size),
-                # fill color later
-                "color_rgb": None
+        if valid_sem.size == 0:
+            unlabeled_clusters.append(int(cid))
+            cluster_stats[int(cid)] = {
+                "n_points": n_cluster,
+                "majority_label": None,
+                "majority_count": 0,
+                "majority_frac_of_cluster": 0.0,
+                "note": "no sem_id>=0 points in this cluster",
             }
-            new_id += 1
-
-    # 4) NEW: Unknown clusters at CLUSTER level, then merge neighboring unknown clusters.
-    #     Unknown entity = (original cluster id) restricted to points that remain unknown.
-    # -----------------------------------------------------------------------------
-    print("[INFO] Creating unknown entities at cluster level...")
-
-    unknown_entities = []  # list of dicts: {orig_cid, idxs, aabb_min, aabb_max}
-    for cid in unique_orig_clusters:
-        if cid < 0:
-            continue
-        idxs = np.where(orig_cluster_ids == cid)[0]
-        if idxs.size == 0:
             continue
 
-        unk = idxs[refined_labels[idxs] == "unknown"]
-        if unk.size == 0:
-            continue
+        vals, counts = np.unique(valid_sem, return_counts=True)
+        j = int(np.argmax(counts))
+        maj_sem_id = int(vals[j])
+        maj_count = int(counts[j])
+        maj_frac = float(maj_count) / float(n_cluster)  # fraction of ALL points in cluster
 
-        pts = points[unk]
-        mn, mx = aabb_of_points(pts)
-        unknown_entities.append({
-            "orig_cid": int(cid),
-            "idxs": unk,
-            "aabb_min": mn,
-            "aabb_max": mx,
-        })
+        if maj_frac > THRESH:
+            name = labels_in_order[maj_sem_id]
+            cluster_to_assigned[int(cid)] = name
+        else:
+            unlabeled_clusters.append(int(cid))
 
-    print(f"[INFO] Unknown entities (pre-merge): {len(unknown_entities)}")
-
-    # Call the new merge_unknowns function to merge the unknown clusters
-    # Pass the point cloud 'points' to the function
-    merged_groups = merge_unknowns(unknown_entities, points)
-
-    # Assign unknown_0, unknown_1, ...
-    unknown_labels = [f"unknown_{i}" for i in range(len(merged_groups))]
-
-
-    # -------------------------------------------------------------------------
-    # 5) Final palette (includes unknown_* labels)
-    # -------------------------------------------------------------------------
-    palette_labels = set(global_semantic_registry)
-    palette_labels.discard("unknown")  # base unknown won't appear in registry
-    palette_labels.update(unknown_labels)
-    for v in registry.values():
-        palette_labels.add(v["label"])
-
-    palette = generate_palette(palette_labels)
-
-    # Fill colors for labeled clusters
-    for cid_out, info in registry.items():
-        lab = info["label"]
-        info["color_rgb"] = [float(x) for x in palette.get(lab, [0.2, 0.2, 0.2])]
-
-    # -------------------------------------------------------------------------
-    # 6) Create unknown_* clusters in registry + assign ids
-    # -------------------------------------------------------------------------
-    for ui, members in enumerate(merged_groups):
-        lab = f"unknown_{ui}"
-        # union of indices from member unknown entities
-        idxs_list = [unknown_entities[m]["idxs"] for m in members]
-        sub = np.concatenate(idxs_list, axis=0) if len(idxs_list) > 1 else idxs_list[0]
-
-        cid_new = new_id
-        final_cluster_ids[sub] = cid_new
-        registry[cid_new] = {
-            "label": lab,
-            "original_cluster_id": -1,  # spans multiple original clusters potentially
-            "point_count": int(sub.size),
-            "color_rgb": [float(x) for x in palette.get(lab, [0.2, 0.2, 0.2])]
+        cluster_stats[int(cid)] = {
+            "n_points": n_cluster,
+            "majority_label_id": maj_sem_id,
+            "majority_label": labels_in_order[maj_sem_id],
+            "majority_count": maj_count,
+            "majority_frac_of_cluster": maj_frac,
+            "n_semantic_labeled_points_in_cluster": int(valid_sem.size),
         }
-        new_id += 1
 
-    # Safety: if any points still -1 (shouldn't happen now), keep as a single unknown_fallback
-    leftover = np.where(final_cluster_ids < 0)[0]
-    if leftover.size > 0:
-        lab = "unknown_fallback"
-        palette[lab] = [0.1, 0.1, 0.1]
-        cid_new = new_id
-        final_cluster_ids[leftover] = cid_new
-        registry[cid_new] = {
-            "label": lab,
-            "original_cluster_id": -1,
-            "point_count": int(leftover.size),
-            "color_rgb": [float(x) for x in palette[lab]]
-        }
-        new_id += 1
-        print(f"[WARN] Had {leftover.size} leftover unlabeled points -> {lab}")
+    unlabeled_clusters = sorted(unlabeled_clusters)
+    unknown_name_by_cluster = {cid: f"unknown_{k}" for k, cid in enumerate(unlabeled_clusters)}
+    for cid, uname in unknown_name_by_cluster.items():
+        cluster_to_assigned[int(cid)] = uname
 
-    # -------------------------------------------------------------------------
-    # 7) Export json + npy + ply
-    # -------------------------------------------------------------------------
-    with open(FINAL_JSON_PATH, "w") as f:
-        json.dump(registry, f, indent=2)
-    print(f"[SAVE] {FINAL_JSON_PATH}")
+    # ---- invert mapping: label -> clusters ----
+    label_to_clusters = {}
+    for cid, name in cluster_to_assigned.items():
+        label_to_clusters.setdefault(name, []).append(int(cid))
+    for name in label_to_clusters:
+        label_to_clusters[name] = sorted(label_to_clusters[name])
 
-    np.save(FINAL_NPY_PATH, final_cluster_ids)
-    print(f"[SAVE] {FINAL_NPY_PATH} (shape={final_cluster_ids.shape}, dtype={final_cluster_ids.dtype})")
+    # ---- print cluster -> label ----
+    print("\n=== cluster -> assigned label ===")
+    for cid in sorted(cluster_to_assigned.keys()):
+        name = cluster_to_assigned[cid]
+        st = cluster_stats.get(cid, {})
+        frac = st.get("majority_frac_of_cluster", None)
+        maj = st.get("majority_label", None)
+        if frac is None:
+            print(f"cluster {cid:>3} -> {name}")
+        else:
+            # show both: assigned and the winning candidate + fraction
+            print(f"cluster {cid:>3} -> {name:>12}   (winner={maj}, frac={frac:.3f}, n={st.get('n_points',0)})")
 
-    out_colors = np.zeros((num_points, 3), dtype=np.float32)
-    for i in range(num_points):
-        cid = int(final_cluster_ids[i])
-        lab = registry[cid]["label"]
-        out_colors[i] = np.array(palette.get(lab, [0.2, 0.2, 0.2]), dtype=np.float32)
+    # ---- print label -> clusters (known first, then unknowns) ----
+    print("\n=== label -> clusters ===")
+    for lab in labels_in_order:
+        cids = label_to_clusters.get(lab, [])
+        if cids:
+            print(f"{lab}: {cids}")
+    unk_key_list = [f"unknown_{k}" for k in range(len(unlabeled_clusters))]
+    if unk_key_list:
+        print("\nUnknowns:")
+        for uk in unk_key_list:
+            print(f"{uk}: {label_to_clusters.get(uk, [])}")
 
-    pcd_out = o3d.geometry.PointCloud()
-    pcd_out.points = o3d.utility.Vector3dVector(points)
-    pcd_out.colors = o3d.utility.Vector3dVector(out_colors.astype(np.float64))
-    o3d.io.write_point_cloud(FINAL_PLY_PATH, pcd_out)
-    print(f"[SAVE] {FINAL_PLY_PATH}")
+    # ---- visualization helpers ----
+    unknown_colors = distinct_colors_rgb01(len(unlabeled_clusters))
 
-    num_unknown_clusters = sum(1 for v in registry.values() if str(v.get("label", "")).startswith("unknown_"))
-    print(f"[OK] Final clusters: {len(registry)} (unknown_* = {num_unknown_clusters})")
-    print("[OK] Done.")
+    def make_pcd(mask: np.ndarray, colors: np.ndarray) -> o3d.geometry.PointCloud:
+        """mask selects points to color; others black."""
+        cols = np.zeros((pts.shape[0], 3), dtype=np.float64)
+        cols[mask] = colors[mask]
+        pcd = o3d.geometry.PointCloud()
+        pcd.points = o3d.utility.Vector3dVector(pts)
+        pcd.colors = o3d.utility.Vector3dVector(cols)
+        return pcd
+
+    # Precompute per-point assigned name
+    # (each point inherits from its cluster assignment)
+    assigned_name_per_point = np.empty((pts.shape[0],), dtype=object)
+    for cid in cluster_ids:
+        name = cluster_to_assigned.get(int(cid), "unknown_unseen")
+        assigned_name_per_point[clusters == cid] = name
+
+    # ---- show each known label once ----
+    for lab_id, lab in enumerate(labels_in_order):
+        cids = label_to_clusters.get(lab, [])
+        if not cids:
+            continue
+
+        mask = np.isin(clusters, np.array(cids, dtype=np.int32))
+        # color all selected points with that label's color
+        colors = np.zeros((pts.shape[0], 3), dtype=np.float64)
+        colors[mask] = known_rgb01[lab_id]
+
+        pcd = make_pcd(mask, colors)
+        title = f"Label: {lab}  (clusters={cids})"
+        print(f"\n[VIS] {title}")
+        o3d.visualization.draw_geometries([pcd], window_name=title)
+
+    # ---- show all unknowns together ----
+    if unlabeled_clusters:
+        mask_any_unk = np.isin(clusters, np.array(unlabeled_clusters, dtype=np.int32))
+        colors = np.zeros((pts.shape[0], 3), dtype=np.float64)
+
+        # each unknown cluster gets its own color, but all shown in one view
+        for k, cid in enumerate(unlabeled_clusters):
+            m = (clusters == cid)
+            colors[m] = unknown_colors[k]
+
+        pcd = make_pcd(mask_any_unk, colors)
+        title = f"Unknown clusters together (count={len(unlabeled_clusters)})"
+        print(f"\n[VIS] {title}")
+        o3d.visualization.draw_geometries([pcd], window_name=title)
+    else:
+        print("\n[VIS] No unknown clusters (all clusters assigned to known labels).")
+
 
 if __name__ == "__main__":
     main()
