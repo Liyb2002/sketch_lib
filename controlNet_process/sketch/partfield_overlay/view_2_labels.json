@@ -1,4 +1,17 @@
 {
+  "fender_0": {
+    "label_id": 0,
+    "color_bgr": [
+      55,
+      55,
+      255
+    ],
+    "color_rgb_norm": [
+      1.0,
+      0.21568627450980393,
+      0.21568627450980393
+    ]
+  },
   "handlebar_0": {
     "label_id": 1,
     "color_bgr": [
