@@ -50,7 +50,7 @@ SEM_NPY = os.path.join(OVERLAY_DIR, "merged_label_ids.npy")
 LABEL_COLOR_JSON = os.path.join(OVERLAY_DIR, "label_color_map.json")
 
 THRESH = 0.50  # majority fraction must be > 0.50
-
+VIS = False
 
 def load_points(ply_path: str) -> np.ndarray:
     pcd = o3d.io.read_point_cloud(ply_path)
@@ -308,51 +308,52 @@ def main():
             print(f"{uk}: {label_to_clusters.get(uk, [])}")
 
     # ---- Visualization ----
-    unknown_colors = distinct_colors_rgb01(max(1, len(unknown_keys)))  # used per unknown group key
+    if VIS:
+        unknown_colors = distinct_colors_rgb01(max(1, len(unknown_keys)))  # used per unknown group key
 
-    def make_pcd(mask: np.ndarray, colors: np.ndarray) -> o3d.geometry.PointCloud:
-        cols = np.zeros((pts.shape[0], 3), dtype=np.float64)
-        cols[mask] = colors[mask]
-        pcd = o3d.geometry.PointCloud()
-        pcd.points = o3d.utility.Vector3dVector(pts)
-        pcd.colors = o3d.utility.Vector3dVector(cols)
-        return pcd
+        def make_pcd(mask: np.ndarray, colors: np.ndarray) -> o3d.geometry.PointCloud:
+            cols = np.zeros((pts.shape[0], 3), dtype=np.float64)
+            cols[mask] = colors[mask]
+            pcd = o3d.geometry.PointCloud()
+            pcd.points = o3d.utility.Vector3dVector(pts)
+            pcd.colors = o3d.utility.Vector3dVector(cols)
+            return pcd
 
-    # Show each known label once: all its clusters together
-    for lab_id, lab in enumerate(labels_in_order):
-        cids = label_to_clusters.get(lab, [])
-        if not cids:
-            continue
-        mask = np.isin(clusters, np.array(cids, dtype=np.int32))
-
-        colors = np.zeros((pts.shape[0], 3), dtype=np.float64)
-        colors[mask] = known_rgb01[lab_id]
-
-        pcd = make_pcd(mask, colors)
-        title = f"Label: {lab}  (clusters={cids})"
-        print(f"\n[VIS] {title}")
-        o3d.visualization.draw_geometries([pcd], window_name=title)
-
-    # Show unknowns together: all unknown clusters shown in one view.
-    if unknown_keys:
-        # Color unknown points by unknown group key (unknown_0, unknown_1...) to separate them.
-        colors = np.zeros((pts.shape[0], 3), dtype=np.float64)
-        mask_any = np.zeros((pts.shape[0],), dtype=bool)
-
-        for i, uk in enumerate(unknown_keys):
-            cids = label_to_clusters.get(uk, [])
+        # Show each known label once: all its clusters together
+        for lab_id, lab in enumerate(labels_in_order):
+            cids = label_to_clusters.get(lab, [])
             if not cids:
                 continue
-            m = np.isin(clusters, np.array(cids, dtype=np.int32))
-            colors[m] = unknown_colors[i % unknown_colors.shape[0]]
-            mask_any |= m
+            mask = np.isin(clusters, np.array(cids, dtype=np.int32))
 
-        pcd = make_pcd(mask_any, colors)
-        title = f"Unknown clusters together (groups={len(unknown_keys)}, clusters={unknown_clusters_final})"
-        print(f"\n[VIS] {title}")
-        o3d.visualization.draw_geometries([pcd], window_name=title)
-    else:
-        print("\n[VIS] No unknown clusters left (all clusters assigned to known labels).")
+            colors = np.zeros((pts.shape[0], 3), dtype=np.float64)
+            colors[mask] = known_rgb01[lab_id]
+
+            pcd = make_pcd(mask, colors)
+            title = f"Label: {lab}  (clusters={cids})"
+            print(f"\n[VIS] {title}")
+            o3d.visualization.draw_geometries([pcd], window_name=title)
+
+        # Show unknowns together: all unknown clusters shown in one view.
+        if unknown_keys:
+            # Color unknown points by unknown group key (unknown_0, unknown_1...) to separate them.
+            colors = np.zeros((pts.shape[0], 3), dtype=np.float64)
+            mask_any = np.zeros((pts.shape[0],), dtype=bool)
+
+            for i, uk in enumerate(unknown_keys):
+                cids = label_to_clusters.get(uk, [])
+                if not cids:
+                    continue
+                m = np.isin(clusters, np.array(cids, dtype=np.int32))
+                colors[m] = unknown_colors[i % unknown_colors.shape[0]]
+                mask_any |= m
+
+            pcd = make_pcd(mask_any, colors)
+            title = f"Unknown clusters together (groups={len(unknown_keys)}, clusters={unknown_clusters_final})"
+            print(f"\n[VIS] {title}")
+            o3d.visualization.draw_geometries([pcd], window_name=title)
+        else:
+            print("\n[VIS] No unknown clusters left (all clusters assigned to known labels).")
 
 
 if __name__ == "__main__":
