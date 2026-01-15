@@ -1,0 +1,116 @@
+{
+  "labels_in_order_known": [
+    "fender_0",
+    "handlebar_0",
+    "headlight_0",
+    "seat_0",
+    "storage_0",
+    "wheel_0",
+    "wheel_1"
+  ],
+  "labels_in_order_extended": [
+    "fender_0",
+    "handlebar_0",
+    "headlight_0",
+    "seat_0",
+    "storage_0",
+    "wheel_0",
+    "wheel_1",
+    "unknown_0",
+    "unknown_1"
+  ],
+  "label_name_to_id": {
+    "fender_0": 0,
+    "handlebar_0": 1,
+    "headlight_0": 2,
+    "seat_0": 3,
+    "storage_0": 4,
+    "wheel_0": 5,
+    "wheel_1": 6,
+    "unknown_0": 7,
+    "unknown_1": 8
+  },
+  "label_id_to_name": {
+    "0": "fender_0",
+    "1": "handlebar_0",
+    "2": "headlight_0",
+    "3": "seat_0",
+    "4": "storage_0",
+    "5": "wheel_0",
+    "6": "wheel_1",
+    "7": "unknown_0",
+    "8": "unknown_1"
+  },
+  "cluster_to_label_name": {
+    "1": "fender_0",
+    "2": "wheel_0",
+    "4": "handlebar_0",
+    "5": "storage_0",
+    "6": "storage_0",
+    "7": "fender_0",
+    "8": "storage_0",
+    "9": "fender_0",
+    "10": "handlebar_0",
+    "11": "seat_0",
+    "12": "wheel_1",
+    "14": "storage_0",
+    "15": "fender_0",
+    "16": "storage_0",
+    "17": "wheel_1",
+    "18": "storage_0",
+    "0": "unknown_0",
+    "3": "unknown_1",
+    "13": "headlight_0"
+  },
+  "label_to_clusters": {
+    "fender_0": [
+      1,
+      7,
+      9,
+      15
+    ],
+    "wheel_0": [
+      2
+    ],
+    "handlebar_0": [
+      4,
+      10
+    ],
+    "storage_0": [
+      5,
+      6,
+      8,
+      14,
+      16,
+      18
+    ],
+    "seat_0": [
+      11
+    ],
+    "wheel_1": [
+      12,
+      17
+    ],
+    "unknown_0": [
+      0
+    ],
+    "unknown_1": [
+      3
+    ],
+    "headlight_0": [
+      13
+    ]
+  },
+  "label_point_counts": {
+    "fender_0": 15251,
+    "handlebar_0": 4677,
+    "headlight_0": 3541,
+    "seat_0": 3484,
+    "storage_0": 26705,
+    "wheel_0": 8325,
+    "wheel_1": 7895,
+    "unknown_0": 3063,
+    "unknown_1": 4904
+  },
+  "n_points_total": 77845
+}

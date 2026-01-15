@@ -356,5 +356,102 @@ def main():
             print("\n[VIS] No unknown clusters left (all clusters assigned to known labels).")
 
 
+    # ------------------------------------------------------------------
+    # Save final label assignment (PLY + NPY + JSON)
+    # ------------------------------------------------------------------
+
+    SAVE_DIR = os.path.join(OVERLAY_DIR, "label_assignment_k20")
+    os.makedirs(SAVE_DIR, exist_ok=True)
+
+    # Build final label list (known + unknowns)
+    unknown_keys = sorted([k for k in label_to_clusters.keys() if k.startswith("unknown_")])
+    labels_extended = list(labels_in_order) + unknown_keys
+
+    label_name_to_id = {name: i for i, name in enumerate(labels_extended)}
+    label_id_to_name = {i: name for i, name in enumerate(labels_extended)}
+
+    # Per-cluster -> label id
+    cluster_to_label_id = {
+        int(cid): label_name_to_id[name]
+        for cid, name in cluster_to_assigned.items()
+    }
+
+    # Per-point label id
+    assigned_label_ids = np.empty((clusters.shape[0],), dtype=np.int32)
+    for cid in np.unique(clusters):
+        cid = int(cid)
+        mask = (clusters == cid)
+        assigned_label_ids[mask] = cluster_to_label_id[cid]
+
+    np.save(os.path.join(SAVE_DIR, "assigned_label_ids.npy"), assigned_label_ids)
+
+    # ---------- Semantic JSON ----------
+    label_counts = {}
+    for i, name in enumerate(labels_extended):
+        label_counts[name] = int((assigned_label_ids == i).sum())
+
+    semantic_json = {
+        "labels_in_order_known": labels_in_order,
+        "labels_in_order_extended": labels_extended,
+        "label_name_to_id": label_name_to_id,
+        "label_id_to_name": label_id_to_name,
+        "cluster_to_label_name": {str(k): v for k, v in cluster_to_assigned.items()},
+        "label_to_clusters": {k: v for k, v in label_to_clusters.items()},
+        "label_point_counts": label_counts,
+        "n_points_total": int(len(assigned_label_ids)),
+    }
+
+    with open(os.path.join(SAVE_DIR, "labels_semantic.json"), "w") as f:
+        json.dump(semantic_json, f, indent=2)
+
+    # ---------- Build colors for all labels ----------
+    all_colors = np.zeros((len(labels_extended), 3), dtype=np.float64)
+
+    # known labels
+    for i in range(len(labels_in_order)):
+        all_colors[i] = known_rgb01[i]
+
+    # unknown labels
+    if unknown_keys:
+        unknown_cols = distinct_colors_rgb01(len(unknown_keys))
+        for j, uk in enumerate(unknown_keys):
+            all_colors[label_name_to_id[uk]] = unknown_cols[j]
+
+    # ---------- Save full colored PLY ----------
+    full_colors = all_colors[assigned_label_ids]
+
+    pcd_all = o3d.geometry.PointCloud()
+    pcd_all.points = o3d.utility.Vector3dVector(pts)
+    pcd_all.colors = o3d.utility.Vector3dVector(full_colors)
+
+    full_ply_path = os.path.join(SAVE_DIR, "assignment_colored.ply")
+    o3d.io.write_point_cloud(full_ply_path, pcd_all)
+
+    # ---------- Save per-label PLY ----------
+    for name, lid in label_name_to_id.items():
+        mask = (assigned_label_ids == lid)
+        if not np.any(mask):
+            continue
+
+        pcd_lab = o3d.geometry.PointCloud()
+        pcd_lab.points = o3d.utility.Vector3dVector(pts[mask])
+
+        col = all_colors[lid]
+        pcd_lab.colors = o3d.utility.Vector3dVector(
+            np.tile(col[None, :], (int(mask.sum()), 1))
+        )
+
+        safe_name = name.replace("/", "_")
+        out_path = os.path.join(SAVE_DIR, f"label_{safe_name}.ply")
+        o3d.io.write_point_cloud(out_path, pcd_lab)
+
+    print("\n[SAVE] Label assignment written to:")
+    print(" ", SAVE_DIR)
+    print("  - assigned_label_ids.npy")
+    print("  - labels_semantic.json")
+    print("  - assignment_colored.ply")
+    print("  - label_<name>.ply (per label)")
+
+
 if __name__ == "__main__":
     main()
