@@ -1,6 +1,9 @@
 {
   "params": {
-    "attach_thresh": 0.01
+    "attach_thresh": 0.01,
+    "contain_tol": 1e-06,
+    "contain_strict": true,
+    "contain_strict_margin": 0.0001
   },
   "object_space": {
     "origin": [
@@ -596,5 +599,6 @@
         ]
       }
     }
-  }
+  },
+  "containment": []
 }
