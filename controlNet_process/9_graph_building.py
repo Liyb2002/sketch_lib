@@ -8,17 +8,19 @@ from graph_building.object_space import compute_object_space, save_object_space
 from graph_building.pca_analysis import run as run_pca
 from graph_building.find_symmetry import find_symmetry
 from graph_building.find_attachment import find_attachments
+from graph_building.save_relations import save_initial_constraints
 from graph_building.vis import verify_relations_vis
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 
 SAVE_DIR = os.path.join(ROOT, "sketch", "partfield_overlay", "label_assignment_k20")
 PLY_PATH = os.path.join(SAVE_DIR, "assignment_colored.ply")
-SEM_JSON = os.path.join(SAVE_DIR, "labels_semantic.json")
 IDS_PATH = os.path.join(SAVE_DIR, "assigned_label_ids.npy")
 
 OBJSPACE_JSON = os.path.join(SAVE_DIR, "object_space.json")
-BBOX_GRAPH_JSON = os.path.join(SAVE_DIR, "bbox_graph.json")
+
+# NEW: AEP output folder
+AEP_DIR = os.path.join(ROOT, "sketch", "AEP")
 
 # toggle verification visualization
 VIS_VERIFY = True
@@ -52,35 +54,30 @@ def main():
         ignore_unknown=False,
     )
 
-    graph = {
-        "params": {"attach_thresh": float(ATTACH_THRESH)},
-        "nodes": [
-            {"name": n, "label_id": int(bboxes[n]["label_id"]), "n_points": int(bboxes[n]["n_points"])}
-            for n in sorted(bboxes.keys())
-        ],
-        "symmetry": symmetry,
-        "attachments": attachments,
-        "bboxes_path": os.path.basename(bbox_json_path),
-        "object_space_path": os.path.basename(OBJSPACE_JSON),
-    }
+    print(f"[REL] symmetry pairs: {len(symmetry['pairs'])}, attachments: {len(attachments)}")
 
-    with open(BBOX_GRAPH_JSON, "w") as f:
-        json.dump(graph, f, indent=2)
+    # ---- 4) save to AEP ----
+    out_constraints = save_initial_constraints(
+        aep_dir=AEP_DIR,
+        symmetry=symmetry,
+        attachments=attachments,
+        object_space=obj_space,
+        bboxes_by_name=bboxes,
+        params={"attach_thresh": float(ATTACH_THRESH)},
+    )
+    print("[AEP] saved:", out_constraints)
 
-    print("[GRAPH] saved:", BBOX_GRAPH_JSON)
-    print(f"[GRAPH] symmetry pairs: {len(symmetry['pairs'])}, attachments: {len(attachments)}")
-
-    # ---- 4) verification vis ----
-    if VIS_VERIFY:
-        verify_relations_vis(
-            pts=pts,
-            assigned_ids=assigned_ids,
-            bboxes_by_name=bboxes,
-            symmetry=symmetry,
-            attachments=attachments,
-            vis_anchor_points=True,
-            anchor_radius=0.002,
-        )
+    # ---- 5) verification vis ----
+    # if VIS_VERIFY:
+    #     verify_relations_vis(
+    #         pts=pts,
+    #         assigned_ids=assigned_ids,
+    #         bboxes_by_name=bboxes,
+    #         symmetry=symmetry,
+    #         attachments=attachments,
+    #         vis_anchor_points=True,
+    #         anchor_radius=0.002,
+    #     )
 
 
 if __name__ == "__main__":
