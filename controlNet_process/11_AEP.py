@@ -12,7 +12,7 @@ import os
 import json
 
 from AEP.sym_and_containment import apply_symmetry_and_containment
-from AEP.attachment import handle_attachments
+from AEP.attachment import apply_attachments
 from AEP.save_json import save_aep_changes
 from AEP.vis import vis_from_saved_changes
 
@@ -93,7 +93,8 @@ def main():
     # ------------------------------------------------------------
     # Attachments: still stub-print only (per your instruction)
     # ------------------------------------------------------------
-    handle_attachments(target, attachments)
+    attach_res = apply_attachments(constraints=constraints, edit=edit, verbose=True)
+
 
     # ------------------------------------------------------------
     # SAVE: target edit + neighbor changes
@@ -102,8 +103,10 @@ def main():
         aep_dir=AEP_DATA_DIR,
         target_edit=edit,
         symcon_res=symcon_res,
+        attach_res=attach_res,     # NEW
         out_filename=os.path.basename(AEP_CHANGES_PATH),
-    )
+        )
+
 
     # ------------------------------------------------------------
     # VIS: neighbors in blue, changed neighbors in red

@@ -7,15 +7,20 @@
 # Output file:
 #   sketch/AEP/aep_changes.json
 #
-# This file intentionally stores:
+# Contents:
 # - target_edit (exact, from target_face_edit_change.json)
-# - neighbor_changes (only the neighbors that got changed by sym/contain for now)
+# - neighbor_changes: merged from
+#     - symmetry propagation
+#     - containment propagation
+#     - attachment propagation
 #
-# NOTE: we store ONLY the "after_obb" for changed nodes (and optionally their before_obb for debugging).
+# Priority (if same neighbor changed by multiple):
+#   symmetry > containment > attachment
+# (you can change the order below if you want)
 
 import os
 import json
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 
 
 def safe_write_json(path: str, data: Dict[str, Any]) -> None:
@@ -26,10 +31,40 @@ def safe_write_json(path: str, data: Dict[str, Any]) -> None:
     os.replace(tmp, path)
 
 
+def _compact_change(reason: str, r: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Normalize different propagation outputs into a compact schema for vis.
+    """
+    out = {
+        "reason": reason,
+        "after_obb": r.get("after_obb"),
+    }
+
+    # symmetry/containment fields
+    if reason in ["symmetry", "containment"]:
+        out.update({
+            "mapped_face": r.get("mapped_face"),
+            "signed_ratio": r.get("signed_ratio"),
+            "delta_dst_applied": r.get("delta_dst_applied"),
+        })
+
+    # attachment fields
+    if reason == "attachment":
+        out.update({
+            "case": r.get("case"),
+            "mapped_axis": r.get("mapped_axis"),
+            # optional debug fields if present
+            "debug": r.get("debug", None),
+        })
+
+    return out
+
+
 def save_aep_changes(
     aep_dir: str,
     target_edit: Dict[str, Any],
     symcon_res: Dict[str, Any],
+    attach_res: Optional[Dict[str, Any]] = None,
     out_filename: str = "aep_changes.json",
 ) -> str:
     """
@@ -37,24 +72,24 @@ def save_aep_changes(
       aep_dir: sketch/AEP
       target_edit: loaded json from target_face_edit_change.json
       symcon_res: output from apply_symmetry_and_containment(...)
-                 format: {"symmetry": {name: {...}}, "containment": {name: {...}}}
+                  {"symmetry": {name: {...}}, "containment": {name: {...}}}
+      attach_res: output from apply_attachments(...)
+                  {name: {...}, ...}
+      out_filename: default "aep_changes.json"
 
     Saves:
-      aep_changes.json with:
-        {
-          "target": "<label>",
-          "target_edit": {... full content of target_face_edit_change.json ...},
-          "neighbor_changes": {
-             "<neighbor>": {
-                "reason": "symmetry" | "containment",
-                "mapped_face": "...",
-                "signed_ratio": ...,
-                "delta_dst_applied": ...,
-                "after_obb": {...}
-             },
-             ...
-          }
+      {
+        "target": "<label>",
+        "target_edit": {...},
+        "neighbor_changes": {
+          "<neighbor>": {
+            "reason": "symmetry"|"containment"|"attachment",
+            "after_obb": {...},
+            ...
+          },
+          ...
         }
+      }
     """
     out_path = os.path.join(aep_dir, out_filename)
 
@@ -64,31 +99,27 @@ def save_aep_changes(
 
     neighbor_changes: Dict[str, Any] = {}
 
+    # Priority 1: symmetry
     for name, r in (symcon_res.get("symmetry", {}) or {}).items():
-        neighbor_changes[name] = {
-            "reason": "symmetry",
-            "mapped_face": r.get("mapped_face"),
-            "signed_ratio": r.get("signed_ratio"),
-            "delta_dst_applied": r.get("delta_dst_applied"),
-            "after_obb": r.get("after_obb"),
-        }
+        neighbor_changes[name] = _compact_change("symmetry", r)
 
+    # Priority 2: containment (skip if symmetry already changed it)
     for name, r in (symcon_res.get("containment", {}) or {}).items():
-        # if already set by symmetry, keep symmetry (it has higher priority for now)
         if name in neighbor_changes:
             continue
-        neighbor_changes[name] = {
-            "reason": "containment",
-            "mapped_face": r.get("mapped_face"),
-            "signed_ratio": r.get("signed_ratio"),
-            "delta_dst_applied": r.get("delta_dst_applied"),
-            "after_obb": r.get("after_obb"),
-        }
+        neighbor_changes[name] = _compact_change("containment", r)
+
+    # Priority 3: attachment (skip if already changed by sym/contain)
+    if attach_res is not None:
+        for name, r in (attach_res or {}).items():
+            if name in neighbor_changes:
+                continue
+            neighbor_changes[name] = _compact_change("attachment", r)
 
     payload = {
         "target": target,
         "target_edit": target_edit,          # full, exact
-        "neighbor_changes": neighbor_changes # only changed neighbors (red boxes)
+        "neighbor_changes": neighbor_changes # changed neighbors (red boxes)
     }
 
     safe_write_json(out_path, payload)
