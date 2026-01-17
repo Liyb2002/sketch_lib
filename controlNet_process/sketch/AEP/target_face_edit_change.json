@@ -1,21 +1,19 @@
 {
-  "source_constraints": "/home/yli581/Desktop/sketch_lib/controlNet_process/sketch/AEP/initial_constraints.json",
   "target": "wheel_1",
   "change": {
     "type": "move_single_face",
     "delta_ratio_min": 0.3,
     "delta_ratio_max": 0.5,
-    "ratio_sampled": 0.3080968756361555,
-    "edit_sign_setting": null,
-    "edit_sign_sampled": -1,
+    "ratio_sampled": 0.4515908805880605,
+    "expand_or_shrink": "shrink",
     "face": "-u1",
     "axis": 1,
     "axis_name": "u1",
     "sign": -1,
-    "delta_requested": -0.019318419446640294,
-    "delta_applied": -0.019318419446640294,
+    "delta_requested": -0.028315840696094455,
+    "delta_applied": -0.028315840696094455,
     "old_extent": 0.0627024191879642,
-    "new_extent": 0.053043209464644046,
+    "new_extent": 0.04854449883991697,
     "min_extent": 0.0001,
     "before_obb": {
       "center": [
@@ -48,9 +46,9 @@
     },
     "after_obb": {
       "center": [
-        -0.0068981483396582735,
-        0.07189478992941156,
-        1.171968548986166
+        -0.006778749494224666,
+        0.0763172939282364,
+        1.1727843918516245
       ],
       "axes": [
         [
@@ -71,7 +69,7 @@
       ],
       "extents": [
         0.08994249251806018,
-        0.053043209464644046,
+        0.04854449883991697,
         0.05587326350489846
       ]
     }
