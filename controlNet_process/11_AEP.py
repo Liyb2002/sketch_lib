@@ -15,6 +15,7 @@ from AEP.sym_and_containment import apply_symmetry_and_containment
 from AEP.attachment import apply_attachments
 from AEP.save_json import save_aep_changes
 from AEP.vis import vis_from_saved_changes
+from AEP.vis_seperately import vis_neighbors_separately
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 
@@ -28,6 +29,7 @@ OVERLAY_PLY = os.path.join(
 )
 
 DO_VIS = True
+VIS_SEPARATE = True
 
 
 def load_json(path: str):
@@ -112,16 +114,27 @@ def main():
     # VIS: neighbors in blue, changed neighbors in red
     #     (reads from saved json, not from symcon_res)
     # ------------------------------------------------------------
-    if DO_VIS:
-        vis_from_saved_changes(
+    # if DO_VIS:
+    #     vis_from_saved_changes(
+    #         overlay_ply_path=OVERLAY_PLY,
+    #         nodes=nodes,
+    #         neighbor_names=all_neighbors,
+    #         aep_changes_json=AEP_CHANGES_PATH,
+    #         target=target,
+    #         window_name=f"AEP: target+neighbors (blue) + changed (red) | target={target}",
+    #         show_overlay=True,
+    #     )
+
+    if VIS_SEPARATE:
+        vis_neighbors_separately(
             overlay_ply_path=OVERLAY_PLY,
-            nodes=nodes,
-            neighbor_names=all_neighbors,
+            constraints_json=CONSTRAINTS_PATH,
             aep_changes_json=AEP_CHANGES_PATH,
-            target=target,
-            window_name=f"AEP: target+neighbors (blue) + changed (red) | target={target}",
+            neighbor_names=all_neighbors,   # reuse your computed list
             show_overlay=True,
+            anchor_radius=0.003,
         )
+
 
 if __name__ == "__main__":
     main()

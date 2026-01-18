@@ -13,6 +13,7 @@ from graph_building.save_relations import save_initial_constraints
 
 from graph_building.attachment_face import annotate_attachment_faces, print_attachment_faces
 from graph_building.vis import verify_relations_vis
+from graph_building.vis_bbx import vis_bboxes_by_label
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 
@@ -47,6 +48,23 @@ def main():
     bbox_json_path = run_pca(SAVE_DIR, obj_space)
     with open(bbox_json_path, "r") as f:
         bboxes = json.load(f)
+
+
+    # vis the bbx
+    if VIS_VERIFY:
+        pcd0 = o3d.io.read_point_cloud(PLY_PATH)
+        cols0 = np.asarray(pcd0.colors, dtype=np.float64) if pcd0.has_colors() else None
+
+        vis_bboxes_by_label(
+            pts=pts,
+            assigned_ids=assigned_ids,
+            bboxes_by_name=bboxes,
+            colors=cols0,
+            window_prefix="BBX_VERIFY",
+            ignore_unknown=False,
+            show_all_bboxes=True,
+        )
+
 
     # 3) relations
     symmetry = find_symmetry(sorted(bboxes.keys()), ignore_unknown=True)
@@ -114,6 +132,7 @@ def main():
 
     # 5) verification vis
     if VIS_VERIFY:
+    
         verify_relations_vis(
             pts=pts,
             assigned_ids=assigned_ids,
