@@ -51,19 +51,19 @@ def main():
 
 
     # vis the bbx
-    if VIS_VERIFY:
-        pcd0 = o3d.io.read_point_cloud(PLY_PATH)
-        cols0 = np.asarray(pcd0.colors, dtype=np.float64) if pcd0.has_colors() else None
+    # if VIS_VERIFY:
+    #     pcd0 = o3d.io.read_point_cloud(PLY_PATH)
+    #     cols0 = np.asarray(pcd0.colors, dtype=np.float64) if pcd0.has_colors() else None
 
-        vis_bboxes_by_label(
-            pts=pts,
-            assigned_ids=assigned_ids,
-            bboxes_by_name=bboxes,
-            colors=cols0,
-            window_prefix="BBX_VERIFY",
-            ignore_unknown=False,
-            show_all_bboxes=True,
-        )
+    #     vis_bboxes_by_label(
+    #         pts=pts,
+    #         assigned_ids=assigned_ids,
+    #         bboxes_by_name=bboxes,
+    #         colors=cols0,
+    #         window_prefix="BBX_VERIFY",
+    #         ignore_unknown=False,
+    #         show_all_bboxes=True,
+    #     )
 
 
     # 3) relations

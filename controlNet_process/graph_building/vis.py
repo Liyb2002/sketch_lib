@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 # graph_building/vis.py
 
-import re
+import os
+import json
 import numpy as np
 import open3d as o3d
 from typing import Dict, Any, List, Tuple, Optional
@@ -15,8 +16,8 @@ def _get_obb_pca(bbox_entry: Dict[str, Any]) -> Dict[str, Any]:
     if "obb_pca" not in bbox_entry:
         raise KeyError("bbox entry missing 'obb_pca'")
     obb = bbox_entry["obb_pca"]
-    if "center" not in obb or "extents" not in obb:
-        raise KeyError("obb_pca missing 'center' or 'extents'")
+    if "center" not in obb or "extents" not in obb or "axes" not in obb:
+        raise KeyError("obb_pca missing 'center'/'extents'/'axes'")
     return obb
 
 
@@ -30,304 +31,436 @@ def _object_to_world(p_local: np.ndarray, origin: np.ndarray, axes: np.ndarray) 
     return origin + axes @ p_local
 
 
-def _aabb_minmax_local_from_obb(obb_pca: Dict[str, Any], origin: np.ndarray, axes: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
-    c_world = np.asarray(obb_pca["center"], dtype=np.float64)
-    e = np.asarray(obb_pca["extents"], dtype=np.float64)
-    c_local = _world_to_object(c_world, origin, axes)
-    mn = c_local - e
-    mx = c_local + e
-    return mn, mx
+def _obb_from_entry(entry: Dict[str, Any]) -> o3d.geometry.OrientedBoundingBox:
+    obb = _get_obb_pca(entry)
+    center = np.array(obb["center"], dtype=np.float64)
+    axes = np.array(obb["axes"], dtype=np.float64)
+    extents = np.array(obb["extents"], dtype=np.float64) * 2.0  # open3d expects full lengths
+    if axes.shape != (3, 3):
+        raise ValueError("obb_pca['axes'] must be 3x3")
+    return o3d.geometry.OrientedBoundingBox(center=center, R=axes, extent=extents)
 
 
-def _bbox_lineset_world(
-    mn_local: np.ndarray,
-    mx_local: np.ndarray,
-    origin: np.ndarray,
-    axes: np.ndarray,
-    color_rgb: Tuple[float, float, float],
-) -> o3d.geometry.LineSet:
-    x0, y0, z0 = mn_local.tolist()
-    x1, y1, z1 = mx_local.tolist()
-
-    corners_local = np.array([
-        [x0, y0, z0],
-        [x1, y0, z0],
-        [x1, y1, z0],
-        [x0, y1, z0],
-        [x0, y0, z1],
-        [x1, y0, z1],
-        [x1, y1, z1],
-        [x0, y1, z1],
-    ], dtype=np.float64)
-
-    corners_world = np.array([_object_to_world(p, origin, axes) for p in corners_local], dtype=np.float64)
-
-    lines = np.array([
-        [0, 1], [1, 2], [2, 3], [3, 0],  # bottom
-        [4, 5], [5, 6], [6, 7], [7, 4],  # top
-        [0, 4], [1, 5], [2, 6], [3, 7],  # verticals
-    ], dtype=np.int32)
-
-    ls = o3d.geometry.LineSet()
-    ls.points = o3d.utility.Vector3dVector(corners_world)
-    ls.lines = o3d.utility.Vector2iVector(lines)
-    colors = np.tile(np.array(color_rgb, dtype=np.float64)[None, :], (lines.shape[0], 1))
-    ls.colors = o3d.utility.Vector3dVector(colors)
+def _lineset_from_obb(obb: o3d.geometry.OrientedBoundingBox, color=(0.0, 0.0, 0.0)) -> o3d.geometry.LineSet:
+    ls = o3d.geometry.LineSet.create_from_oriented_bounding_box(obb)
+    ls.paint_uniform_color(color)
     return ls
 
 
-# ----------------------------
-# Helpers: attachment face mesh (FILLED)
-# ----------------------------
-
-_FACE_RE = re.compile(r"^([+-])u([012])$")
-
-def _face_mesh_from_local_aabb(
-    mn_local: np.ndarray,
-    mx_local: np.ndarray,
-    face_tag: str,
-    origin: np.ndarray,
-    axes: np.ndarray,
-    color_rgb: Tuple[float, float, float],
-) -> Optional[o3d.geometry.TriangleMesh]:
-    """
-    face_tag must be one of: +u0 -u0 +u1 -u1 +u2 -u2
-    Creates a filled rectangle mesh for that face in WORLD space.
-    """
-    m = _FACE_RE.match(str(face_tag).strip())
-    if m is None:
-        return None
-
-    sign = m.group(1)        # + or -
-    ax = int(m.group(2))     # 0/1/2 in object frame
-    fixed = mx_local[ax] if sign == "+" else mn_local[ax]
-
-    if ax == 0:
-        corners_local = np.array([
-            [fixed, mn_local[1], mn_local[2]],
-            [fixed, mx_local[1], mn_local[2]],
-            [fixed, mx_local[1], mx_local[2]],
-            [fixed, mn_local[1], mx_local[2]],
-        ], dtype=np.float64)
-    elif ax == 1:
-        corners_local = np.array([
-            [mn_local[0], fixed, mn_local[2]],
-            [mx_local[0], fixed, mn_local[2]],
-            [mx_local[0], fixed, mx_local[2]],
-            [mn_local[0], fixed, mx_local[2]],
-        ], dtype=np.float64)
-    else:
-        corners_local = np.array([
-            [mn_local[0], mn_local[1], fixed],
-            [mx_local[0], mn_local[1], fixed],
-            [mx_local[0], mx_local[1], fixed],
-            [mn_local[0], mx_local[1], fixed],
-        ], dtype=np.float64)
-
-    corners_world = np.array([_object_to_world(p, origin, axes) for p in corners_local], dtype=np.float64)
-
-    mesh = o3d.geometry.TriangleMesh()
-    mesh.vertices = o3d.utility.Vector3dVector(corners_world)
-    mesh.triangles = o3d.utility.Vector3iVector(np.array([[0, 1, 2], [0, 2, 3]], dtype=np.int32))
-    mesh.compute_vertex_normals()
-    mesh.paint_uniform_color(np.array(color_rgb, dtype=np.float64))
-    return mesh
-
-
-def _make_sphere(center_world: np.ndarray, r: float, color_rgb: Tuple[float, float, float]) -> o3d.geometry.TriangleMesh:
-    s = o3d.geometry.TriangleMesh.create_sphere(radius=float(r))
-    s.translate(center_world.astype(np.float64))
+def _sphere(center: np.ndarray, radius: float, color=(1.0, 0.0, 0.0)) -> o3d.geometry.TriangleMesh:
+    s = o3d.geometry.TriangleMesh.create_sphere(radius=float(radius))
+    s.translate(center.astype(np.float64))
     s.compute_vertex_normals()
-    s.paint_uniform_color(np.array(color_rgb, dtype=np.float64))
+    s.paint_uniform_color(color)
     return s
 
 
-# ----------------------------
-# Robust relation parsing
-# ----------------------------
+def _colorize_assigned_ids(assigned_ids: np.ndarray, highlight_mask: np.ndarray, neighbor_mask: np.ndarray) -> np.ndarray:
+    """
+    Return (N,3) colors:
+      - background: light gray
+      - neighbors: orange
+      - highlight (label): blue
+      - unknowns: darker gray
+    """
+    N = assigned_ids.shape[0]
+    colors = np.zeros((N, 3), dtype=np.float64)
+    colors[:] = np.array([0.75, 0.75, 0.75], dtype=np.float64)
 
-def _sym_pairs_to_edges(symmetry: Dict[str, Any]) -> List[Tuple[str, str]]:
-    pairs = symmetry.get("pairs", [])
-    out: List[Tuple[str, str]] = []
-    for item in pairs:
-        if isinstance(item, (list, tuple)) and len(item) >= 2:
-            out.append((str(item[0]), str(item[1])))
-        elif isinstance(item, dict) and "a" in item and "b" in item:
-            out.append((str(item["a"]), str(item["b"])))
+    # neighbor
+    colors[neighbor_mask] = np.array([1.0, 0.6, 0.1], dtype=np.float64)
+    # highlight
+    colors[highlight_mask] = np.array([0.1, 0.3, 1.0], dtype=np.float64)
+
+    # (optional) unknown id = -1 -> dark
+    colors[assigned_ids < 0] = np.array([0.4, 0.4, 0.4], dtype=np.float64)
+    return colors
+
+
+def _get_name_to_id(bboxes_by_name: Dict[str, Any]) -> Dict[str, int]:
+    out = {}
+    for name, entry in bboxes_by_name.items():
+        if isinstance(entry, dict) and "label_id" in entry:
+            out[name] = int(entry["label_id"])
     return out
 
 
-def _build_neighbor_map(
-    names: List[str],
-    symmetry: Dict[str, Any],
-    attachments: List[Dict[str, Any]],
-    containment: Optional[List[Dict[str, Any]]] = None,
-) -> Dict[str, Dict[str, List[Any]]]:
-    neigh = {n: {"sym": [], "att": [], "cont": []} for n in names}
-
-    for a, b in _sym_pairs_to_edges(symmetry):
-        if a in neigh and b in neigh:
-            neigh[a]["sym"].append(b)
-            neigh[b]["sym"].append(a)
-
+def _attachments_for_label(attachments: List[Dict[str, Any]], name: str) -> List[Dict[str, Any]]:
+    out = []
     for e in attachments:
-        a = str(e.get("a", ""))
-        b = str(e.get("b", ""))
-        if a in neigh and b in neigh:
-            neigh[a]["att"].append(e)
-            neigh[b]["att"].append(e)
+        if e.get("a") == name or e.get("b") == name:
+            out.append(e)
+    return out
 
-    if containment is not None:
-        for e in containment:
-            a = str(e.get("a", ""))
-            b = str(e.get("b", ""))
-            if a in neigh and b in neigh:
-                neigh[a]["cont"].append(e)
-                neigh[b]["cont"].append(e)
 
-    return neigh
+def _neighbor_names(attachments: List[Dict[str, Any]], name: str) -> List[str]:
+    neigh = set()
+    for e in attachments:
+        a = e.get("a")
+        b = e.get("b")
+        if a == name and isinstance(b, str):
+            neigh.add(b)
+        elif b == name and isinstance(a, str):
+            neigh.add(a)
+    return sorted(list(neigh))
 
 
 # ----------------------------
-# Main visualization: TWO windows per label
+# Relation type inference (robust to older/newer formats)
+# ----------------------------
+
+def _infer_attachment_kind(e: Dict[str, Any]) -> str:
+    """
+    Returns one of: "volume", "face", "point"
+    Priority:
+      1) explicit keys if present
+      2) volume metrics
+      3) face keys
+      4) fallback -> point
+    """
+    for k in ["kind", "attachment_kind", "relation_kind", "attachment_type", "relation_type"]:
+        v = e.get(k, None)
+        if isinstance(v, str):
+            vv = v.lower()
+            if "vol" in vv:
+                return "volume"
+            if "face" in vv:
+                return "face"
+            if "point" in vv or "anchor" in vv:
+                return "point"
+
+    # heuristics
+    if any(x in e for x in ["overlap_volume", "vol_overlap", "overlap_box_local_min", "overlap_box_local_max"]):
+        return "volume"
+    if ("a_face" in e) and ("b_face" in e):
+        return "face"
+    return "point"
+
+
+# ----------------------------
+# Volume overlap visualization (approx)
+# ----------------------------
+
+def _obb_corners_world(obb: o3d.geometry.OrientedBoundingBox) -> np.ndarray:
+    # open3d returns Vector3dVector
+    return np.asarray(obb.get_box_points(), dtype=np.float64)
+
+
+def _aabb_minmax_in_object_from_obb(obb: o3d.geometry.OrientedBoundingBox, origin: np.ndarray, obj_axes: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+    corners_w = _obb_corners_world(obb)  # (8,3)
+    corners_l = _world_to_object(corners_w, origin, obj_axes)  # (8,3)
+    mn = corners_l.min(axis=0)
+    mx = corners_l.max(axis=0)
+    return mn, mx
+
+
+def _intersection_aabb(mn1: np.ndarray, mx1: np.ndarray, mn2: np.ndarray, mx2: np.ndarray) -> Tuple[Optional[np.ndarray], Optional[np.ndarray], float]:
+    mn = np.maximum(mn1, mn2)
+    mx = np.minimum(mx1, mx2)
+    d = mx - mn
+    if np.any(d <= 0.0):
+        return None, None, 0.0
+    vol = float(d[0] * d[1] * d[2])
+    return mn, mx, vol
+
+
+def _aabb_mesh_in_object_space(mn: np.ndarray, mx: np.ndarray, origin: np.ndarray, obj_axes: np.ndarray, color=(1.0, 0.0, 0.0)) -> o3d.geometry.TriangleMesh:
+    center_l = (mn + mx) / 2.0
+    extent = (mx - mn)
+    center_w = _object_to_world(center_l, origin, obj_axes)
+    obb = o3d.geometry.OrientedBoundingBox(center=center_w, R=obj_axes, extent=extent)
+    mesh = o3d.geometry.TriangleMesh.create_from_oriented_bounding_box(obb)
+    mesh.compute_vertex_normals()
+    mesh.paint_uniform_color(color)
+    return mesh
+
+
+# ----------------------------
+# Face visualization (object-space faces +u0/-u0 style)
+# ----------------------------
+
+def _face_id_to_axis_sign(face_id: str) -> Tuple[int, float]:
+    # "+u0" -> (0, +1), "-u2" -> (2, -1)
+    if not isinstance(face_id, str) or len(face_id) < 3:
+        return 0, +1.0
+    sign = +1.0 if face_id[0] == "+" else -1.0
+    # expect "...u{k}"
+    k = int(face_id[-1])
+    return k, sign
+
+
+def _quad_mesh_for_face_in_object_aabb(
+    mn_l: np.ndarray,
+    mx_l: np.ndarray,
+    face_id: str,
+    origin: np.ndarray,
+    obj_axes: np.ndarray,
+    thickness: float = 1e-4,
+    color=(0.0, 0.2, 1.0),
+) -> o3d.geometry.TriangleMesh:
+    """
+    Build a thin rectangle (as a thin box) at the requested face of an object-space AABB,
+    aligned to object axes (obj_axes). This matches your face-attachment premise: AABB in object frame.
+    """
+    k, s = _face_id_to_axis_sign(face_id)
+
+    # face coordinate in local
+    if s > 0:
+        xk = mx_l[k]
+    else:
+        xk = mn_l[k]
+
+    # extents in the other two axes
+    axes_other = [ax for ax in [0, 1, 2] if ax != k]
+    a0, a1 = axes_other[0], axes_other[1]
+
+    # rectangle spans [mn,mx] on a0,a1, and a thin thickness on k
+    mn2 = mn_l.copy()
+    mx2 = mx_l.copy()
+    # collapse to a thin slab around xk
+    mn2[k] = xk - thickness * 0.5
+    mx2[k] = xk + thickness * 0.5
+
+    return _aabb_mesh_in_object_space(mn2, mx2, origin, obj_axes, color=color)
+
+
+# ----------------------------
+# Main visualization entry
 # ----------------------------
 
 def verify_relations_vis(
-    *,
     pts: np.ndarray,
     assigned_ids: np.ndarray,
     bboxes_by_name: Dict[str, Any],
-    symmetry: Dict[str, Any],
+    symmetry: Any,
     attachments: List[Dict[str, Any]],
     object_space: Dict[str, Any],
-    containment: Optional[List[Dict[str, Any]]] = None,
+    containment: Any,
     vis_anchor_points: bool = True,
     anchor_radius: float = 0.002,
     ignore_unknown: bool = False,
-):
+) -> None:
     """
-    For each label:
-      Window 1 (context):
-        - point cloud overlay (gray)
-        - focus bbox green
-        - neighbor bboxes blue
-        - NO attachment faces
+    Visualize per-label relations.
 
-      Window 2 (faces-only):
-        - NO point cloud
-        - focus bbox green
-        - neighbor bboxes blue
-        - attachment faces as FILLED BLUE rectangles
-        - optional anchor points red
+    Behavior:
+      - For each label: first view = (label + neighbors) OVERLAY with the full shape + bboxes (kept as "good")
+      - Then 3 non-overlay views (relation-type specific):
+          1) volumetric attachments: show overlap volume (intersection AABB in object frame, approx)
+          2) face attachments: color the two faces (+u/-u) on each part (only meaningful for object-space AABB)
+          3) anchor (point) attachments: show anchor point as a BIG sphere (10x radius)
     """
-    origin = np.asarray(object_space["origin"], dtype=np.float64)
-    axes = np.asarray(object_space["axes"], dtype=np.float64)  # 3x3 columns
-    if axes.shape != (3, 3):
-        raise ValueError("object_space['axes'] must be 3x3")
+    pts = np.asarray(pts, dtype=np.float64)
+    assigned_ids = np.asarray(assigned_ids).reshape(-1).astype(np.int32)
+    if pts.shape[0] != assigned_ids.shape[0]:
+        raise ValueError(f"Point count mismatch: pts={pts.shape[0]} ids={assigned_ids.shape[0]}")
 
-    names = sorted(bboxes_by_name.keys())
-    neigh = _build_neighbor_map(names, symmetry, attachments, containment)
+    origin = np.array(object_space["origin"], dtype=np.float64)
+    obj_axes = np.array(object_space["axes"], dtype=np.float64)
+    if obj_axes.shape != (3, 3):
+        raise ValueError("object_space['axes'] must be 3x3 (columns are u0,u1,u2)")
 
-    # base point cloud (gray)
-    base_pcd = o3d.geometry.PointCloud()
-    base_pcd.points = o3d.utility.Vector3dVector(np.asarray(pts, dtype=np.float64))
-    base_pcd.paint_uniform_color([0.65, 0.65, 0.65])
+    name_to_id = _get_name_to_id(bboxes_by_name)
 
-    for focus in names:
-        if ignore_unknown and focus.startswith("unknown_"):
+    # prebuild per-name OBB + lineset
+    name_to_obb: Dict[str, o3d.geometry.OrientedBoundingBox] = {}
+    name_to_ls: Dict[str, o3d.geometry.LineSet] = {}
+    for name, entry in bboxes_by_name.items():
+        try:
+            obb = _obb_from_entry(entry)
+            name_to_obb[name] = obb
+            name_to_ls[name] = _lineset_from_obb(obb, color=(0.0, 0.0, 0.0))
+        except Exception:
             continue
 
-        # collect neighbor names
-        neighbor_names = set(neigh[focus]["sym"])
+    all_names = sorted(list(name_to_id.keys()))
+    if ignore_unknown:
+        all_names = [n for n in all_names if "unknown" not in n.lower()]
 
-        for e in neigh[focus]["att"]:
-            a = str(e.get("a", ""))
-            b = str(e.get("b", ""))
-            other = b if a == focus else a
-            if other:
-                neighbor_names.add(other)
+    # Base point cloud (for overlay view)
+    pcd_all = o3d.geometry.PointCloud(o3d.utility.Vector3dVector(pts))
+    pcd_all.paint_uniform_color((0.80, 0.80, 0.80))
 
-        for e in neigh[focus]["cont"]:
-            a = str(e.get("a", ""))
-            b = str(e.get("b", ""))
-            other = b if a == focus else a
-            if other:
-                neighbor_names.add(other)
+    for name in all_names:
+        if name not in name_to_id:
+            continue
 
-        # focus bbox
-        obb_focus = _get_obb_pca(bboxes_by_name[focus])
-        mnF, mxF = _aabb_minmax_local_from_obb(obb_focus, origin, axes)
-        focus_bbox = _bbox_lineset_world(mnF, mxF, origin, axes, color_rgb=(0.0, 1.0, 0.0))
+        lid = name_to_id[name]
+        highlight_mask = (assigned_ids == lid)
 
-        # neighbor bboxes
-        neighbor_bboxes: List[o3d.geometry.Geometry] = []
-        for nb in sorted(neighbor_names):
-            if nb not in bboxes_by_name:
-                continue
-            if ignore_unknown and nb.startswith("unknown_"):
-                continue
-            obb_nb = _get_obb_pca(bboxes_by_name[nb])
-            mnN, mxN = _aabb_minmax_local_from_obb(obb_nb, origin, axes)
-            neighbor_bboxes.append(_bbox_lineset_world(mnN, mxN, origin, axes, color_rgb=(0.1, 0.4, 1.0)))
+        # neighbors from attachment edges
+        neigh_names = _neighbor_names(attachments, name)
+        neigh_ids = [name_to_id[n] for n in neigh_names if n in name_to_id]
+        neighbor_mask = np.zeros_like(highlight_mask)
+        if len(neigh_ids) > 0:
+            for nid in neigh_ids:
+                neighbor_mask |= (assigned_ids == nid)
 
-        # -----------------------------------------
-        # Window 1: context (overlay + bboxes)
-        # -----------------------------------------
-        print("\n" + "=" * 80)
-        print("[VIS] focus:", focus)
-        print("[VIS] neighbors:", sorted(neighbor_names))
-        ctx_geoms: List[o3d.geometry.Geometry] = [base_pcd, focus_bbox] + neighbor_bboxes
-        o3d.visualization.draw_geometries(
-            ctx_geoms,
-            window_name=f"[CTX] {focus}: overlay+bbx (NO faces)",
-        )
+        # ------------------------------------------
+        # View 1 (overlay): label + neighbors + shape + bboxes
+        # ------------------------------------------
+        colors = _colorize_assigned_ids(assigned_ids, highlight_mask, neighbor_mask)
+        pcd_sel = o3d.geometry.PointCloud(o3d.utility.Vector3dVector(pts))
+        pcd_sel.colors = o3d.utility.Vector3dVector(colors)
 
-        # -----------------------------------------
-        # Window 2: faces-only (no overlay)
-        # -----------------------------------------
-        face_geoms: List[o3d.geometry.Geometry] = [focus_bbox] + neighbor_bboxes
-
-        if neigh[focus]["att"]:
-            print("[VIS] attachments involving focus (faces):")
-        else:
-            print("[VIS] no attachment edges for this focus.")
-
-        for e in neigh[focus]["att"]:
-            a = str(e.get("a", ""))
-            b = str(e.get("b", ""))
-            other = b if a == focus else a
-
-            a_face = e.get("a_face", None)
-            b_face = e.get("b_face", None)
-            axis = e.get("axis", None)
-            gap = e.get("gap", None)
-
-            print(f"  - {a} <-> {b} | other={other} | axis={axis} gap={gap} | a_face={a_face} b_face={b_face}")
-
-            if vis_anchor_points and "anchor_world" in e:
-                aw = np.asarray(e["anchor_world"], dtype=np.float64)
-                face_geoms.append(_make_sphere(aw, anchor_radius, color_rgb=(1.0, 0.2, 0.2)))
-
-            # draw BOTH faces (on A and B) as filled BLUE rectangles
-            if a in bboxes_by_name and a_face is not None:
-                obbA = _get_obb_pca(bboxes_by_name[a])
-                mnA, mxA = _aabb_minmax_local_from_obb(obbA, origin, axes)
-                meshA = _face_mesh_from_local_aabb(mnA, mxA, str(a_face), origin, axes, color_rgb=(0.0, 0.0, 1.0))
-                if meshA is not None:
-                    face_geoms.append(meshA)
-                else:
-                    print(f"    [WARN] cannot parse face tag for A: {a_face} (expected +u0/-u0/+u1/-u1/+u2/-u2)")
-
-            if b in bboxes_by_name and b_face is not None:
-                obbB = _get_obb_pca(bboxes_by_name[b])
-                mnB, mxB = _aabb_minmax_local_from_obb(obbB, origin, axes)
-                meshB = _face_mesh_from_local_aabb(mnB, mxB, str(b_face), origin, axes, color_rgb=(0.0, 0.0, 1.0))
-                if meshB is not None:
-                    face_geoms.append(meshB)
-                else:
-                    print(f"    [WARN] cannot parse face tag for B: {b_face} (expected +u0/-u0/+u1/-u1/+u2/-u2)")
+        geoms1: List[o3d.geometry.Geometry] = [pcd_all, pcd_sel]
+        # bbox of self + neighbors
+        if name in name_to_ls:
+            ls = name_to_ls[name]
+            ls.paint_uniform_color((0.0, 0.0, 0.0))
+            geoms1.append(ls)
+        for nn in neigh_names:
+            if nn in name_to_ls:
+                ls = name_to_ls[nn]
+                ls.paint_uniform_color((0.1, 0.1, 0.1))
+                geoms1.append(ls)
 
         o3d.visualization.draw_geometries(
-            face_geoms,
-            window_name=f"[FACE] {focus}: bbx + FILLED attachment faces (NO overlay)",
+            geoms1,
+            window_name=f"[VIS 1/4] Overlay: {name} + neighbors",
         )
+
+        # prepare per-label attachments
+        att_edges = _attachments_for_label(attachments, name)
+
+        # ------------------------------------------
+        # View 2: volumetric attachments (overlap volume)
+        # ------------------------------------------
+        geoms2: List[o3d.geometry.Geometry] = []
+
+        # show only label + neighbors points (no full overlay)
+        colors2 = _colorize_assigned_ids(assigned_ids, highlight_mask, neighbor_mask)
+        pcd2 = o3d.geometry.PointCloud(o3d.utility.Vector3dVector(pts))
+        pcd2.colors = o3d.utility.Vector3dVector(colors2)
+        geoms2.append(pcd2)
+
+        # add bboxes
+        if name in name_to_ls:
+            geoms2.append(name_to_ls[name])
+        for nn in neigh_names:
+            if nn in name_to_ls:
+                geoms2.append(name_to_ls[nn])
+
+        # add overlap volumes
+        if name in name_to_obb:
+            obb_a = name_to_obb[name]
+            mnA, mxA = _aabb_minmax_in_object_from_obb(obb_a, origin, obj_axes)
+
+            for e in att_edges:
+                if _infer_attachment_kind(e) != "volume":
+                    continue
+                other = e["b"] if e.get("a") == name else e.get("a")
+                if other not in name_to_obb:
+                    continue
+                obb_b = name_to_obb[other]
+                mnB, mxB = _aabb_minmax_in_object_from_obb(obb_b, origin, obj_axes)
+                mnI, mxI, volI = _intersection_aabb(mnA, mxA, mnB, mxB)
+                if mnI is None:
+                    continue
+                # visualize the intersection volume as a red box
+                geoms2.append(_aabb_mesh_in_object_space(mnI, mxI, origin, obj_axes, color=(1.0, 0.0, 0.0)))
+
+        o3d.visualization.draw_geometries(
+            geoms2,
+            window_name=f"[VIS 2/4] Volumetric attachments: {name}",
+        )
+
+        # ------------------------------------------
+        # View 3: face attachments (color the two faces)
+        # ------------------------------------------
+        geoms3: List[o3d.geometry.Geometry] = []
+
+        pcd3 = o3d.geometry.PointCloud(o3d.utility.Vector3dVector(pts))
+        pcd3.colors = o3d.utility.Vector3dVector(colors2)
+        geoms3.append(pcd3)
+
+        # bbox lines
+        if name in name_to_ls:
+            geoms3.append(name_to_ls[name])
+        for nn in neigh_names:
+            if nn in name_to_ls:
+                geoms3.append(name_to_ls[nn])
+
+        # face slabs (object-space AABB based, as per your premise)
+        # We construct object-space AABB for each box by projecting its OBB corners to object frame.
+        # This is conservative for rotated OBBs, but your face-attach should only be used when both are AABB anyway.
+        if name in name_to_obb:
+            obb_a = name_to_obb[name]
+            mnA, mxA = _aabb_minmax_in_object_from_obb(obb_a, origin, obj_axes)
+
+            for e in att_edges:
+                if _infer_attachment_kind(e) != "face":
+                    continue
+                other = e["b"] if e.get("a") == name else e.get("a")
+                if other not in name_to_obb:
+                    continue
+
+                a_face = e.get("a_face", None)
+                b_face = e.get("b_face", None)
+                if not isinstance(a_face, str) or not isinstance(b_face, str):
+                    continue
+
+                # If current label is "b", swap faces so "a_face" always corresponds to current label in visualization
+                if e.get("b") == name:
+                    a_face, b_face = b_face, a_face
+
+                obb_b = name_to_obb[other]
+                mnB, mxB = _aabb_minmax_in_object_from_obb(obb_b, origin, obj_axes)
+
+                geoms3.append(_quad_mesh_for_face_in_object_aabb(
+                    mnA, mxA, a_face, origin, obj_axes,
+                    thickness=max(1e-4, 0.002 * 0.2),
+                    color=(0.0, 0.2, 1.0),
+                ))
+                geoms3.append(_quad_mesh_for_face_in_object_aabb(
+                    mnB, mxB, b_face, origin, obj_axes,
+                    thickness=max(1e-4, 0.002 * 0.2),
+                    color=(0.0, 1.0, 0.2),
+                ))
+
+        o3d.visualization.draw_geometries(
+            geoms3,
+            window_name=f"[VIS 3/4] Face attachments: {name}",
+        )
+
+        # ------------------------------------------
+        # View 4: anchor-point attachments (big ball)
+        # ------------------------------------------
+        geoms4: List[o3d.geometry.Geometry] = []
+
+        pcd4 = o3d.geometry.PointCloud(o3d.utility.Vector3dVector(pts))
+        pcd4.colors = o3d.utility.Vector3dVector(colors2)
+        geoms4.append(pcd4)
+
+        if name in name_to_ls:
+            geoms4.append(name_to_ls[name])
+        for nn in neigh_names:
+            if nn in name_to_ls:
+                geoms4.append(name_to_ls[nn])
+
+        if vis_anchor_points:
+            big_r = float(anchor_radius) * 10.0
+            for e in att_edges:
+                if _infer_attachment_kind(e) != "point":
+                    continue
+                aw = e.get("anchor_world", None)
+                if aw is None:
+                    # some pipelines store "anchor" or only local; handle local if present
+                    al = e.get("anchor_local", None)
+                    if al is not None:
+                        al = np.array(al, dtype=np.float64).reshape(3)
+                        aw = _object_to_world(al, origin, obj_axes).tolist()
+                if aw is None:
+                    continue
+                aw = np.array(aw, dtype=np.float64).reshape(3)
+                geoms4.append(_sphere(aw, big_r, color=(1.0, 0.0, 0.0)))
+
+        o3d.visualization.draw_geometries(
+            geoms4,
+            window_name=f"[VIS 4/4] Anchor-point attachments: {name}",
+        )
+
+
+# Backward-compat alias (so launcher can always import verify_relations_vis)
+def verify_relations(**kwargs):
+    return verify_relations_vis(**kwargs)
