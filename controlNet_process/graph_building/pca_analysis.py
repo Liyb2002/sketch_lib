@@ -157,7 +157,7 @@ def run(label_assign_dir: str, object_space: dict):
         raise ValueError("object_space['axes'] must be 3x3")
 
     results = {}
-    improve_thresh = 0.05  # >10% volume reduction
+    improve_thresh = 0.1  # >10% volume reduction
 
     for lid, name in label_id_to_name.items():
         mask = (assigned_ids == lid)
