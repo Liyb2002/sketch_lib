@@ -105,6 +105,16 @@ def _neighbor_names(attachments: List[Dict[str, Any]], name: str) -> List[str]:
     return sorted(list(neigh))
 
 
+def _other_name_in_edge(e: Dict[str, Any], name: str) -> Optional[str]:
+    a = e.get("a", None)
+    b = e.get("b", None)
+    if a == name and isinstance(b, str):
+        return b
+    if b == name and isinstance(a, str):
+        return a
+    return None
+
+
 # ----------------------------
 # Relation type inference (robust to older/newer formats)
 # ----------------------------
@@ -137,24 +147,46 @@ def _infer_attachment_kind(e: Dict[str, Any]) -> str:
     return "point"
 
 
+def _neighbor_names_for_kind(att_edges: List[Dict[str, Any]], name: str, kind: str) -> List[str]:
+    """
+    For a given label 'name', return the neighbor labels that participate in attachments of 'kind'.
+    """
+    out = set()
+    for e in att_edges:
+        if _infer_attachment_kind(e) != kind:
+            continue
+        other = _other_name_in_edge(e, name)
+        if other is not None:
+            out.add(other)
+    return sorted(list(out))
+
+
 # ----------------------------
 # Volume overlap visualization (approx)
 # ----------------------------
 
 def _obb_corners_world(obb: o3d.geometry.OrientedBoundingBox) -> np.ndarray:
-    # open3d returns Vector3dVector
     return np.asarray(obb.get_box_points(), dtype=np.float64)
 
 
-def _aabb_minmax_in_object_from_obb(obb: o3d.geometry.OrientedBoundingBox, origin: np.ndarray, obj_axes: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
-    corners_w = _obb_corners_world(obb)  # (8,3)
+def _aabb_minmax_in_object_from_obb(
+    obb: o3d.geometry.OrientedBoundingBox,
+    origin: np.ndarray,
+    obj_axes: np.ndarray
+) -> Tuple[np.ndarray, np.ndarray]:
+    corners_w = _obb_corners_world(obb)                # (8,3)
     corners_l = _world_to_object(corners_w, origin, obj_axes)  # (8,3)
     mn = corners_l.min(axis=0)
     mx = corners_l.max(axis=0)
     return mn, mx
 
 
-def _intersection_aabb(mn1: np.ndarray, mx1: np.ndarray, mn2: np.ndarray, mx2: np.ndarray) -> Tuple[Optional[np.ndarray], Optional[np.ndarray], float]:
+def _intersection_aabb(
+    mn1: np.ndarray,
+    mx1: np.ndarray,
+    mn2: np.ndarray,
+    mx2: np.ndarray
+) -> Tuple[Optional[np.ndarray], Optional[np.ndarray], float]:
     mn = np.maximum(mn1, mn2)
     mx = np.minimum(mx1, mx2)
     d = mx - mn
@@ -164,7 +196,13 @@ def _intersection_aabb(mn1: np.ndarray, mx1: np.ndarray, mn2: np.ndarray, mx2: n
     return mn, mx, vol
 
 
-def _aabb_mesh_in_object_space(mn: np.ndarray, mx: np.ndarray, origin: np.ndarray, obj_axes: np.ndarray, color=(1.0, 0.0, 0.0)) -> o3d.geometry.TriangleMesh:
+def _aabb_mesh_in_object_space(
+    mn: np.ndarray,
+    mx: np.ndarray,
+    origin: np.ndarray,
+    obj_axes: np.ndarray,
+    color=(1.0, 0.0, 0.0)
+) -> o3d.geometry.TriangleMesh:
     center_l = (mn + mx) / 2.0
     extent = (mx - mn)
     center_w = _object_to_world(center_l, origin, obj_axes)
@@ -184,7 +222,6 @@ def _face_id_to_axis_sign(face_id: str) -> Tuple[int, float]:
     if not isinstance(face_id, str) or len(face_id) < 3:
         return 0, +1.0
     sign = +1.0 if face_id[0] == "+" else -1.0
-    # expect "...u{k}"
     k = int(face_id[-1])
     return k, sign
 
@@ -200,24 +237,16 @@ def _quad_mesh_for_face_in_object_aabb(
 ) -> o3d.geometry.TriangleMesh:
     """
     Build a thin rectangle (as a thin box) at the requested face of an object-space AABB,
-    aligned to object axes (obj_axes). This matches your face-attachment premise: AABB in object frame.
+    aligned to object axes (obj_axes).
     """
     k, s = _face_id_to_axis_sign(face_id)
 
     # face coordinate in local
-    if s > 0:
-        xk = mx_l[k]
-    else:
-        xk = mn_l[k]
+    xk = mx_l[k] if s > 0 else mn_l[k]
 
-    # extents in the other two axes
-    axes_other = [ax for ax in [0, 1, 2] if ax != k]
-    a0, a1 = axes_other[0], axes_other[1]
-
-    # rectangle spans [mn,mx] on a0,a1, and a thin thickness on k
+    # rectangle spans [mn,mx] on the other two axes, and a thin thickness on k
     mn2 = mn_l.copy()
     mx2 = mx_l.copy()
-    # collapse to a thin slab around xk
     mn2[k] = xk - thickness * 0.5
     mx2[k] = xk + thickness * 0.5
 
@@ -243,12 +272,15 @@ def verify_relations_vis(
     """
     Visualize per-label relations.
 
-    Behavior:
-      - For each label: first view = (label + neighbors) OVERLAY with the full shape + bboxes (kept as "good")
-      - Then 3 non-overlay views (relation-type specific):
-          1) volumetric attachments: show overlap volume (intersection AABB in object frame, approx)
-          2) face attachments: color the two faces (+u/-u) on each part (only meaningful for object-space AABB)
-          3) anchor (point) attachments: show anchor point as a BIG sphere (10x radius)
+    Requested behavior:
+      - For each label: 4 views.
+      - View 1: identical to before (overlay full shape + label+all-neighbors + bboxes).
+      - Views 2-4: relation-specific neighbor filtering:
+          - show bbox + point cloud colored ONLY for neighbors that participate in that attachment kind
+            (volume / face / point) with the current label
+          - do NOT show bboxes for unrelated neighbors
+          - do NOT color unrelated neighbors as "neighbors"
+        (We still keep the rest of the points as light gray so you keep context.)
     """
     pts = np.asarray(pts, dtype=np.float64)
     assigned_ids = np.asarray(assigned_ids).reshape(-1).astype(np.int32)
@@ -281,6 +313,22 @@ def verify_relations_vis(
     pcd_all = o3d.geometry.PointCloud(o3d.utility.Vector3dVector(pts))
     pcd_all.paint_uniform_color((0.80, 0.80, 0.80))
 
+    def _neighbor_mask_from_names(neigh_names: List[str]) -> np.ndarray:
+        mask = np.zeros((assigned_ids.shape[0],), dtype=bool)
+        for nn in neigh_names:
+            if nn not in name_to_id:
+                continue
+            nid = name_to_id[nn]
+            mask |= (assigned_ids == nid)
+        return mask
+
+    def _add_bbox_lines(geoms: List[o3d.geometry.Geometry], self_name: str, neigh_names: List[str]) -> None:
+        if self_name in name_to_ls:
+            geoms.append(name_to_ls[self_name])
+        for nn in neigh_names:
+            if nn in name_to_ls:
+                geoms.append(name_to_ls[nn])
+
     for name in all_names:
         if name not in name_to_id:
             continue
@@ -288,28 +336,25 @@ def verify_relations_vis(
         lid = name_to_id[name]
         highlight_mask = (assigned_ids == lid)
 
-        # neighbors from attachment edges
-        neigh_names = _neighbor_names(attachments, name)
-        neigh_ids = [name_to_id[n] for n in neigh_names if n in name_to_id]
-        neighbor_mask = np.zeros_like(highlight_mask)
-        if len(neigh_ids) > 0:
-            for nid in neigh_ids:
-                neighbor_mask |= (assigned_ids == nid)
+        # neighbors from ALL attachment edges (for overlay view)
+        neigh_names_all = _neighbor_names(attachments, name)
+        neighbor_mask_all = _neighbor_mask_from_names(neigh_names_all)
 
         # ------------------------------------------
-        # View 1 (overlay): label + neighbors + shape + bboxes
+        # View 1 (overlay): label + ALL neighbors + full shape + bboxes
         # ------------------------------------------
-        colors = _colorize_assigned_ids(assigned_ids, highlight_mask, neighbor_mask)
-        pcd_sel = o3d.geometry.PointCloud(o3d.utility.Vector3dVector(pts))
-        pcd_sel.colors = o3d.utility.Vector3dVector(colors)
+        colors1 = _colorize_assigned_ids(assigned_ids, highlight_mask, neighbor_mask_all)
+        pcd_sel1 = o3d.geometry.PointCloud(o3d.utility.Vector3dVector(pts))
+        pcd_sel1.colors = o3d.utility.Vector3dVector(colors1)
 
-        geoms1: List[o3d.geometry.Geometry] = [pcd_all, pcd_sel]
-        # bbox of self + neighbors
+        geoms1: List[o3d.geometry.Geometry] = [pcd_all, pcd_sel1]
+
         if name in name_to_ls:
             ls = name_to_ls[name]
             ls.paint_uniform_color((0.0, 0.0, 0.0))
             geoms1.append(ls)
-        for nn in neigh_names:
+
+        for nn in neigh_names_all:
             if nn in name_to_ls:
                 ls = name_to_ls[nn]
                 ls.paint_uniform_color((0.1, 0.1, 0.1))
@@ -317,31 +362,26 @@ def verify_relations_vis(
 
         o3d.visualization.draw_geometries(
             geoms1,
-            window_name=f"[VIS 1/4] Overlay: {name} + neighbors",
+            window_name=f"[VIS 1/4] Overlay: {name} + all neighbors",
         )
 
-        # prepare per-label attachments
+        # per-label attachment edges
         att_edges = _attachments_for_label(attachments, name)
 
-        # ------------------------------------------
-        # View 2: volumetric attachments (overlap volume)
-        # ------------------------------------------
-        geoms2: List[o3d.geometry.Geometry] = []
+        # ---------------------------------------------------
+        # View 2: volumetric attachments (only volume-neighbors)
+        # ---------------------------------------------------
+        neigh_names_vol = _neighbor_names_for_kind(att_edges, name, "volume")
+        neighbor_mask_vol = _neighbor_mask_from_names(neigh_names_vol)
 
-        # show only label + neighbors points (no full overlay)
-        colors2 = _colorize_assigned_ids(assigned_ids, highlight_mask, neighbor_mask)
+        colors2 = _colorize_assigned_ids(assigned_ids, highlight_mask, neighbor_mask_vol)
         pcd2 = o3d.geometry.PointCloud(o3d.utility.Vector3dVector(pts))
         pcd2.colors = o3d.utility.Vector3dVector(colors2)
-        geoms2.append(pcd2)
 
-        # add bboxes
-        if name in name_to_ls:
-            geoms2.append(name_to_ls[name])
-        for nn in neigh_names:
-            if nn in name_to_ls:
-                geoms2.append(name_to_ls[nn])
+        geoms2: List[o3d.geometry.Geometry] = [pcd2]
+        _add_bbox_lines(geoms2, name, neigh_names_vol)
 
-        # add overlap volumes
+        # add overlap volumes only for volume-neighbors
         if name in name_to_obb:
             obb_a = name_to_obb[name]
             mnA, mxA = _aabb_minmax_in_object_from_obb(obb_a, origin, obj_axes)
@@ -349,41 +389,38 @@ def verify_relations_vis(
             for e in att_edges:
                 if _infer_attachment_kind(e) != "volume":
                     continue
-                other = e["b"] if e.get("a") == name else e.get("a")
-                if other not in name_to_obb:
+                other = _other_name_in_edge(e, name)
+                if other is None or other not in name_to_obb:
                     continue
+                if other not in neigh_names_vol:
+                    continue
+
                 obb_b = name_to_obb[other]
                 mnB, mxB = _aabb_minmax_in_object_from_obb(obb_b, origin, obj_axes)
                 mnI, mxI, volI = _intersection_aabb(mnA, mxA, mnB, mxB)
                 if mnI is None:
                     continue
-                # visualize the intersection volume as a red box
                 geoms2.append(_aabb_mesh_in_object_space(mnI, mxI, origin, obj_axes, color=(1.0, 0.0, 0.0)))
 
         o3d.visualization.draw_geometries(
             geoms2,
-            window_name=f"[VIS 2/4] Volumetric attachments: {name}",
+            window_name=f"[VIS 2/4] Volumetric attachments: {name} (filtered neighbors)",
         )
 
         # ------------------------------------------
-        # View 3: face attachments (color the two faces)
+        # View 3: face attachments (only face-neighbors)
         # ------------------------------------------
-        geoms3: List[o3d.geometry.Geometry] = []
+        neigh_names_face = _neighbor_names_for_kind(att_edges, name, "face")
+        neighbor_mask_face = _neighbor_mask_from_names(neigh_names_face)
 
+        colors3 = _colorize_assigned_ids(assigned_ids, highlight_mask, neighbor_mask_face)
         pcd3 = o3d.geometry.PointCloud(o3d.utility.Vector3dVector(pts))
-        pcd3.colors = o3d.utility.Vector3dVector(colors2)
-        geoms3.append(pcd3)
+        pcd3.colors = o3d.utility.Vector3dVector(colors3)
 
-        # bbox lines
-        if name in name_to_ls:
-            geoms3.append(name_to_ls[name])
-        for nn in neigh_names:
-            if nn in name_to_ls:
-                geoms3.append(name_to_ls[nn])
+        geoms3: List[o3d.geometry.Geometry] = [pcd3]
+        _add_bbox_lines(geoms3, name, neigh_names_face)
 
-        # face slabs (object-space AABB based, as per your premise)
-        # We construct object-space AABB for each box by projecting its OBB corners to object frame.
-        # This is conservative for rotated OBBs, but your face-attach should only be used when both are AABB anyway.
+        # face slabs only for face-neighbors
         if name in name_to_obb:
             obb_a = name_to_obb[name]
             mnA, mxA = _aabb_minmax_in_object_from_obb(obb_a, origin, obj_axes)
@@ -391,8 +428,10 @@ def verify_relations_vis(
             for e in att_edges:
                 if _infer_attachment_kind(e) != "face":
                     continue
-                other = e["b"] if e.get("a") == name else e.get("a")
-                if other not in name_to_obb:
+                other = _other_name_in_edge(e, name)
+                if other is None or other not in name_to_obb:
+                    continue
+                if other not in neigh_names_face:
                     continue
 
                 a_face = e.get("a_face", None)
@@ -409,43 +448,46 @@ def verify_relations_vis(
 
                 geoms3.append(_quad_mesh_for_face_in_object_aabb(
                     mnA, mxA, a_face, origin, obj_axes,
-                    thickness=max(1e-4, 0.002 * 0.2),
+                    thickness=max(1e-4, float(anchor_radius) * 0.2),
                     color=(0.0, 0.2, 1.0),
                 ))
                 geoms3.append(_quad_mesh_for_face_in_object_aabb(
                     mnB, mxB, b_face, origin, obj_axes,
-                    thickness=max(1e-4, 0.002 * 0.2),
+                    thickness=max(1e-4, float(anchor_radius) * 0.2),
                     color=(0.0, 1.0, 0.2),
                 ))
 
         o3d.visualization.draw_geometries(
             geoms3,
-            window_name=f"[VIS 3/4] Face attachments: {name}",
+            window_name=f"[VIS 3/4] Face attachments: {name} (filtered neighbors)",
         )
 
         # ------------------------------------------
-        # View 4: anchor-point attachments (big ball)
+        # View 4: anchor-point attachments (only point-neighbors)
         # ------------------------------------------
-        geoms4: List[o3d.geometry.Geometry] = []
+        neigh_names_point = _neighbor_names_for_kind(att_edges, name, "point")
+        neighbor_mask_point = _neighbor_mask_from_names(neigh_names_point)
 
+        colors4 = _colorize_assigned_ids(assigned_ids, highlight_mask, neighbor_mask_point)
         pcd4 = o3d.geometry.PointCloud(o3d.utility.Vector3dVector(pts))
-        pcd4.colors = o3d.utility.Vector3dVector(colors2)
-        geoms4.append(pcd4)
+        pcd4.colors = o3d.utility.Vector3dVector(colors4)
 
-        if name in name_to_ls:
-            geoms4.append(name_to_ls[name])
-        for nn in neigh_names:
-            if nn in name_to_ls:
-                geoms4.append(name_to_ls[nn])
+        geoms4: List[o3d.geometry.Geometry] = [pcd4]
+        _add_bbox_lines(geoms4, name, neigh_names_point)
 
         if vis_anchor_points:
             big_r = float(anchor_radius) * 10.0
             for e in att_edges:
                 if _infer_attachment_kind(e) != "point":
                     continue
+                other = _other_name_in_edge(e, name)
+                if other is None:
+                    continue
+                if other not in neigh_names_point:
+                    continue
+
                 aw = e.get("anchor_world", None)
                 if aw is None:
-                    # some pipelines store "anchor" or only local; handle local if present
                     al = e.get("anchor_local", None)
                     if al is not None:
                         al = np.array(al, dtype=np.float64).reshape(3)
@@ -457,7 +499,7 @@ def verify_relations_vis(
 
         o3d.visualization.draw_geometries(
             geoms4,
-            window_name=f"[VIS 4/4] Anchor-point attachments: {name}",
+            window_name=f"[VIS 4/4] Anchor-point attachments: {name} (filtered neighbors)",
         )
 
 
