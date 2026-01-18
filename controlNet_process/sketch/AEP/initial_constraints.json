@@ -67,7 +67,7 @@
       "overlap_frac_small": 0.28515625,
       "aabb_aligned_a": true,
       "aabb_aligned_b": true,
-      "relation_type": "volume"
+      "relation_type": "point"
     },
     {
       "a": "fender_0",
@@ -111,7 +111,7 @@
       "overlap_frac_small": 0.23193359375,
       "aabb_aligned_a": true,
       "aabb_aligned_b": true,
-      "relation_type": "volume"
+      "relation_type": "point"
     },
     {
       "a": "fender_0",

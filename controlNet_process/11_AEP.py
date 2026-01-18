@@ -15,7 +15,6 @@ from AEP.sym_and_containment import apply_symmetry_and_containment
 from AEP.attachment import apply_attachments
 from AEP.save_json import save_aep_changes
 from AEP.vis import vis_from_saved_changes
-from AEP.vis_seperately import vis_neighbors_separately
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 
@@ -125,15 +124,6 @@ def main():
     #         show_overlay=True,
     #     )
 
-    if VIS_SEPARATE:
-        vis_neighbors_separately(
-            overlay_ply_path=OVERLAY_PLY,
-            constraints_json=CONSTRAINTS_PATH,
-            aep_changes_json=AEP_CHANGES_PATH,
-            neighbor_names=all_neighbors,   # reuse your computed list
-            show_overlay=True,
-            anchor_radius=0.003,
-        )
 
 
 if __name__ == "__main__":

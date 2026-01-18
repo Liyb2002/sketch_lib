@@ -5,6 +5,7 @@ import numpy as np
 from typing import Dict, Any, List, Tuple, Optional
 
 
+VOL_Threshold = 0.3
 # ------------------------------------------------------------
 # Local frame helpers (object_space)
 # ------------------------------------------------------------
@@ -269,7 +270,7 @@ def annotate_attachment_faces(
             n_samples=2048,
             seed=0,
         )
-        is_volume = overlap_vol > (0.2 * vol_min)
+        is_volume = overlap_vol > (VOL_Threshold * vol_min)
 
         # (2) face attachment check only if BOTH are object-aligned AABB
         ca, Ra, ea = _obb_arrays(obb_a)
