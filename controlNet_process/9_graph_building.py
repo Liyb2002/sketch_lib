@@ -131,20 +131,20 @@ def main():
     print("[AEP] updated with containment:", out_constraints)
 
     # 5) verification vis
-    if VIS_VERIFY:
+    # if VIS_VERIFY:
     
-        verify_relations_vis(
-            pts=pts,
-            assigned_ids=assigned_ids,
-            bboxes_by_name=bboxes,
-            symmetry=symmetry,
-            attachments=attachments,   # annotated with a_face/b_face = +u0 ...
-            object_space=obj_space,
-            containment=containment,
-            vis_anchor_points=True,
-            anchor_radius=0.002,
-            ignore_unknown=False,
-        )
+    #     verify_relations_vis(
+    #         pts=pts,
+    #         assigned_ids=assigned_ids,
+    #         bboxes_by_name=bboxes,
+    #         symmetry=symmetry,
+    #         attachments=attachments,   # annotated with a_face/b_face = +u0 ...
+    #         object_space=obj_space,
+    #         containment=containment,
+    #         vis_anchor_points=True,
+    #         anchor_radius=0.002,
+    #         ignore_unknown=False,
+    #     )
 
 
 if __name__ == "__main__":
