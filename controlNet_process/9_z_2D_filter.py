@@ -1,21 +1,28 @@
 #!/usr/bin/env python3
 """
-Compute 2D neighbors among masks in:
-  sketch/segmentation_original_image/view_{0..5}/
+1) Compute 2D neighbor pairs from masks in:
+   sketch/segmentation_original_image/view_{0..5}/{label}_{i}_mask.png
 
-Mask format:
-  {label}_{i}_mask.png
+   Neighbor rule (10% tolerance):
+     For masks A,B:
+       tol_px = ceil(0.10 * min(diag(A_bbox), diag(B_bbox)))  (>=1)
+     A and B are neighbors if dilate(A, tol_px) intersects B (or vice versa).
 
-Neighbor definition (10% tolerance):
-  Two masks A and B are neighbors if, after dilating each mask by a tolerance
-  radius tol_px = ceil(0.10 * min(diag(A_bbox), diag(B_bbox))), they intersect.
-  (We also prune by bbox distance with the same tol_px.)
+2) Read sketch/AEP/initial_constraints.json
+   Extract all attachment pairs (a,b) from ["attachments"].
 
-No saving: only prints.
+3) Print:
+   - All attachment pairs (undirected)
+   - All 2D neighbor pairs aggregated across views (undirected)
+   - Attachment pairs that are NOT in 2D neighbors, excluding any pair where
+     either side is "unknown_{x}".
+
+No saving; only print.
 """
 
 import os
 import re
+import json
 import sys
 from collections import defaultdict
 import numpy as np
@@ -27,20 +34,27 @@ except ImportError:
     from PIL import Image
 
 
+# ----------------------------
+# Config (relative to this script)
+# ----------------------------
+TOL_RATIO = 0.10
+VIEWS = list(range(6))
+
 FNAME_RE = re.compile(r"^(?P<label>.+)_(?P<idx>\d+)_mask\.png$", re.IGNORECASE)
 
 
+# ----------------------------
+# Mask helpers
+# ----------------------------
 def load_mask(path: str) -> np.ndarray:
     """Return boolean mask (H,W) where True means selected/white."""
     if cv2 is not None:
         img = cv2.imread(path, cv2.IMREAD_GRAYSCALE)
         if img is None:
             raise RuntimeError(f"Failed to read image: {path}")
-        return img > 0  # robust to anti-aliasing
-    else:
-        img = Image.open(path).convert("L")
-        arr = np.array(img)
-        return arr > 0
+        return img > 0
+    img = Image.open(path).convert("L")
+    return (np.array(img) > 0)
 
 
 def bbox_from_mask(m: np.ndarray):
@@ -53,7 +67,6 @@ def bbox_from_mask(m: np.ndarray):
 
 
 def bbox_diag(b) -> float:
-    """Diagonal length of bbox in pixels."""
     y0, y1, x0, x1 = b
     return float(np.sqrt((y1 - y0 + 1) ** 2 + (x1 - x0 + 1) ** 2))
 
@@ -74,12 +87,10 @@ def bboxes_maybe_close(b1, b2, pad: int) -> bool:
 
 
 def dilate_mask(m: np.ndarray, radius_px: int) -> np.ndarray:
-    """Binary dilation with square kernel radius_px (>=0)."""
     if radius_px <= 0:
         return m
-
     if cv2 is None:
-        # PIL-only fallback: naive square dilation via max over shifted windows
+        # naive dilation fallback (square kernel)
         k = 2 * radius_px + 1
         padded = np.pad(
             m.astype(np.uint8),
@@ -98,12 +109,14 @@ def dilate_mask(m: np.ndarray, radius_px: int) -> np.ndarray:
     return d.astype(bool)
 
 
-def compute_neighbors_for_view(view_dir: str, tol_ratio: float = 0.10):
+# ----------------------------
+# Neighbor computation
+# ----------------------------
+def compute_neighbor_pairs_for_view(view_dir: str, tol_ratio: float):
     """
     Returns:
-      neighbors: dict mask_id -> sorted list of neighbor mask_ids
-      mask_ids: list of mask_ids in this view
-    mask_id is "{label}_{idx}" (parsed from filename).
+      pair_set: set of undirected pairs (a,b) where a < b
+      mask_ids: sorted list of mask ids in this view
     """
     files = [f for f in os.listdir(view_dir) if f.lower().endswith("_mask.png")]
 
@@ -119,121 +132,149 @@ def compute_neighbors_for_view(view_dir: str, tol_ratio: float = 0.10):
 
     masks = {}
     bboxes = {}
-    for mask_id, path in items:
+    for mid, path in items:
         bm = load_mask(path)
-        masks[mask_id] = bm
-        bboxes[mask_id] = bbox_from_mask(bm)
+        masks[mid] = bm
+        bboxes[mid] = bbox_from_mask(bm)
 
-    neighbors = {mid: set() for mid in masks.keys()}
-    mask_ids = list(masks.keys())
+    mask_ids = sorted(masks.keys())
+    pair_set = set()
 
     for i in range(len(mask_ids)):
         a = mask_ids[i]
         bb_a = bboxes[a]
         if bb_a is None:
             continue
-
         for j in range(i + 1, len(mask_ids)):
             b = mask_ids[j]
             bb_b = bboxes[b]
             if bb_b is None:
                 continue
 
-            # 10% tolerance based on bbox diagonal
             tol_px = int(np.ceil(tol_ratio * min(bbox_diag(bb_a), bbox_diag(bb_b))))
             tol_px = max(tol_px, 1)
 
-            # bbox prune: if far beyond tol, skip
             if not bboxes_maybe_close(bb_a, bb_b, pad=tol_px):
                 continue
 
-            # dilate & test (symmetric, but we do both to be safe)
             dil_a = dilate_mask(masks[a], tol_px)
             dil_b = dilate_mask(masks[b], tol_px)
 
             if np.any(dil_a & masks[b]) or np.any(dil_b & masks[a]):
-                neighbors[a].add(b)
-                neighbors[b].add(a)
+                pair_set.add(tuple(sorted((a, b))))
 
-    neighbors_sorted = {k: sorted(v) for k, v in neighbors.items()}
-    return neighbors_sorted, sorted(mask_ids)
+    return pair_set, mask_ids
 
 
+def is_unknown(name: str) -> bool:
+    return name.startswith("unknown_")
+
+
+# ----------------------------
+# Read attachments from JSON
+# ----------------------------
+def read_attachment_pairs(constraints_path: str):
+    with open(constraints_path, "r") as f:
+        data = json.load(f)
+
+    attachments = data.get("attachments", [])
+    pair_set = set()
+    typed = defaultdict(int)  # relation_type stats (optional print)
+
+    for rel in attachments:
+        a = rel.get("a", None)
+        b = rel.get("b", None)
+        if not a or not b:
+            continue
+        pair_set.add(tuple(sorted((a, b))))
+        rtype = rel.get("relation_type", "unknown_type")
+        typed[rtype] += 1
+
+    return pair_set, typed, attachments
+
+
+# ----------------------------
+# Main
+# ----------------------------
 def main():
     root = os.path.dirname(os.path.abspath(__file__))
 
     seg_root = os.path.join(root, "sketch", "segmentation_original_image")
+    constraints_path = os.path.join(root, "sketch", "AEP", "initial_constraints.json")
+
     if not os.path.isdir(seg_root):
-        print(f"[ERROR] Not found: {seg_root}")
+        print(f"[ERROR] Not found segmentation folder: {seg_root}")
+        sys.exit(1)
+    if not os.path.isfile(constraints_path):
+        print(f"[ERROR] Not found constraints json: {constraints_path}")
         sys.exit(1)
 
-    # Collect views view_0..view_5 if present
-    all_views = []
-    for x in range(6):
+    # 1) Aggregate 2D neighbor pairs across views
+    neighbor_pairs_all = set()
+    neighbor_pairs_by_view = {}
+    masks_by_view = {}
+
+    for x in VIEWS:
         vd = os.path.join(seg_root, f"view_{x}")
-        if os.path.isdir(vd):
-            all_views.append((x, vd))
+        if not os.path.isdir(vd):
+            continue
+        pairs, mask_ids = compute_neighbor_pairs_for_view(vd, tol_ratio=TOL_RATIO)
+        neighbor_pairs_by_view[x] = pairs
+        masks_by_view[x] = mask_ids
+        neighbor_pairs_all |= pairs
 
-    if not all_views:
-        print(f"[ERROR] No view_*/ folders found under: {seg_root}")
-        sys.exit(1)
+    # 2) Read attachment pairs
+    attach_pairs, attach_type_stats, attachments_raw = read_attachment_pairs(constraints_path)
 
-    tol_ratio = 0.10
+    # 3) Missing attachments: not in 2D neighbors and no unknowns involved
+    missing = []
+    for a, b in sorted(attach_pairs):
+        if is_unknown(a) or is_unknown(b):
+            continue
+        if (a, b) not in neighbor_pairs_all:
+            missing.append((a, b))
 
-    # Aggregation structures (across views)
-    pair_view_count = defaultdict(int)   # (a,b) -> number of views where they are neighbors
-    per_mask_global = defaultdict(set)   # mask_id -> set of neighbor mask_ids (union across views)
+    # ----------------------------
+    # Print everything
+    # ----------------------------
+    print("=" * 100)
+    print("2D NEIGHBORS FROM MASKS (AGGREGATED)")
+    print(f"seg_root: {seg_root}")
+    print(f"neighbor_rule: tol_px = ceil({TOL_RATIO} * min(bbox_diag(A), bbox_diag(B)))")
+    print("-" * 100)
+    print(f"total_views_found: {len(neighbor_pairs_by_view)} (expected up to {len(VIEWS)})")
+    for x in sorted(neighbor_pairs_by_view.keys()):
+        print(f"  view_{x}: masks={len(masks_by_view[x])}, neighbor_pairs={len(neighbor_pairs_by_view[x])}")
+    print(f"TOTAL aggregated neighbor pairs: {len(neighbor_pairs_all)}")
+    print("-" * 100)
+    for a, b in sorted(neighbor_pairs_all):
+        print(f"{a}  <->  {b}")
 
-    for x, vd in all_views:
-        neighbors, mask_ids = compute_neighbors_for_view(vd, tol_ratio=tol_ratio)
+    print("=" * 100)
+    print("ATTACHMENT PAIRS FROM initial_constraints.json")
+    print(f"constraints_path: {constraints_path}")
+    print("-" * 100)
+    print(f"attachment_relations (raw entries): {len(attachments_raw)}")
+    print(f"unique attachment pairs (undirected): {len(attach_pairs)}")
+    if attach_type_stats:
+        print("relation_type stats:")
+        for k, v in sorted(attach_type_stats.items(), key=lambda t: (-t[1], t[0])):
+            print(f"  {k}: {v}")
+    print("-" * 100)
+    for a, b in sorted(attach_pairs):
+        print(f"{a}  <->  {b}")
 
-        print("=" * 80)
-        print(f"VIEW view_{x}  ({vd})")
-        print(f"masks: {len(mask_ids)}   neighbor_rule: tol={int(tol_ratio*100)}% of min bbox diagonal")
-        print("-" * 80)
-
-        # print per-mask neighbors
-        for mid in mask_ids:
-            nbrs = neighbors.get(mid, [])
-            print(f"{mid}: {', '.join(nbrs) if nbrs else '(no neighbors)'}")
-
-        # aggregate pairs for this view (count each pair once per view)
-        seen_pairs = set()
-        for a in mask_ids:
-            for b in neighbors.get(a, []):
-                key = tuple(sorted((a, b)))
-                seen_pairs.add(key)
-        for key in seen_pairs:
-            pair_view_count[key] += 1
-
-        # union per-mask neighbors across views
-        for a, nbrs in neighbors.items():
-            for b in nbrs:
-                per_mask_global[a].add(b)
-
-    print("=" * 80)
-    print("AGGREGATED ACROSS ALL VIEWS")
-    print("-" * 80)
-
-    # 1) Per-mask union neighbors
-    print("Per-mask neighbor union (across views):")
-    if not per_mask_global:
-        print("(no masks found)")
+    print("=" * 100)
+    print("ATTACHMENT PAIRS MISSING IN 2D NEIGHBORS (excluding any unknown_*)")
+    print("-" * 100)
+    print(f"missing_count: {len(missing)}")
+    if not missing:
+        print("(none)")
     else:
-        for a in sorted(per_mask_global.keys()):
-            nbrs = sorted(per_mask_global[a])
-            print(f"{a}: {', '.join(nbrs) if nbrs else '(no neighbors)'}")
+        for a, b in missing:
+            print(f"{a}  <->  {b}")
 
-    print("-" * 80)
-    # 2) Pair counts (how many views this pair appears as neighbors)
-    print("Neighbor pair counts (#views where the pair are neighbors):")
-    if not pair_view_count:
-        print("(no neighboring pairs found)")
-    else:
-        for (a, b), cnt in sorted(pair_view_count.items(), key=lambda t: (-t[1], t[0][0], t[0][1])):
-            print(f"{a}  <->  {b} : {cnt}")
-
-    print("=" * 80)
+    print("=" * 100)
 
 
 if __name__ == "__main__":
