@@ -82,9 +82,9 @@
       "reason": "attachment",
       "after_obb": {
         "center": [
-          0.016097667373130935,
-          0.027015173426152984,
-          0.8311822455478352
+          0.01523126967922507,
+          0.027392204521877413,
+          0.8170079235664532
         ],
         "axes": [
           [
@@ -104,17 +104,15 @@
           ]
         ],
         "extents": [
-          0.08054517004204073,
+          0.0663393894917494,
           0.12207498099197316,
           0.06367992195301403
         ]
       },
-      "case": "V3(perpendicular_to_edited_face)->scale",
+      "case": "V3(perp)->scale",
       "kind": "volume",
       "op": {
-        "type": "scale_stub",
-        "ratio": 0.8236296410712575,
-        "reason": "volume_perpendicular_to_edit_face",
+        "type": "scale",
         "debug": {
           "volume_info": {
             "method": "anchor_as_degenerate_box",
@@ -207,21 +205,27 @@
             ]
           },
           "scale_debug": {
-            "status": "inferred_blue_only_face_and_selected_neighbor_face",
+            "status": "neighbor_scaled_anchored",
             "neighbor": "fender_0",
-            "inferred_target_face_axis": 0,
-            "inferred_target_face_sign": -1,
-            "inferred_target_face_str": "-u0",
-            "inferred_target_face_delta_plane": 0.017426509570662274,
-            "inferred_target_normal_world": [
-              0.0609890946040341,
-              -0.02654068140709778,
-              0.9977855093003843
-            ],
-            "chosen_neighbor_face_axis": 0,
-            "chosen_neighbor_face_sign": -1,
-            "chosen_neighbor_face_str": "-u0",
-            "chosen_neighbor_face_score": 1.0000000000000002
+            "target_inferred_face": "-u0",
+            "target_inferred_face_delta_plane": 0.017426509570662274,
+            "target_ratio_r": 0.8236296410712575,
+            "neighbor_face_moved": "-u0",
+            "neighbor_align_score": 1.0000000000000002,
+            "neighbor_scale_debug": {
+              "neighbor_axis": 0,
+              "neighbor_sign_move": -1,
+              "r": 0.8236296410712575,
+              "extent_before": 0.08054517004204073,
+              "extent_after": 0.0663393894917494,
+              "center_shift_world": [
+                -0.0008663976939058647,
+                0.0003770310957244283,
+                -0.01417432198138191
+              ],
+              "anchored_fixed_face": "+u0",
+              "moving_face": "-u0"
+            }
           }
         }
       },
@@ -243,9 +247,9 @@
       "reason": "attachment",
       "after_obb": {
         "center": [
-          0.019591964699144006,
-          -0.08490031090390382,
-          0.8412350687084782
+          0.018961079819409858,
+          -0.08462576814004925,
+          0.8309137515103407
         ],
         "axes": [
           [
@@ -265,17 +269,15 @@
           ]
         ],
         "extents": [
-          0.05865058306660318,
+          0.04830635867976635,
           0.03302878005875391,
           0.1533774560723305
         ]
       },
-      "case": "V3(perpendicular_to_edited_face)->scale",
+      "case": "V3(perp)->scale",
       "kind": "volume",
       "op": {
-        "type": "scale_stub",
-        "ratio": 0.8236296410712575,
-        "reason": "volume_perpendicular_to_edit_face",
+        "type": "scale",
         "debug": {
           "volume_info": {
             "method": "anchor_as_degenerate_box",
@@ -368,21 +370,27 @@
             ]
           },
           "scale_debug": {
-            "status": "inferred_blue_only_face_and_selected_neighbor_face",
+            "status": "neighbor_scaled_anchored",
             "neighbor": "handlebar_0",
-            "inferred_target_face_axis": 0,
-            "inferred_target_face_sign": -1,
-            "inferred_target_face_str": "-u0",
-            "inferred_target_face_delta_plane": 0.017426509570662274,
-            "inferred_target_normal_world": [
-              0.0609890946040341,
-              -0.02654068140709778,
-              0.9977855093003843
-            ],
-            "chosen_neighbor_face_axis": 0,
-            "chosen_neighbor_face_sign": -1,
-            "chosen_neighbor_face_str": "-u0",
-            "chosen_neighbor_face_score": 1.0000000000000002
+            "target_inferred_face": "-u0",
+            "target_inferred_face_delta_plane": 0.017426509570662274,
+            "target_ratio_r": 0.8236296410712575,
+            "neighbor_face_moved": "-u0",
+            "neighbor_align_score": 1.0000000000000002,
+            "neighbor_scale_debug": {
+              "neighbor_axis": 0,
+              "neighbor_sign_move": -1,
+              "r": 0.8236296410712575,
+              "extent_before": 0.05865058306660318,
+              "extent_after": 0.04830635867976635,
+              "center_shift_world": [
+                -0.0006308848797341483,
+                0.00027454276385456555,
+                -0.010321317198137447
+              ],
+              "anchored_fixed_face": "+u0",
+              "moving_face": "-u0"
+            }
           }
         }
       },

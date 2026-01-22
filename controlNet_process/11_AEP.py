@@ -113,16 +113,16 @@ def main():
     # VIS: neighbors in blue, changed neighbors in red
     #     (reads from saved json, not from symcon_res)
     # ------------------------------------------------------------
-    # if DO_VIS:
-    #     vis_from_saved_changes(
-    #         overlay_ply_path=OVERLAY_PLY,
-    #         nodes=nodes,
-    #         neighbor_names=all_neighbors,
-    #         aep_changes_json=AEP_CHANGES_PATH,
-    #         target=target,
-    #         window_name=f"AEP: target+neighbors (blue) + changed (red) | target={target}",
-    #         show_overlay=True,
-    #     )
+    if DO_VIS:
+        vis_from_saved_changes(
+            overlay_ply_path=OVERLAY_PLY,
+            nodes=nodes,
+            neighbor_names=all_neighbors,
+            aep_changes_json=AEP_CHANGES_PATH,
+            target=target,
+            window_name=f"AEP: target+neighbors (blue) + changed (red) | target={target}",
+            show_overlay=True,
+        )
 
 
 

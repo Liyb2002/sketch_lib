@@ -1,23 +1,17 @@
 # AEP/attachment_scaling.py
 #
-# Now DOES actual neighbor update (anchored face scaling), still with:
-# - NO changes to attachment.py
-# - face being edit = BLUE(before) face that becomes BLUE-only vs RED(after)
-# - neighbor follows SAME PATTERN with SAME PORTION:
-#     portion = scale ratio r inferred from target blue->red along the inferred edited axis:
-#         r = E_target_after[axis] / E_target_before[axis]
-#     then apply to neighbor along the chosen neighbor axis, ANCHORED at the opposite face:
-#         - move the selected neighbor face (neighbor_sign) by scaling extent
-#         - keep the opposite face fixed
-#         - center shifts accordingly
+# Returns anchored neighbor scaling that follows the SAME PATTERN + SAME PORTION
+# as the target BLUE(before)->RED(after) edit.
 #
-# Visualization:
-#   - target before (blue lines) + after (red lines)
-#   - inferred edited face (blue mesh on before, red mesh on after)
-#   - neighbor before (green lines)
-#   - neighbor after (magenta lines)
-#   - neighbor face-to-edit (yellow mesh on before, magenta mesh on after)
-#   - neighbor opposite face outline (gray)
+# - "edited face" = BLUE face plane that moved most between before->after
+# - r = E_after[axis] / E_before[axis] along inferred axis
+# - neighbor face to move chosen by aligning outward normals with inferred target edited face normal
+# - neighbor update is ANCHORED: move that face, keep opposite face fixed, so center shifts
+#
+# NOTE:
+# - attachment.py stays unchanged except it calls scale_neighbor_obb(...)
+# - This module uses stack inspection to reconstruct target before/after OBB (so no extra args needed)
+# - It also opens Open3D visualization when verbose=True (so you can verify)
 #
 # No __main__ section.
 
@@ -30,6 +24,8 @@ import open3d as o3d
 # ----------------------------
 # Basic helpers
 # ----------------------------
+
+verbose=False
 
 def _as_np(x) -> np.ndarray:
     return np.asarray(x, dtype=np.float64)
@@ -85,7 +81,7 @@ def _reconstruct_target_obbs(ed: Dict[str, Any]) -> Tuple[Dict[str, Any], Dict[s
 
 
 # ----------------------------
-# Core: infer "edited face" from before/after geometry
+# Infer "edited face" from target before/after geometry
 # ----------------------------
 
 def infer_edited_face_from_before_after(
@@ -93,16 +89,12 @@ def infer_edited_face_from_before_after(
     target_after_obb: Dict[str, Any],
 ) -> Dict[str, Any]:
     """
-    "face being edit" = the BLUE(before) face that becomes BLUE-only vs RED(after).
-    We implement this as: the BLUE face plane that moved the most between before->after.
+    "edited face" = BLUE face plane that moved most between before->after.
 
-    For a blue face (+/-ui), with u from BEFORE axes:
+    For a blue face (+/-ui), using BEFORE axes u:
       plane(i, s) = dot(u_i, C) + s * E_i
-    delta(i, s) = plane_after - plane_before  (projected onto same u_i)
+    delta(i, s) = plane_after - plane_before  (projected on same u_i)
     choose max abs(delta).
-
-    Returns:
-      axis, sign, normal_world, delta_plane, deltas(sorted desc by abs)
     """
     C0 = _as_np(target_before_obb["center"])
     U0 = _axes_rows(target_before_obb["axes"])
@@ -148,10 +140,6 @@ def target_scale_ratio_along_inferred_axis(
     target_after_obb: Dict[str, Any],
     axis: int,
 ) -> float:
-    """
-    Portion = r = E_after[axis] / E_before[axis]
-    (extents are half-lengths, so this matches full-length ratio too.)
-    """
     E0 = _as_np(target_before_obb["extents"])
     E1 = _as_np(target_after_obb["extents"])
     denom = float(max(E0[int(axis)], 1e-12))
@@ -159,16 +147,13 @@ def target_scale_ratio_along_inferred_axis(
 
 
 # ----------------------------
-# Neighbor face selection (based on inferred normal)
+# Neighbor face selection (normal alignment)
 # ----------------------------
 
 def choose_neighbor_face_to_change(
     neighbor_obb: Dict[str, Any],
     edit_face_normal_world: np.ndarray,
 ) -> Dict[str, Any]:
-    """
-    Choose neighbor face to edit by aligning outward normals with the inferred target edited face normal.
-    """
     U = _axes_rows(neighbor_obb["axes"])
     n_edit = _normalize(_as_np(edit_face_normal_world))
 
@@ -191,7 +176,7 @@ def choose_neighbor_face_to_change(
 
 
 # ----------------------------
-# Apply anchored scaling to a specific face on neighbor
+# Apply anchored scaling on neighbor
 # ----------------------------
 
 def apply_anchored_scale_on_neighbor(
@@ -202,17 +187,11 @@ def apply_anchored_scale_on_neighbor(
     min_extent: float,
 ) -> Tuple[Dict[str, Any], Dict[str, Any]]:
     """
-    Scale neighbor along `neighbor_axis` by ratio r, but anchored:
-      - the face with outward normal (neighbor_sign_move * u_axis) is the one that moves
-      - the opposite face remains fixed
+    Scale neighbor along neighbor_axis by ratio r, anchored so opposite face stays fixed.
 
-    1D derivation along axis u:
-      before planes: c ± e
-      after extent: e' = e * r
-      keep opposite face fixed:
-        fixed plane = c - s*e  (where s is sign_move)
-        want c' - s*e' = c - s*e
-        => c' = c + s*(e' - e)
+    If s is sign of the MOVING face (+1 for +ui, -1 for -ui):
+      extent: e -> e' = e*r
+      center shift along u:  C' = C + s*(e' - e)*u
     """
     C = _as_np(neighbor_before_obb["center"])
     U = _axes_rows(neighbor_before_obb["axes"])
@@ -220,22 +199,16 @@ def apply_anchored_scale_on_neighbor(
 
     ax = int(neighbor_axis)
     s = +1 if int(neighbor_sign_move) >= 0 else -1
-
     u = _normalize(U[ax])
+
     e0 = float(E[ax])
     e1 = float(max(float(min_extent), e0 * float(r)))
     E[ax] = e1
 
-    # center shift to keep opposite face fixed
     dproj = float(s) * (e1 - e0)
     C2 = C + dproj * u
 
-    out = {
-        "center": C2.tolist(),
-        "axes": U.tolist(),
-        "extents": E.tolist(),
-    }
-
+    out = {"center": C2.tolist(), "axes": U.tolist(), "extents": E.tolist()}
     dbg = {
         "neighbor_axis": ax,
         "neighbor_sign_move": int(s),
@@ -250,13 +223,13 @@ def apply_anchored_scale_on_neighbor(
 
 
 # ----------------------------
-# Open3D visualization helpers
+# Open3D visualization (verify)
 # ----------------------------
 
 def _obb_to_o3d_obb(obb: Dict[str, Any]) -> o3d.geometry.OrientedBoundingBox:
     C = _as_np(obb["center"])
     U_rows = _axes_rows(obb["axes"])
-    R_cols = U_rows.T  # open3d expects columns
+    R_cols = U_rows.T
     ext_half = _as_np(obb["extents"])
     ext_full = 2.0 * ext_half
     return o3d.geometry.OrientedBoundingBox(C, R_cols, ext_full)
@@ -309,7 +282,7 @@ def _face_outline(obb: Dict[str, Any], axis: int, sign: int) -> o3d.geometry.Lin
     return ls
 
 
-def vis_verify_neighbor_change(
+def _vis_verify_neighbor_change(
     target_before_obb: Dict[str, Any],
     target_after_obb: Dict[str, Any],
     inferred_axis: int,
@@ -321,33 +294,30 @@ def vis_verify_neighbor_change(
 ) -> None:
     geoms: List[o3d.geometry.Geometry] = []
 
-    # target OBBs
     ls_t0 = _lineset_from_obb(target_before_obb)
-    ls_t0.paint_uniform_color([0.2, 0.4, 1.0])  # blue
+    ls_t0.paint_uniform_color([0.2, 0.4, 1.0])
     geoms.append(ls_t0)
 
     ls_t1 = _lineset_from_obb(target_after_obb)
-    ls_t1.paint_uniform_color([1.0, 0.2, 0.2])  # red
+    ls_t1.paint_uniform_color([1.0, 0.2, 0.2])
     geoms.append(ls_t1)
 
-    # inferred edited face (blue before, red after)
     f0m = _face_mesh(target_before_obb, inferred_axis, inferred_sign)
     f0m.paint_uniform_color([0.2, 0.4, 1.0])
     geoms.append(f0m)
+
     f1m = _face_mesh(target_after_obb, inferred_axis, inferred_sign)
     f1m.paint_uniform_color([1.0, 0.2, 0.2])
     geoms.append(f1m)
 
-    # neighbor before/after
     ls_nb = _lineset_from_obb(neighbor_before_obb)
-    ls_nb.paint_uniform_color([0.2, 0.9, 0.2])  # green
+    ls_nb.paint_uniform_color([0.2, 0.9, 0.2])
     geoms.append(ls_nb)
 
     ls_na = _lineset_from_obb(neighbor_after_obb)
     ls_na.paint_uniform_color([1.0, 0.0, 1.0])  # magenta
     geoms.append(ls_na)
 
-    # neighbor moving face: before (yellow), after (magenta mesh)
     nb_face = _face_mesh(neighbor_before_obb, neighbor_axis, neighbor_sign)
     nb_face.paint_uniform_color([1.0, 1.0, 0.0])
     geoms.append(nb_face)
@@ -356,7 +326,6 @@ def vis_verify_neighbor_change(
     na_face.paint_uniform_color([1.0, 0.0, 1.0])
     geoms.append(na_face)
 
-    # neighbor opposite fixed face outline
     opp = _face_outline(neighbor_before_obb, neighbor_axis, -int(neighbor_sign))
     opp.paint_uniform_color([0.7, 0.7, 0.7])
     geoms.append(opp)
@@ -368,53 +337,41 @@ def vis_verify_neighbor_change(
 
 
 # ----------------------------
-# Public entry called by attachment.py (NO attachment.py changes)
+# Public entry called by attachment.py
 # ----------------------------
 
 def scale_neighbor_obb(
     other_obb: Dict[str, Any],
-    edit_face_normal: np.ndarray,  # ignored for face inference, kept for compatibility
-    scale_ratio: float,            # ignored (we recompute from target blue->red)
+    edit_face_normal: np.ndarray,  # kept for compatibility, not used for inference
+    scale_ratio: float,            # kept for compatibility, we recompute r from target blue->red
     min_extent: float,
-    edited_face_str: str,          # ignored for inference, kept for compatibility
+    edited_face_str: str,          # kept for compatibility, not used for inference
     neighbor_name: str,
     verbose: bool = True,
 ) -> Tuple[Dict[str, Any], Dict[str, Any]]:
-    """
-    Compute how neighbor bbx should change:
-      - infer the target edited face from BLUE->RED geometry
-      - compute target ratio r along that inferred axis
-      - choose which neighbor face to move by aligning normals
-      - apply anchored scaling on neighbor with ratio r (move that face, keep opposite fixed)
-      - return neighbor_after_obb
-
-    This matches your rule:
-      "neighbor bbx should follow the same pattern with the same portion"
-    """
     ed = _find_edit_decomp_in_stack()
     if ed is None:
         if verbose:
             print("[AEP][attachment_scaling] ERROR: cannot find edit_decomp in stack -> cannot compute target pattern.")
-        debug = {"status": "error_no_edit_decomp", "neighbor": neighbor_name}
-        return other_obb, debug
+        return other_obb, {"status": "error_no_edit_decomp", "neighbor": neighbor_name}
 
     target_before_obb, target_after_obb = _reconstruct_target_obbs(ed)
 
-    # 1) infer edited face on target (blue-only face)
+    # 1) infer edited face from target geometry (blue-only face)
     inf = infer_edited_face_from_before_after(target_before_obb, target_after_obb)
     t_axis = int(inf["axis"])
     t_sign = int(inf["sign"])
     n_edit = _as_np(inf["normal_world"])
 
-    # 2) portion: r along that inferred axis
+    # 2) compute portion ratio r from target extents along inferred axis
     r = target_scale_ratio_along_inferred_axis(target_before_obb, target_after_obb, t_axis)
 
-    # 3) choose neighbor face to move by aligning outward normals
+    # 3) choose neighbor face to move by normal alignment
     sel = choose_neighbor_face_to_change(other_obb, n_edit)
     nb_axis = int(sel["axis"])
     nb_sign = int(sel["sign"])
 
-    # 4) apply anchored scaling to neighbor
+    # 4) anchored neighbor scaling
     neighbor_before_obb = other_obb
     neighbor_after_obb, dbg_scale = apply_anchored_scale_on_neighbor(
         neighbor_before_obb,
@@ -428,33 +385,23 @@ def scale_neighbor_obb(
         print("[AEP][attachment_scaling] scaling called!")
         print(f"[AEP][attachment_scaling] neighbor = {neighbor_name}")
         print(f"[AEP][attachment_scaling] inferred_target_edited_face(blue-only) = {_face_to_str(t_axis, t_sign)}  delta_plane={inf['delta_plane']:+.6f}")
-        print(f"[AEP][attachment_scaling] inferred_target_normal = {n_edit.tolist()}")
-        print(f"[AEP][attachment_scaling] target_portion_ratio r = {r:.6f}  (E_after/E_before along axis u{t_axis})")
-        print(f"[AEP][attachment_scaling] chosen_neighbor_face_to_MOVE = {_face_to_str(nb_axis, nb_sign)}  align_score={sel['score']:+.6f}")
-        print(f"[AEP][attachment_scaling] anchored scaling: move={dbg_scale['moving_face']} keep_fixed={dbg_scale['anchored_fixed_face']}")
+        print(f"[AEP][attachment_scaling] target_ratio r = {r:.6f}  (E_after/E_before along u{t_axis})")
+        print(f"[AEP][attachment_scaling] chosen_neighbor_face_to_MOVE = {_face_to_str(nb_axis, nb_sign)}  score={sel['score']:+.6f}")
+        print(f"[AEP][attachment_scaling] anchored: move={dbg_scale['moving_face']} keep_fixed={dbg_scale['anchored_fixed_face']}")
         print(f"[AEP][attachment_scaling]   extent u{nb_axis}: {dbg_scale['extent_before']:.6f} -> {dbg_scale['extent_after']:.6f}")
         print(f"[AEP][attachment_scaling]   center shift: {dbg_scale['center_shift_world']}")
-
-        # optional quick sanity prints
-        top3d = inf["deltas"][:3]
-        top3d_str = ", ".join([f"{_face_to_str(d['axis'], d['sign'])}:{d['delta']:+.6f}" for d in top3d])
-        print(f"[AEP][attachment_scaling] top3_target_face_plane_deltas = {top3d_str}")
-
-        top3n = sel["candidates"][:3]
-        top3n_str = ", ".join([f"{_face_to_str(c['axis'], c['sign'])}:{c['score']:+.4f}" for c in top3n])
-        print(f"[AEP][attachment_scaling] top3_neighbor_face_alignment = {top3n_str}")
-
         print("[AEP][attachment_scaling] opening Open3D verify window...")
-        vis_verify_neighbor_change(
-            target_before_obb=target_before_obb,
-            target_after_obb=target_after_obb,
-            inferred_axis=t_axis,
-            inferred_sign=t_sign,
-            neighbor_before_obb=neighbor_before_obb,
-            neighbor_after_obb=neighbor_after_obb,
-            neighbor_axis=nb_axis,
-            neighbor_sign=nb_sign,
-        )
+
+        # _vis_verify_neighbor_change(
+        #     target_before_obb=target_before_obb,
+        #     target_after_obb=target_after_obb,
+        #     inferred_axis=t_axis,
+        #     inferred_sign=t_sign,
+        #     neighbor_before_obb=neighbor_before_obb,
+        #     neighbor_after_obb=neighbor_after_obb,
+        #     neighbor_axis=nb_axis,
+        #     neighbor_sign=nb_sign,
+        # )
 
     debug_info = {
         "status": "neighbor_scaled_anchored",

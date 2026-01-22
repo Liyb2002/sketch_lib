@@ -1,48 +1,28 @@
 #!/usr/bin/env python3
 # AEP/attachment.py
 #
-# Computes attachment-driven AEP propagation (per your finalized rules),
-# and prints (when verbose=True), for EACH edge touching the target:
-#   1) attachment type (volume/face/point)
-#   2) where the attachment is relative to the edited face
-#   3) operation: translation / scaling / none  (never both in current rules)
-#
 # IMPORTANT:
 # - Keep same public API:
 #     apply_attachments(constraints, edit, verbose=True) -> attach_res dict
 # - No __main__ section
 #
-# Assumptions:
-# - extents are half-lengths
-# - axes are (approx) orthonormal
-# - edit["change"] contains before_obb and after_obb for the target
-# - constraints["nodes"][name]["obb"] exists for each component
+# This version integrates AEP/attachment_scaling.py for ALL scaling ops.
+# Scaling now:
+#   - infers the "edited face" from target BLUE(before)->RED(after) geometry
+#   - chooses neighbor face by normal alignment
+#   - applies anchored scaling (move that neighbor face, keep opposite fixed)
+#   - returns updated neighbor OBB (center + extents changed)
 #
-# Behavior summary:
-#   FACE:
-#     A1 (same face): translate B by edited face displacement ΔF
-#     A2 (opposite):  no change
-#     A3 (perp):      scaling policy (delegated to attachment_scaling.py)
-#
-#   VOLUME:
-#     Infer which TARGET face (+/-u0/u1/u2) is closest to the volume contact box
-#     (in A-before local coords), then compare vs edited face:
-#       V1 (same):       translate by ΔF
-#       V2 (opposite):   no change
-#       V3 (perp):       scaling policy (delegated to attachment_scaling.py)
-#     (Fallback: if no local box, use anchor_world as degenerate box; if neither, scale policy.)
-#
-#   POINT:
-#     Preserve relation "box <-> point" by:
-#       P1: move anchor to preserve A-point relation (closest face + offset + tangential coords)
-#       P2: translate B so that B-point relation is unchanged (rigid: ΔB = P1 - P0)
+# Face + Volume rules remain:
+#   SAME  -> translate by dF
+#   OPP   -> none
+#   PERP  -> scaling (delegated to attachment_scaling.scale_neighbor_obb)
 
 from typing import Dict, Any, List, Optional, Tuple
 import numpy as np
 
-# Scaling is delegated to a separate module to keep this file simpler.
-# For now, the scaling module is a stub that prints "scaling called!" and returns unchanged OBB.
-from .attachment_scaling import scale_neighbor_obb
+# NEW: delegate scaling to this module (do not change its API lightly)
+from AEP.attachment_scaling import scale_neighbor_obb
 
 
 # ----------------------------
@@ -51,6 +31,10 @@ from .attachment_scaling import scale_neighbor_obb
 
 def _as_np(x):
     return np.asarray(x, dtype=np.float64)
+
+
+def _safe_norm(v: np.ndarray, eps: float = 1e-12) -> float:
+    return float(np.linalg.norm(v) + eps)
 
 
 def _normalize(v: np.ndarray, eps: float = 1e-12) -> np.ndarray:
@@ -62,29 +46,22 @@ def _normalize(v: np.ndarray, eps: float = 1e-12) -> np.ndarray:
 
 def _axes_matrix(axes_list: List[List[float]]) -> np.ndarray:
     """
-    Your JSON stores axes as 3 vectors. We'll treat them as rows (u0,u1,u2),
-    and use dot with each axis for local coords.
+    JSON stores axes as 3 vectors. Treat them as ROWS (u0,u1,u2).
     """
     U = _as_np(axes_list)  # (3,3)
     return U
 
 
 def _world_to_local(P: np.ndarray, C: np.ndarray, U_rows: np.ndarray) -> np.ndarray:
-    # local coords = [dot(P-C, u0), dot(P-C, u1), dot(P-C, u2)]
     d = P - C
     return U_rows @ d
 
 
 def _local_to_world(q: np.ndarray, C: np.ndarray, U_rows: np.ndarray) -> np.ndarray:
-    # P = C + sum_i q_i * u_i
     return C + U_rows.T @ q
 
 
 def _parse_face_str(face: Any) -> Optional[Tuple[int, int]]:
-    """
-    Parse "+u0" / "-u2" (or "+0"/"-1" variants if they appear)
-    Returns (axis_index, sign)
-    """
     if not isinstance(face, str):
         return None
     s = face.strip().lower().replace(" ", "")
@@ -99,17 +76,14 @@ def _parse_face_str(face: Any) -> Optional[Tuple[int, int]]:
         sign = -1
         s2 = s[1:]
     else:
-        # no sign, assume +
         sign = +1
         s2 = s
 
-    # expected "u0","u1","u2"
     if s2.startswith("u") and len(s2) >= 2 and s2[1].isdigit():
         axis = int(s2[1])
         if axis in (0, 1, 2):
             return axis, sign
 
-    # fallback: "0","1","2"
     if s2.isdigit():
         axis = int(s2)
         if axis in (0, 1, 2):
@@ -180,11 +154,10 @@ def _min_extent_from_edit(change: Dict[str, Any]) -> float:
 
 
 # ----------------------------
-# Edit decomposition helpers
+# Geometry primitives for AEP rules
 # ----------------------------
 
 def _face_center(C: np.ndarray, U_rows: np.ndarray, E: np.ndarray, axis: int, sign: int) -> np.ndarray:
-    # F = C + sign * E[axis] * u_axis
     return C + float(sign) * float(E[axis]) * U_rows[axis]
 
 
@@ -210,25 +183,22 @@ def _compute_edit_decomp(change: Dict[str, Any]) -> Dict[str, Any]:
         s_edit = +1 if s_edit >= 0 else -1
     else:
         k_face, s_edit = parsed
-        # if axis mismatch, trust "axis"
-        _ = k_face
+        if axis in (0, 1, 2) and k_face != axis:
+            pass
 
     if axis not in (0, 1, 2):
         raise ValueError(f"Invalid edit axis: {axis}")
 
-    # scale ratio along edited axis
+    # scale ratio along edited axis (kept for legacy printing / fallback logic)
     r = float(E1[axis] / max(E0[axis], 1e-12))
 
-    # face displacement for edited face
+    # face displacement for edited face (legacy "same face -> translate")
     F0 = _face_center(C0, U0, E0, axis, s_edit)
     F1 = _face_center(C1, U1, E1, axis, s_edit)
     dF = F1 - F0
 
     dC = C1 - C0
     uk = _normalize(U0[axis])
-
-    # outward normal of edited face (signed)
-    n_edit = _normalize(float(s_edit) * U0[axis])
 
     return {
         "C0": C0, "U0": U0, "E0": E0,
@@ -239,7 +209,6 @@ def _compute_edit_decomp(change: Dict[str, Any]) -> Dict[str, Any]:
         "dF": dF,
         "dC": dC,
         "uk": uk,
-        "n_edit": n_edit,
     }
 
 
@@ -261,53 +230,41 @@ def _print_edge_header(kind: str, target: str, other: str, idx: int):
 
 
 def _print_where_and_op(where: str, op: str):
-    # op must be: "translation" | "scaling" | "none"
     print(f"[AEP][attach] 2) where_vs_edited_face = {where}")
     print(f"[AEP][attach] 3) operation = {op}")
 
 
 # ----------------------------
-# Point attachment: preserve box<->point relation (UNCHANGED)
+# Point attachment (unchanged)
 # ----------------------------
 
 def _closest_face_relation_local(q: np.ndarray, E: np.ndarray) -> Tuple[int, int, float]:
-    """
-    Returns:
-      axis i*, sign s* (+1 for +ui face, -1 for -ui face),
-      and offset delta = q[i*] - s*E[i*]  (signed wrt that plane)
-    """
-    best = None
     best_i = 0
     best_s = +1
     best_abs = 1e30
+    best_val = 0.0
     for i in range(3):
-        # distance to +face plane (qi=+Ei)
         d_plus = float(q[i] - E[i])
         a_plus = abs(d_plus)
         if a_plus < best_abs:
             best_abs = a_plus
             best_i = i
             best_s = +1
-            best = d_plus
-        # distance to -face plane (qi=-Ei)
+            best_val = d_plus
+
         d_minus = float(q[i] + E[i])
         a_minus = abs(d_minus)
         if a_minus < best_abs:
             best_abs = a_minus
             best_i = i
             best_s = -1
-            best = d_minus
-    delta = float(best if best is not None else 0.0)
+            best_val = d_minus
+
+    delta = float(best_val)
     return best_i, best_s, delta
 
 
 def _move_anchor_preserve_A_relation(P0: np.ndarray, edit_decomp: Dict[str, Any]) -> Tuple[np.ndarray, Dict[str, Any]]:
-    """
-    Preserve:
-      - closest face id (axis + sign)
-      - offset delta to that face plane
-      - tangential local coords
-    """
     C0, U0, E0 = edit_decomp["C0"], edit_decomp["U0"], edit_decomp["E0"]
     C1, U1, E1 = edit_decomp["C1"], edit_decomp["U1"], edit_decomp["E1"]
 
@@ -329,8 +286,58 @@ def _move_anchor_preserve_A_relation(P0: np.ndarray, edit_decomp: Dict[str, Any]
     return P1, info
 
 
+def _solve_point_edge(
+    target: str,
+    other: str,
+    e: Dict[str, Any],
+    edit_decomp: Dict[str, Any],
+    other_obb: Dict[str, Any],
+    verbose: bool
+) -> Optional[Dict[str, Any]]:
+    k = int(edit_decomp["axis"])
+    s_edit = int(edit_decomp["s_edit"])
+    edited_face_str = _face_to_str(k, s_edit)
+
+    aw = e.get("anchor_world", None)
+    if aw is None:
+        solving = "P0(no_anchor)->skip"
+        where = f"anchor_missing -> cannot_determine_closest_face_vs_edited_face({edited_face_str})"
+        if verbose:
+            _print_where_and_op(where=where, op="none")
+            print(f"[AEP][attach][POINT] solving={solving} | skipped (no anchor_world)")
+        return None
+
+    P0 = _as_np(aw)
+
+    q0 = _world_to_local(P0, edit_decomp["C0"], edit_decomp["U0"])
+    i_star, s_star, delta = _closest_face_relation_local(q0, edit_decomp["E0"])
+    closest_face_str = _face_to_str(i_star, s_star)
+    if i_star == k and s_star == s_edit:
+        where = f"anchor_closest_to_edited_face({edited_face_str}) (closest_face={closest_face_str}, delta={delta:.6f})"
+    else:
+        where = f"anchor_closest_to_face({closest_face_str}) NOT edited_face({edited_face_str}) (delta={delta:.6f})"
+
+    P1, infoA = _move_anchor_preserve_A_relation(P0, edit_decomp)
+    dP = P1 - P0
+    after_obb = _apply_translation(other_obb, dP)
+
+    if verbose:
+        _print_where_and_op(where=where, op="translation")
+        print(f"[AEP][attach][POINT] solving=P1+P2(rigid) | delta(dP)={dP.tolist()}")
+
+    return {
+        "kind": "point",
+        "solving": "P1+P2(rigid)",
+        "edge": {"a": e.get("a"), "b": e.get("b"), "anchor_world": aw},
+        "anchor": {"P0": P0.tolist(), "P1": P1.tolist(), "infoA": infoA},
+        "before_obb": other_obb,
+        "after_obb": after_obb,
+        "op": {"type": "translate", "delta_world": dP.tolist(), "reason": "preserve_point_relations"},
+    }
+
+
 # ----------------------------
-# Face attachment: A1/A2/A3 (scaling delegated)
+# Face attachment: A1/A2 + A3 delegated to attachment_scaling
 # ----------------------------
 
 def _solve_face_edge(
@@ -342,10 +349,6 @@ def _solve_face_edge(
     min_extent: float,
     verbose: bool
 ) -> Optional[Dict[str, Any]]:
-    """
-    Returns a change record for 'other' or None.
-    """
-    # Determine which face string corresponds to the target in this edge
     if e.get("a") == target:
         t_face = e.get("a_face", None)
         o_face = e.get("b_face", None)
@@ -359,13 +362,15 @@ def _solve_face_edge(
     edited_face_str = _face_to_str(k, s_edit)
 
     if t_parsed is None:
-        # can't classify; fall back to "perpendicular -> scaling policy"
-        solving = "A3(face_fallback_no_face)"
+        # cannot classify -> treat as perpendicular => scaling (delegated)
+        solving = "A3(face_fallback_no_face)->scale"
         where = f"unknown_target_face -> treat_as_perpendicular_to_edited_face({edited_face_str})"
+        if verbose:
+            _print_where_and_op(where=where, op="scaling")
 
-        after_obb, scale_debug = scale_neighbor_obb(
+        after_obb, dbg = scale_neighbor_obb(
             other_obb=other_obb,
-            edit_face_normal=edit_decomp["n_edit"],
+            edit_face_normal=edit_decomp["uk"],
             scale_ratio=edit_decomp["r"],
             min_extent=min_extent,
             edited_face_str=edited_face_str,
@@ -373,33 +378,24 @@ def _solve_face_edge(
             verbose=verbose,
         )
 
-        if verbose:
-            _print_where_and_op(where=where, op="scaling")
-            print(f"[AEP][attach][FACE] solving={solving} | delegated_scaling=stub (no actual change)")
-
         return {
             "kind": "face",
             "solving": solving,
             "edge": {"a": e.get("a"), "b": e.get("b"), "a_face": e.get("a_face"), "b_face": e.get("b_face")},
             "before_obb": other_obb,
             "after_obb": after_obb,
-            "op": {
-                "type": "scale_stub",
-                "ratio": float(edit_decomp["r"]),
-                "debug": scale_debug,
-            },
+            "op": {"type": "scale", "debug": dbg},
         }
 
     t_axis, t_sign = t_parsed
 
     if t_axis == k and t_sign == s_edit:
-        # A1
+        # A1 translate
         solving = "A1"
         where = f"attached_on_same_face_as_edit: target_face={_face_to_str(t_axis, t_sign)} == edited_face={edited_face_str}"
         after_obb = _apply_translation(other_obb, edit_decomp["dF"])
         if verbose:
             _print_where_and_op(where=where, op="translation")
-            print(f"[AEP][attach][FACE] solving={solving} | delta(dF)={edit_decomp['dF'].tolist()}")
         return {
             "kind": "face",
             "solving": solving,
@@ -410,21 +406,22 @@ def _solve_face_edge(
         }
 
     if t_axis == k and t_sign == -s_edit:
-        # A2
+        # A2 none
         solving = "A2"
         where = f"attached_on_opposite_face: target_face={_face_to_str(t_axis, t_sign)} opposite_of edited_face={edited_face_str}"
         if verbose:
             _print_where_and_op(where=where, op="none")
-            print(f"[AEP][attach][FACE] solving={solving} | no change")
         return None
 
-    # perpendicular -> A3 (delegate scaling)
-    solving = "A3"
+    # A3 perpendicular -> scaling (delegated)
+    solving = "A3(perp)->scale"
     where = f"attached_on_perpendicular_face: target_face={_face_to_str(t_axis, t_sign)} perp_to edited_face={edited_face_str}"
+    if verbose:
+        _print_where_and_op(where=where, op="scaling")
 
-    after_obb, scale_debug = scale_neighbor_obb(
+    after_obb, dbg = scale_neighbor_obb(
         other_obb=other_obb,
-        edit_face_normal=edit_decomp["n_edit"],
+        edit_face_normal=edit_decomp["uk"],
         scale_ratio=edit_decomp["r"],
         min_extent=min_extent,
         edited_face_str=edited_face_str,
@@ -432,33 +429,21 @@ def _solve_face_edge(
         verbose=verbose,
     )
 
-    if verbose:
-        _print_where_and_op(where=where, op="scaling")
-        print(f"[AEP][attach][FACE] solving={solving} | delegated_scaling=stub (no actual change)")
-
     return {
         "kind": "face",
         "solving": solving,
         "edge": {"a": e.get("a"), "b": e.get("b"), "a_face": e.get("a_face"), "b_face": e.get("b_face")},
         "before_obb": other_obb,
         "after_obb": after_obb,
-        "op": {
-            "type": "scale_stub",
-            "ratio": float(edit_decomp["r"]),
-            "debug": scale_debug,
-        },
+        "op": {"type": "scale", "debug": dbg},
     }
 
 
 # ----------------------------
-# Volume attachment: closest-face-to-volume-box then V1/V2/V3 (scaling delegated)
+# Volume attachment classification (unchanged)
 # ----------------------------
 
 def _interval_to_plane_distance(lo: float, hi: float, p: float) -> float:
-    """
-    Distance from 1D interval [lo,hi] to plane coordinate p.
-    If p is inside interval -> 0, else min endpoint distance.
-    """
     lo = float(min(lo, hi))
     hi = float(max(lo, hi))
     if lo <= p <= hi:
@@ -471,11 +456,6 @@ def _closest_target_face_to_volume_box(
     bmax: np.ndarray,
     E0: np.ndarray
 ) -> Tuple[int, int, float, Dict[str, Any]]:
-    """
-    In A-before local coords, target faces are planes:
-      q[i] = +E0[i]  and  q[i] = -E0[i]
-    Given a volume/contact box [bmin,bmax] (A-local), find the closest face plane.
-    """
     best_axis, best_sign, best_dist = 0, +1, 1e30
     debug_faces: List[Dict[str, Any]] = []
 
@@ -506,9 +486,6 @@ def _get_volume_box_local_from_edge(
     e: Dict[str, Any],
     edit_decomp: Dict[str, Any]
 ) -> Tuple[Optional[np.ndarray], Optional[np.ndarray], str, Dict[str, Any]]:
-    """
-    Try to extract a TARGET-LOCAL (A-before local) volume/contact box from edge.
-    """
     bmin = e.get("overlap_box_local_min", None)
     bmax = e.get("overlap_box_local_max", None)
     if bmin is not None and bmax is not None:
@@ -527,11 +504,6 @@ def _classify_volume_attachment_face_vs_edit(
     e: Dict[str, Any],
     edit_decomp: Dict[str, Any],
 ) -> Tuple[str, Dict[str, Any]]:
-    """
-    Determine where the VOLUME attachment is relative to the edited face by:
-      - inferring which TARGET face (+/-u0/u1/u2) is closest to the contact volume box
-      - comparing that face to the edited face (k, s_edit)
-    """
     k = int(edit_decomp["axis"])
     s_edit = int(edit_decomp["s_edit"])
     E0 = edit_decomp["E0"]
@@ -568,6 +540,10 @@ def _classify_volume_attachment_face_vs_edit(
     return rel, info
 
 
+# ----------------------------
+# Volume attachment: V1/V2 + V3 delegated to attachment_scaling
+# ----------------------------
+
 def _solve_volume_edge(
     target: str,
     other: str,
@@ -584,55 +560,42 @@ def _solve_volume_edge(
 
     rel, info = _classify_volume_attachment_face_vs_edit(e, edit_decomp)
 
-    # SAME -> translate (V1)
     if rel == "same":
-        solving = "V1(same_as_edited_face)->translate"
+        solving = "V1(same)->translate"
         where = f"volume_closest_face == edited_face({edited_face_str}) | closest={info.get('closest_face')} method={info.get('method')}"
         after_obb = _apply_translation(other_obb, edit_decomp["dF"])
-
         if verbose:
             _print_where_and_op(where=where, op="translation")
-            print(f"[AEP][attach][VOLUME] solving={solving} | delta(dF)={edit_decomp['dF'].tolist()}")
-            print(f"[AEP][attach][VOLUME]   closest_face={info.get('closest_face')} dist={info.get('closest_face_dist'):.6f} method={info.get('method')}")
-
         return {
             "kind": "volume",
             "solving": solving,
             "edge": {
-                "a": e.get("a"),
-                "b": e.get("b"),
+                "a": e.get("a"), "b": e.get("b"),
                 "anchor_world": e.get("anchor_world", None),
                 "overlap_box_local_min": e.get("overlap_box_local_min", None),
                 "overlap_box_local_max": e.get("overlap_box_local_max", None),
             },
             "before_obb": other_obb,
             "after_obb": after_obb,
-            "op": {
-                "type": "translate",
-                "delta_world": edit_decomp["dF"].tolist(),
-                "reason": "volume_same_face_as_edit",
-                "debug": info,
-            },
+            "op": {"type": "translate", "delta_world": edit_decomp["dF"].tolist(), "debug": info},
         }
 
-    # OPPOSITE -> no change (V2)
     if rel == "opposite":
-        solving = "V2(opposite_of_edited_face)->no_change"
-        where = f"volume_closest_face is opposite_of edited_face({edited_face_str}) | closest={info.get('closest_face')} method={info.get('method')}"
+        solving = "V2(opposite)->no_change"
+        where = f"volume_closest_face opposite_of edited_face({edited_face_str}) | closest={info.get('closest_face')} method={info.get('method')}"
         if verbose:
             _print_where_and_op(where=where, op="none")
-            print(f"[AEP][attach][VOLUME] solving={solving} | no change")
-            print(f"[AEP][attach][VOLUME]   closest_face={info.get('closest_face')} dist={info.get('closest_face_dist'):.6f} method={info.get('method')}")
         return None
 
-    # PERPENDICULAR -> delegate scaling (V3)
     if rel == "perpendicular":
-        solving = "V3(perpendicular_to_edited_face)->scale"
+        solving = "V3(perp)->scale"
         where = f"volume_closest_face perpendicular_to edited_face({edited_face_str}) | closest={info.get('closest_face')} method={info.get('method')}"
+        if verbose:
+            _print_where_and_op(where=where, op="scaling")
 
-        after_obb, scale_debug = scale_neighbor_obb(
+        after_obb, dbg = scale_neighbor_obb(
             other_obb=other_obb,
-            edit_face_normal=edit_decomp["n_edit"],
+            edit_face_normal=edit_decomp["uk"],
             scale_ratio=edit_decomp["r"],
             min_extent=min_extent,
             edited_face_str=edited_face_str,
@@ -640,38 +603,29 @@ def _solve_volume_edge(
             verbose=verbose,
         )
 
-        if verbose:
-            _print_where_and_op(where=where, op="scaling")
-            print(f"[AEP][attach][VOLUME] solving={solving} | delegated_scaling=stub (no actual change)")
-            print(f"[AEP][attach][VOLUME]   closest_face={info.get('closest_face')} dist={info.get('closest_face_dist'):.6f} method={info.get('method')}")
-
         return {
             "kind": "volume",
             "solving": solving,
             "edge": {
-                "a": e.get("a"),
-                "b": e.get("b"),
+                "a": e.get("a"), "b": e.get("b"),
                 "anchor_world": e.get("anchor_world", None),
                 "overlap_box_local_min": e.get("overlap_box_local_min", None),
                 "overlap_box_local_max": e.get("overlap_box_local_max", None),
             },
             "before_obb": other_obb,
             "after_obb": after_obb,
-            "op": {
-                "type": "scale_stub",
-                "ratio": float(edit_decomp["r"]),
-                "reason": "volume_perpendicular_to_edit_face",
-                "debug": {"volume_info": info, "scale_debug": scale_debug},
-            },
+            "op": {"type": "scale", "debug": {"volume_info": info, "scale_debug": dbg}},
         }
 
-    # UNKNOWN -> conservative delegate scaling
-    solving = "V?(unknown_volume_face)->scale"
+    # unknown -> conservative scale (delegated)
+    solving = "V?(unknown)->scale"
     where = f"cannot_classify_volume_face_vs_edited_face({edited_face_str}) -> scale (conservative)"
+    if verbose:
+        _print_where_and_op(where=where, op="scaling")
 
-    after_obb, scale_debug = scale_neighbor_obb(
+    after_obb, dbg = scale_neighbor_obb(
         other_obb=other_obb,
-        edit_face_normal=edit_decomp["n_edit"],
+        edit_face_normal=edit_decomp["uk"],
         scale_ratio=edit_decomp["r"],
         min_extent=min_extent,
         edited_face_str=edited_face_str,
@@ -679,93 +633,18 @@ def _solve_volume_edge(
         verbose=verbose,
     )
 
-    if verbose:
-        _print_where_and_op(where=where, op="scaling")
-        print(f"[AEP][attach][VOLUME] solving={solving} | delegated_scaling=stub (no actual change)")
-
     return {
         "kind": "volume",
         "solving": solving,
         "edge": {
-            "a": e.get("a"),
-            "b": e.get("b"),
+            "a": e.get("a"), "b": e.get("b"),
             "anchor_world": e.get("anchor_world", None),
             "overlap_box_local_min": e.get("overlap_box_local_min", None),
             "overlap_box_local_max": e.get("overlap_box_local_max", None),
         },
         "before_obb": other_obb,
         "after_obb": after_obb,
-        "op": {
-            "type": "scale_stub",
-            "ratio": float(edit_decomp["r"]),
-            "reason": "unknown_volume_face_classification",
-            "debug": {"volume_info": info, "scale_debug": scale_debug},
-        },
-    }
-
-
-# ----------------------------
-# Point attachment: move anchor (P1), then translate neighbor (P2) (UNCHANGED)
-# ----------------------------
-
-def _solve_point_edge(
-    target: str,
-    other: str,
-    e: Dict[str, Any],
-    edit_decomp: Dict[str, Any],
-    other_obb: Dict[str, Any],
-    verbose: bool
-) -> Optional[Dict[str, Any]]:
-    k = int(edit_decomp["axis"])
-    s_edit = int(edit_decomp["s_edit"])
-    edited_face_str = _face_to_str(k, s_edit)
-
-    aw = e.get("anchor_world", None)
-    if aw is None:
-        solving = "P0(no_anchor)->skip"
-        where = f"anchor_missing -> cannot_determine_closest_face_vs_edited_face({edited_face_str})"
-        if verbose:
-            _print_where_and_op(where=where, op="none")
-            print(f"[AEP][attach][POINT] solving={solving} | skipped (no anchor_world)")
-        return None
-
-    P0 = _as_np(aw)
-
-    # Determine closest face in A-before (for printing "where")
-    q0 = _world_to_local(P0, edit_decomp["C0"], edit_decomp["U0"])
-    i_star, s_star, delta = _closest_face_relation_local(q0, edit_decomp["E0"])
-    closest_face_str = _face_to_str(i_star, s_star)
-    if i_star == k and s_star == s_edit:
-        where = f"anchor_closest_to_edited_face({edited_face_str}) (closest_face={closest_face_str}, delta={delta:.6f})"
-    else:
-        where = f"anchor_closest_to_face({closest_face_str}) NOT edited_face({edited_face_str}) (delta={delta:.6f})"
-
-    # P1: move anchor so A-point relation unchanged
-    P1, infoA = _move_anchor_preserve_A_relation(P0, edit_decomp)
-
-    # P2: translate B rigidly by anchor displacement
-    dP = P1 - P0
-    after_obb = _apply_translation(other_obb, dP)
-
-    if verbose:
-        _print_where_and_op(where=where, op="translation")
-        print(f"[AEP][attach][POINT] solving=P1+P2(rigid) | delta(dP)={dP.tolist()}")
-        print(f"[AEP][attach][POINT]   P0={P0.tolist()}")
-        print(f"[AEP][attach][POINT]   P1={P1.tolist()}")
-        print(f"[AEP][attach][POINT]   preserved_face={_face_to_str(infoA['A_face_axis'], infoA['A_face_sign'])} offset(delta)={infoA['A_delta']:.6f}")
-
-    return {
-        "kind": "point",
-        "solving": "P1+P2(rigid)",
-        "edge": {"a": e.get("a"), "b": e.get("b"), "anchor_world": aw},
-        "anchor": {
-            "P0": P0.tolist(),
-            "P1": P1.tolist(),
-            "infoA": infoA,
-        },
-        "before_obb": other_obb,
-        "after_obb": after_obb,
-        "op": {"type": "translate", "delta_world": dP.tolist(), "reason": "preserve_point_relations"},
+        "op": {"type": "scale", "debug": {"volume_info": info, "scale_debug": dbg}},
     }
 
 
@@ -784,11 +663,9 @@ def apply_attachments(constraints: Dict[str, Any], edit: Dict[str, Any], verbose
     if not isinstance(change, dict):
         raise ValueError("edit missing 'change' dict")
 
-    # edit decomposition
     ed = _compute_edit_decomp(change)
     min_extent = _min_extent_from_edit(change)
 
-    # collect target-involved edges
     all_edges = [e for e in attachments if isinstance(e, dict)]
     target_edges = [e for e in all_edges if e.get("a") == target or e.get("b") == target]
 
@@ -801,16 +678,13 @@ def apply_attachments(constraints: Dict[str, Any], edit: Dict[str, Any], verbose
             counts_all[k] += 1
         print(f"[AEP][attach] ALL edges in file: {len(all_edges)}")
         print(f"[AEP][attach] ALL counts: volume={counts_all['volume']} face={counts_all['face']} point={counts_all['point']} unknown={counts_all['unknown']}")
-
         print(f"[AEP][attach] target={target} | edges_touching_target={len(target_edges)}")
-        print(f"[AEP][attach] edited_face={_face_to_str(ed['axis'], ed['s_edit'])} | axis={ed['axis']} s_edit={ed['s_edit']} r={ed['r']:.6f}")
-        print(f"[AEP][attach] dF(edited_face_disp)={ed['dF'].tolist()} | dC(center_disp)={ed['dC'].tolist()}")
-        print(f"[AEP][attach] n_edit(outward_normal)={ed['n_edit'].tolist()}")
+        print(f"[AEP][attach] edited_face(meta)={_face_to_str(ed['axis'], ed['s_edit'])} | axis={ed['axis']} s_edit={ed['s_edit']} r(meta)={ed['r']:.6f}")
+        print(f"[AEP][attach] dF(edited_face_disp meta)={ed['dF'].tolist()} | dC(center_disp)={ed['dC'].tolist()}")
 
     changed_nodes: Dict[str, Any] = {}
     applied_any = False
 
-    # Solve each target edge
     for idx, e in enumerate(target_edges):
         kind = _infer_attachment_kind(e)
         other = _other_name_in_edge(e, target)
@@ -839,7 +713,6 @@ def apply_attachments(constraints: Dict[str, Any], edit: Dict[str, Any], verbose
         if rec is None:
             continue
 
-        # If multiple edges touch the same neighbor, we currently "last one wins".
         changed_nodes[other] = rec
         applied_any = True
 
@@ -848,7 +721,6 @@ def apply_attachments(constraints: Dict[str, Any], edit: Dict[str, Any], verbose
             print(f"[AEP][attach] RESULT saved for neighbor '{other}': kind={rec['kind']} solving={rec['solving']} op={rec['op'].get('type')}")
             print(f"[AEP][attach]   after_obb.center={aob['center']} extents={aob['extents']}")
 
-    # build summary
     counts_target = {"volume": 0, "face": 0, "point": 0, "unknown": 0}
     for e in target_edges:
         k = _infer_attachment_kind(e)
@@ -859,7 +731,7 @@ def apply_attachments(constraints: Dict[str, Any], edit: Dict[str, Any], verbose
     return {
         "target": target,
         "applied": bool(applied_any),
-        "changed_nodes": changed_nodes,  # per-neighbor after_obb + logs
+        "changed_nodes": changed_nodes,
         "summary": {
             "total_edges": int(len(target_edges)),
             "counts": counts_target,
