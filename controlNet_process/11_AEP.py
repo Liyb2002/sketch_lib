@@ -19,7 +19,7 @@ from AEP.vis import vis_from_saved_changes
 ROOT = os.path.dirname(os.path.abspath(__file__))
 
 AEP_DATA_DIR = os.path.join(ROOT, "sketch", "AEP")
-CONSTRAINTS_PATH = os.path.join(AEP_DATA_DIR, "initial_constraints.json")
+CONSTRAINTS_PATH = os.path.join(AEP_DATA_DIR, "filtered_relations.json")
 EDIT_PATH = os.path.join(AEP_DATA_DIR, "target_face_edit_change.json")
 AEP_CHANGES_PATH = os.path.join(AEP_DATA_DIR, "aep_changes.json")
 
@@ -113,16 +113,16 @@ def main():
     # VIS: neighbors in blue, changed neighbors in red
     #     (reads from saved json, not from symcon_res)
     # ------------------------------------------------------------
-    # if DO_VIS:
-    #     vis_from_saved_changes(
-    #         overlay_ply_path=OVERLAY_PLY,
-    #         nodes=nodes,
-    #         neighbor_names=all_neighbors,
-    #         aep_changes_json=AEP_CHANGES_PATH,
-    #         target=target,
-    #         window_name=f"AEP: target+neighbors (blue) + changed (red) | target={target}",
-    #         show_overlay=True,
-    #     )
+    if DO_VIS:
+        vis_from_saved_changes(
+            overlay_ply_path=OVERLAY_PLY,
+            nodes=nodes,
+            neighbor_names=all_neighbors,
+            aep_changes_json=AEP_CHANGES_PATH,
+            target=target,
+            window_name=f"AEP: target+neighbors (blue) + changed (red) | target={target}",
+            show_overlay=True,
+        )
 
 
 
