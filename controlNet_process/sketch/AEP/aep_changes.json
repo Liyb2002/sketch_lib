@@ -117,9 +117,9 @@
       "reason": "attachment",
       "after_obb": {
         "center": [
-          -0.006725355117747541,
-          -0.0009096616520873832,
-          1.064339445090582
+          -0.00889071352836223,
+          0.026926518345856278,
+          1.0674325292348417
         ],
         "axes": [
           [
@@ -140,21 +140,31 @@
         ],
         "extents": [
           0.19313631279159776,
-          0.09270152378775205,
+          0.11973776520117446,
           0.07185725035900795
         ]
       },
-      "case": "B2B3->A3",
+      "case": "B1(closer_to_edited)->translate",
       "kind": "volume",
       "op": {
-        "type": "scale",
-        "ratio": 0.7742045597059697,
-        "edit_dir": [
-          -0.1794839355986185,
-          0.9830603405599417,
-          0.03711985560589331
+        "type": "translate",
+        "delta_world": [
+          -0.002165358410614689,
+          0.02783617999794366,
+          0.0030930841442595725
         ],
-        "axis_chosen": 1
+        "reason": "volume_closer_to_edited_face",
+        "where": "closer_to_edited_face",
+        "debug": {
+          "method": "anchor_local_k_only",
+          "axis": 1,
+          "edited_face": "-u1",
+          "p_edit": -0.0627024191879642,
+          "p_opp": 0.0627024191879642,
+          "qk": -0.011809635015329153,
+          "dist_edit": 0.05089278417263504,
+          "dist_opp": 0.07451205420329335
+        }
       },
       "debug": {
         "edge": {
@@ -164,7 +174,9 @@
             -0.007478181995055161,
             0.05041048536072018,
             1.16800522490407
-          ]
+          ],
+          "overlap_box_local_min": null,
+          "overlap_box_local_max": null
         }
       }
     },
@@ -199,7 +211,7 @@
           0.06067872522848612
         ]
       },
-      "case": "B2B3->A3",
+      "case": "B2B3(closer_to_opposite)->scale",
       "kind": "volume",
       "op": {
         "type": "scale",
@@ -209,7 +221,19 @@
           0.9830603405599417,
           0.03711985560589331
         ],
-        "axis_chosen": 1
+        "axis_chosen": 1,
+        "reason": "volume_closer_to_opposite_face",
+        "where": "closer_to_opposite_face",
+        "debug": {
+          "method": "anchor_local_k_only",
+          "axis": 1,
+          "edited_face": "-u1",
+          "p_edit": -0.0627024191879642,
+          "p_opp": 0.0627024191879642,
+          "qk": 0.02995112896032358,
+          "dist_edit": 0.09265354814828777,
+          "dist_opp": 0.03275129022764062
+        }
       },
       "debug": {
         "edge": {
@@ -219,7 +243,9 @@
             -0.002857535915178968,
             0.09470803180638275,
             1.1422221134090544
-          ]
+          ],
+          "overlap_box_local_min": null,
+          "overlap_box_local_max": null
         }
       }
     },
@@ -227,9 +253,9 @@
       "reason": "attachment",
       "after_obb": {
         "center": [
-          -0.007285132214660719,
-          0.033916066075541346,
-          1.2432719987529985
+          -0.009450490625275407,
+          0.061752246073485006,
+          1.2463650828972581
         ],
         "axes": [
           [
@@ -249,22 +275,32 @@
           ]
         ],
         "extents": [
-          0.06993391118505035,
+          0.0903300171877186,
           0.03815269877362015,
           0.014306793009736295
         ]
       },
-      "case": "B2B3->A3",
+      "case": "B1(closer_to_edited)->translate",
       "kind": "volume",
       "op": {
-        "type": "scale",
-        "ratio": 0.7742045597059697,
-        "edit_dir": [
-          -0.1794839355986185,
-          0.9830603405599417,
-          0.03711985560589331
+        "type": "translate",
+        "delta_world": [
+          -0.002165358410614689,
+          0.02783617999794366,
+          0.0030930841442595725
         ],
-        "axis_chosen": 0
+        "reason": "volume_closer_to_edited_face",
+        "where": "closer_to_edited_face",
+        "debug": {
+          "method": "anchor_local_k_only",
+          "axis": 1,
+          "edited_face": "-u1",
+          "p_edit": -0.0627024191879642,
+          "p_opp": 0.0627024191879642,
+          "qk": -0.020281593850324412,
+          "dist_edit": 0.042420825337639786,
+          "dist_opp": 0.0829840130382886
+        }
       },
       "debug": {
         "edge": {
@@ -274,7 +310,9 @@
             -0.004929784854568552,
             0.04084758418768595,
             1.205353064073238
-          ]
+          ],
+          "overlap_box_local_min": null,
+          "overlap_box_local_max": null
         }
       }
     }
