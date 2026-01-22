@@ -54,6 +54,7 @@ def choose_target_label(nodes: Dict[str, Any], target: Optional[str]) -> str:
     candidates = [k for k in nodes.keys() if not k.startswith("unknown_")]
     if not candidates:
         raise ValueError("No non-unknown labels found in constraints nodes.")
+    
     return random.choice(candidates)
 
 
@@ -203,7 +204,7 @@ def main():
     MIN_EXTENT = 1e-4
 
     # seed (None => vary)
-    SEED = 0
+    SEED = None
 
     OUT_FILENAME = "target_face_edit_change.json"
     DO_VIS = True
@@ -299,8 +300,9 @@ def main():
         gray = np.full((len(pcd.points), 3), 0.6, dtype=np.float64)
         pcd.colors = o3d.utility.Vector3dVector(gray)
 
-    ls_pre = paint_lineset(obb_to_lineset(pre_obb), (1.0, 0.0, 0.0))   # red
-    ls_post = paint_lineset(obb_to_lineset(post_obb), (0.0, 1.0, 0.0)) # green
+    ls_pre  = paint_lineset(obb_to_lineset(pre_obb),  (0.0, 0.0, 1.0))  # blue
+    ls_post = paint_lineset(obb_to_lineset(post_obb), (1.0, 0.0, 0.0))  # red
+
 
     o3d.visualization.draw_geometries(
         [pcd, ls_pre, ls_post],
