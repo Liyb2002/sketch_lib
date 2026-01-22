@@ -17,6 +17,25 @@
 # - axes are (approx) orthonormal
 # - edit["change"] contains before_obb and after_obb for the target
 # - constraints["nodes"][name]["obb"] exists for each component
+#
+# Behavior summary:
+#   FACE:
+#     A1 (same face): translate B by edited face displacement ΔF
+#     A2 (opposite):  no change
+#     A3 (perp):      scale B along edit direction by ratio r
+#
+#   VOLUME (UPDATED to support perpendicular coupling):
+#     Infer which TARGET face (+/-u0/u1/u2) is closest to the volume contact box
+#     (in A-before local coords), then compare vs edited face:
+#       V1 (same):       translate by ΔF
+#       V2 (opposite):   no change
+#       V3 (perp):       scale by r
+#     (Fallback: if no local box, use anchor_world as degenerate box; if neither, scale.)
+#
+#   POINT:
+#     Preserve relation "box <-> point" by:
+#       P1: move anchor to preserve A-point relation (closest face + offset + tangential coords)
+#       P2: translate B so that B-point relation is unchanged (rigid: ΔB = P1 - P0)
 
 from typing import Dict, Any, List, Optional, Tuple
 import numpy as np
@@ -25,101 +44,6 @@ import numpy as np
 # ----------------------------
 # Basic helpers
 # ----------------------------
-
-def _interval_to_plane_distance(a: float, b: float, p: float) -> float:
-    # distance from 1D interval [a,b] to point p
-    lo = float(min(a, b))
-    hi = float(max(a, b))
-    if lo <= p <= hi:
-        return 0.0
-    return min(abs(lo - p), abs(hi - p))
-
-
-def _volume_where_vs_edited_face(
-    e: Dict[str, Any],
-    edit_decomp: Dict[str, Any],
-    target: str,
-    verbose: bool = False
-) -> Tuple[str, Dict[str, Any]]:
-    """
-    Returns:
-      where_str: one of
-        - "closer_to_edited_face"
-        - "closer_to_opposite_face"
-        - "tie_choose_edited"
-        - "no_volume_box_fallback_anchor"
-        - "no_volume_box_no_anchor"
-      info: debug dict
-    """
-    k = int(edit_decomp["axis"])
-    s_edit = int(edit_decomp["s_edit"])
-    E0 = edit_decomp["E0"]
-    p_edit = float(s_edit * E0[k])
-    p_opp  = float(-s_edit * E0[k])
-
-    # Preferred: use overlap/contact box in TARGET-LOCAL coords if available
-    # (Your pipeline may store these; adjust key names if yours differ.)
-    bmin = e.get("overlap_box_local_min", None)
-    bmax = e.get("overlap_box_local_max", None)
-
-    if bmin is not None and bmax is not None:
-        bmin = _as_np(bmin)
-        bmax = _as_np(bmax)
-        a = float(bmin[k])
-        b = float(bmax[k])
-
-        d_edit = _interval_to_plane_distance(a, b, p_edit)
-        d_opp  = _interval_to_plane_distance(a, b, p_opp)
-
-        if d_edit < d_opp:
-            where = "closer_to_edited_face"
-        elif d_opp < d_edit:
-            where = "closer_to_opposite_face"
-        else:
-            where = "tie_choose_edited"
-
-        info = {
-            "method": "volume_box_local",
-            "axis": k,
-            "p_edit": p_edit,
-            "p_opp": p_opp,
-            "interval_k": [min(a, b), max(a, b)],
-            "dist_edit": d_edit,
-            "dist_opp": d_opp,
-        }
-        return where, info
-
-    # Fallback: if you still have anchor_world, compare its distances to the two planes
-    aw = e.get("anchor_world", None)
-    if aw is not None:
-        P = _as_np(aw)
-        q = _world_to_local(P, edit_decomp["C0"], edit_decomp["U0"])
-        qk = float(q[k])
-
-        d_edit = abs(qk - p_edit)
-        d_opp  = abs(qk - p_opp)
-
-        if d_edit < d_opp:
-            where = "closer_to_edited_face"
-        elif d_opp < d_edit:
-            where = "closer_to_opposite_face"
-        else:
-            where = "tie_choose_edited"
-
-        info = {
-            "method": "anchor_fallback",
-            "axis": k,
-            "p_edit": p_edit,
-            "p_opp": p_opp,
-            "qk": qk,
-            "dist_edit": d_edit,
-            "dist_opp": d_opp,
-        }
-        return where, info
-
-    return "no_volume_box_no_anchor", {"method": "none"}
-
-
 
 def _as_np(x):
     return np.asarray(x, dtype=np.float64)
@@ -255,25 +179,6 @@ def _min_extent_from_edit(change: Dict[str, Any]) -> float:
     return 1e-4
 
 
-def _get_tols(constraints: Dict[str, Any], E0k: float) -> Tuple[float, float]:
-    params = constraints.get("params", {}) or {}
-    gap = params.get("attach_face_gap_tol", 0.01)
-    ov = params.get("attach_face_overlap_tol", 0.01)
-    try:
-        gap = float(gap)
-    except Exception:
-        gap = 0.01
-    try:
-        ov = float(ov)
-    except Exception:
-        ov = 0.01
-
-    # also allow relative fallback
-    gap = max(gap, 0.05 * float(E0k))
-    ov = max(ov, 0.05 * float(E0k))
-    return gap, ov
-
-
 # ----------------------------
 # Geometry primitives for AEP rules
 # ----------------------------
@@ -309,6 +214,7 @@ def _compute_edit_decomp(change: Dict[str, Any]) -> Dict[str, Any]:
         if axis in (0, 1, 2) and k_face != axis:
             # axis mismatch in file; trust "axis"
             pass
+
     if axis not in (0, 1, 2):
         raise ValueError(f"Invalid edit axis: {axis}")
 
@@ -368,26 +274,23 @@ def _apply_translation(obb: Dict[str, Any], d_world: np.ndarray) -> Dict[str, An
     return {"center": C2.tolist(), "axes": U.tolist(), "extents": E.tolist()}
 
 
-def _anchor_on_edited_face(anchor_world: np.ndarray, edit_decomp: Dict[str, Any], gap_tol: float, in_tol: float) -> bool:
-    # Use BEFORE box for classification
-    C0, U0, E0 = edit_decomp["C0"], edit_decomp["U0"], edit_decomp["E0"]
-    k, s = edit_decomp["axis"], edit_decomp["s_edit"]
+# ----------------------------
+# Pretty-print helpers (your desired printing)
+# ----------------------------
 
-    q = _world_to_local(anchor_world, C0, U0)
-    # near plane
-    if abs(float(q[k] - s * E0[k])) > float(gap_tol):
-        return False
-    # inside face rectangle (with tolerance)
-    for i in (0, 1, 2):
-        if i == k:
-            continue
-        if abs(float(q[i])) > float(E0[i] + in_tol):
-            return False
-    return True
+def _print_edge_header(kind: str, target: str, other: str, idx: int):
+    print(f"\n[AEP][attach] edge#{idx}  A(target)={target}  B(neighbor)={other}")
+    print(f"[AEP][attach] 1) attachment_type = {kind}")
+
+
+def _print_where_and_op(where: str, op: str):
+    # op must be: "translation" | "scaling" | "none"
+    print(f"[AEP][attach] 2) where_vs_edited_face = {where}")
+    print(f"[AEP][attach] 3) operation = {op}")
 
 
 # ----------------------------
-# Point attachment helpers
+# Point attachment: preserve box<->point relation
 # ----------------------------
 
 def _closest_face_relation_local(q: np.ndarray, E: np.ndarray) -> Tuple[int, int, float]:
@@ -451,22 +354,7 @@ def _move_anchor_preserve_A_relation(P0: np.ndarray, edit_decomp: Dict[str, Any]
 
 
 # ----------------------------
-# Pretty-print helpers: exactly what you asked
-# ----------------------------
-
-def _print_edge_header(kind: str, target: str, other: str, idx: int):
-    print(f"\n[AEP][attach] edge#{idx}  A(target)={target}  B(neighbor)={other}")
-    print(f"[AEP][attach] 1) attachment_type = {kind}")
-
-
-def _print_where_and_op(where: str, op: str):
-    # op must be: "translation" | "scaling" | "none"
-    print(f"[AEP][attach] 2) where_vs_edited_face = {where}")
-    print(f"[AEP][attach] 3) operation = {op}")
-
-
-# ----------------------------
-# Face attachment: A1/A2/A3
+# Face attachment: A1/A2/A3 (UNCHANGED)
 # ----------------------------
 
 def _solve_face_edge(
@@ -514,7 +402,7 @@ def _solve_face_edge(
     t_axis, t_sign = t_parsed
 
     if t_axis == k and t_sign == s_edit:
-        # A1: same edited face
+        # A1
         solving = "A1"
         where = f"attached_on_same_face_as_edit: target_face={_face_to_str(t_axis, t_sign)} == edited_face={edited_face_str}"
         after_obb = _apply_translation(other_obb, edit_decomp["dF"])
@@ -531,7 +419,7 @@ def _solve_face_edge(
         }
 
     if t_axis == k and t_sign == -s_edit:
-        # A2: opposite face
+        # A2
         solving = "A2"
         where = f"attached_on_opposite_face: target_face={_face_to_str(t_axis, t_sign)} opposite_of edited_face={edited_face_str}"
         if verbose:
@@ -539,7 +427,7 @@ def _solve_face_edge(
             print(f"[AEP][attach][FACE] solving={solving} | no change")
         return None
 
-    # A3: perpendicular face
+    # perpendicular -> A3
     solving = "A3"
     where = f"attached_on_perpendicular_face: target_face={_face_to_str(t_axis, t_sign)} perp_to edited_face={edited_face_str}"
     after_obb, m, old, new = _apply_scale_along_dir(other_obb, edit_decomp["uk"], edit_decomp["r"], min_extent)
@@ -557,8 +445,143 @@ def _solve_face_edge(
 
 
 # ----------------------------
-# Volume attachment: B1 => translate, else => scale
+# Volume attachment (UPDATED): closest-face-to-volume-box then V1/V2/V3
 # ----------------------------
+
+def _interval_to_plane_distance(lo: float, hi: float, p: float) -> float:
+    """
+    Distance from 1D interval [lo,hi] to plane coordinate p.
+    If p is inside interval -> 0, else min endpoint distance.
+    """
+    lo = float(min(lo, hi))
+    hi = float(max(lo, hi))
+    if lo <= p <= hi:
+        return 0.0
+    return min(abs(lo - p), abs(hi - p))
+
+
+def _closest_target_face_to_volume_box(
+    bmin: np.ndarray,
+    bmax: np.ndarray,
+    E0: np.ndarray
+) -> Tuple[int, int, float, Dict[str, Any]]:
+    """
+    In A-before local coords, target faces are planes:
+      q[i] = +E0[i]  and  q[i] = -E0[i]
+    Given a volume/contact box [bmin,bmax] (A-local), find the closest face plane.
+
+    Returns:
+      (axis, sign, dist, debug)
+        axis in {0,1,2}
+        sign in {+1,-1}
+        dist >= 0
+    """
+    best_axis, best_sign, best_dist = 0, +1, 1e30
+    debug_faces: List[Dict[str, Any]] = []
+
+    for i in range(3):
+        lo = float(bmin[i])
+        hi = float(bmax[i])
+
+        # + face plane at +E0[i]
+        p_plus = float(+E0[i])
+        d_plus = _interval_to_plane_distance(lo, hi, p_plus)
+        debug_faces.append({"axis": i, "sign": +1, "plane": p_plus, "interval": [min(lo, hi), max(lo, hi)], "dist": float(d_plus)})
+        if d_plus < best_dist:
+            best_axis, best_sign, best_dist = i, +1, float(d_plus)
+
+        # - face plane at -E0[i]
+        p_minus = float(-E0[i])
+        d_minus = _interval_to_plane_distance(lo, hi, p_minus)
+        debug_faces.append({"axis": i, "sign": -1, "plane": p_minus, "interval": [min(lo, hi), max(lo, hi)], "dist": float(d_minus)})
+        if d_minus < best_dist:
+            best_axis, best_sign, best_dist = i, -1, float(d_minus)
+
+    debug = {
+        "faces_checked": debug_faces,
+        "chosen": {"axis": int(best_axis), "sign": int(best_sign), "dist": float(best_dist)},
+    }
+    return int(best_axis), int(best_sign), float(best_dist), debug
+
+
+def _get_volume_box_local_from_edge(
+    e: Dict[str, Any],
+    edit_decomp: Dict[str, Any]
+) -> Tuple[Optional[np.ndarray], Optional[np.ndarray], str, Dict[str, Any]]:
+    """
+    Try to extract a TARGET-LOCAL (A-before local) volume/contact box from edge.
+
+    Returns:
+      (bmin, bmax, method, info)
+
+    method:
+      - "volume_box_local" if overlap_box_local_min/max exist
+      - "anchor_as_degenerate_box" if only anchor_world exists
+      - "none" if neither exists
+    """
+    bmin = e.get("overlap_box_local_min", None)
+    bmax = e.get("overlap_box_local_max", None)
+    if bmin is not None and bmax is not None:
+        return _as_np(bmin), _as_np(bmax), "volume_box_local", {}
+
+    aw = e.get("anchor_world", None)
+    if aw is not None:
+        P = _as_np(aw)
+        q = _world_to_local(P, edit_decomp["C0"], edit_decomp["U0"])  # A-before local
+        # degenerate box at a single point
+        return q.copy(), q.copy(), "anchor_as_degenerate_box", {"anchor_world": P.tolist(), "anchor_local": q.tolist()}
+
+    return None, None, "none", {}
+
+
+def _classify_volume_attachment_face_vs_edit(
+    e: Dict[str, Any],
+    edit_decomp: Dict[str, Any],
+) -> Tuple[str, Dict[str, Any]]:
+    """
+    Determine where the VOLUME attachment is relative to the edited face by:
+      - inferring which TARGET face (+/-u0/u1/u2) is closest to the contact volume box
+      - comparing that face to the edited face (k, s_edit)
+
+    Returns:
+      relation: "same" | "opposite" | "perpendicular" | "unknown"
+      info: debug dict for printing/logging
+    """
+    k = int(edit_decomp["axis"])
+    s_edit = int(edit_decomp["s_edit"])
+    E0 = edit_decomp["E0"]
+
+    bmin, bmax, method, extra = _get_volume_box_local_from_edge(e, edit_decomp)
+    if bmin is None or bmax is None:
+        return "unknown", {
+            "method": method,
+            "reason": "no_volume_box_local_minmax_and_no_anchor",
+            "edited_face": _face_to_str(k, s_edit),
+        }
+
+    axis_star, sign_star, dist_star, dbg = _closest_target_face_to_volume_box(bmin, bmax, E0)
+
+    if axis_star == k and sign_star == s_edit:
+        rel = "same"
+    elif axis_star == k and sign_star == -s_edit:
+        rel = "opposite"
+    else:
+        rel = "perpendicular"
+
+    info = {
+        "method": method,
+        "edited_face": _face_to_str(k, s_edit),
+        "closest_face": _face_to_str(axis_star, sign_star),
+        "closest_face_axis": int(axis_star),
+        "closest_face_sign": int(sign_star),
+        "closest_face_dist": float(dist_star),
+        "volume_box_local_min": bmin.tolist(),
+        "volume_box_local_max": bmax.tolist(),
+        "debug_faces": dbg.get("faces_checked", []),
+    }
+    info.update(extra)
+    return rel, info
+
 
 def _solve_volume_edge(
     target: str,
@@ -571,143 +594,31 @@ def _solve_volume_edge(
     verbose: bool
 ) -> Optional[Dict[str, Any]]:
     """
-    New volume rule (stable, no hard tolerance tuning):
-
-    Decide whether the volume attachment is "on the edited face" by comparing
-    distance to the edited face plane vs distance to the opposite face plane,
-    using a volume box in TARGET-LOCAL coordinates when available.
-
-    Priority:
-      1) Use overlap/contact box in target-local coords:
-           e["overlap_box_local_min"], e["overlap_box_local_max"]
-         Compare distance from that interval (along edited axis k) to:
-           p_edit = s_edit * E0[k]
-           p_opp  = -s_edit * E0[k]
-         If dist_edit <= dist_opp  => treat as "on edited face"  (translate)
-         Else                       => treat as "on opposite side" (scale)
-
-      2) Fallback to anchor_world if no local box:
-         compute qk in A-before local coords and compare distances to p_edit/p_opp
-
-      3) If neither exists: treat as opposite side => scale (conservative)
+    New volume solver:
+      - infer closest TARGET face to the volume contact region (from local overlap box)
+      - classify relative to edited face: same/opposite/perpendicular
+      - apply:
+          same         -> translate by dF
+          opposite     -> no change
+          perpendicular-> scale by r (A3)
+      - if unknown (no box and no anchor): conservative scale
     """
-
-    def _interval_to_plane_distance(a: float, b: float, p: float) -> float:
-        lo = float(min(a, b))
-        hi = float(max(a, b))
-        if lo <= p <= hi:
-            return 0.0
-        return min(abs(lo - p), abs(hi - p))
-
     k = int(edit_decomp["axis"])
     s_edit = int(edit_decomp["s_edit"])
     edited_face_str = _face_to_str(k, s_edit)
 
-    # face planes in A-before local coordinates
-    E0 = edit_decomp["E0"]
-    p_edit = float(s_edit * E0[k])
-    p_opp = float(-s_edit * E0[k])
+    rel, info = _classify_volume_attachment_face_vs_edit(e, edit_decomp)
 
-    # -----------------------------------------
-    # Preferred: use volume overlap/contact box
-    # -----------------------------------------
-    bmin = e.get("overlap_box_local_min", None)
-    bmax = e.get("overlap_box_local_max", None)
-
-    where = None
-    info = {"method": None}
-
-    if bmin is not None and bmax is not None:
-        bmin = _as_np(bmin)
-        bmax = _as_np(bmax)
-        a = float(bmin[k])
-        b = float(bmax[k])
-
-        d_edit = _interval_to_plane_distance(a, b, p_edit)
-        d_opp = _interval_to_plane_distance(a, b, p_opp)
-
-        if d_edit < d_opp:
-            where = "closer_to_edited_face"
-        elif d_opp < d_edit:
-            where = "closer_to_opposite_face"
-        else:
-            where = "tie_choose_edited"
-
-        info = {
-            "method": "volume_box_local",
-            "axis": k,
-            "edited_face": edited_face_str,
-            "p_edit": p_edit,
-            "p_opp": p_opp,
-            "interval_k": [min(a, b), max(a, b)],
-            "dist_edit": d_edit,
-            "dist_opp": d_opp,
-        }
-
-    # -----------------------------------------
-    # Fallback: use anchor_world (relative test)
-    # -----------------------------------------
-    if where is None:
-        aw = e.get("anchor_world", None)
-        if aw is not None:
-            P0 = _as_np(aw)
-            q = _world_to_local(P0, edit_decomp["C0"], edit_decomp["U0"])
-            qk = float(q[k])
-
-            d_edit = abs(qk - p_edit)
-            d_opp = abs(qk - p_opp)
-
-            if d_edit < d_opp:
-                where = "closer_to_edited_face"
-            elif d_opp < d_edit:
-                where = "closer_to_opposite_face"
-            else:
-                where = "tie_choose_edited"
-
-            info = {
-                "method": "anchor_local_k_only",
-                "axis": k,
-                "edited_face": edited_face_str,
-                "p_edit": p_edit,
-                "p_opp": p_opp,
-                "qk": qk,
-                "dist_edit": d_edit,
-                "dist_opp": d_opp,
-            }
-        else:
-            # nothing to classify => conservative scale
-            where = "no_volume_box_no_anchor"
-            info = {
-                "method": "none",
-                "axis": k,
-                "edited_face": edited_face_str,
-                "p_edit": p_edit,
-                "p_opp": p_opp,
-            }
-
-    # -----------------------------------------
-    # Decide operation
-    # -----------------------------------------
-    on_edited = (where in ("closer_to_edited_face", "tie_choose_edited"))
-
-    if on_edited:
-        # translate (same as "B1")
-        solving = "B1(closer_to_edited)->translate"
+    # SAME -> translate (V1)
+    if rel == "same":
+        solving = "V1(same_as_edited_face)->translate"
+        where = f"volume_closest_face == edited_face({edited_face_str}) | closest={info.get('closest_face')} method={info.get('method')}"
         after_obb = _apply_translation(other_obb, edit_decomp["dF"])
 
         if verbose:
-            _print_where_and_op(
-                where=f"{where} | edited_face={edited_face_str} | method={info.get('method')} "
-                      f"| dist_edit={info.get('dist_edit', None)} dist_opp={info.get('dist_opp', None)}",
-                op="translation",
-            )
-            if info.get("method") == "volume_box_local":
-                print(f"[AEP][attach][VOLUME] interval_k={info['interval_k']} p_edit={info['p_edit']:.6f} p_opp={info['p_opp']:.6f}")
-            elif info.get("method") == "anchor_local_k_only":
-                print(f"[AEP][attach][VOLUME] qk={info['qk']:.6f} p_edit={info['p_edit']:.6f} p_opp={info['p_opp']:.6f}")
-            else:
-                print(f"[AEP][attach][VOLUME] WARNING: no box/anchor, defaulted to translate due to tie policy (should be rare).")
+            _print_where_and_op(where=where, op="translation")
             print(f"[AEP][attach][VOLUME] solving={solving} | delta(dF)={edit_decomp['dF'].tolist()}")
+            print(f"[AEP][attach][VOLUME]   closest_face={info.get('closest_face')} dist={info.get('closest_face_dist'):.6f} method={info.get('method')}")
 
         return {
             "kind": "volume",
@@ -724,28 +635,61 @@ def _solve_volume_edge(
             "op": {
                 "type": "translate",
                 "delta_world": edit_decomp["dF"].tolist(),
-                "reason": "volume_closer_to_edited_face",
-                "where": where,
+                "reason": "volume_same_face_as_edit",
                 "debug": info,
             },
         }
 
-    # else: closer to opposite => scale (same as A3)
-    solving = "B2B3(closer_to_opposite)->scale"
+    # OPPOSITE -> no change (V2)
+    if rel == "opposite":
+        solving = "V2(opposite_of_edited_face)->no_change"
+        where = f"volume_closest_face is opposite_of edited_face({edited_face_str}) | closest={info.get('closest_face')} method={info.get('method')}"
+        if verbose:
+            _print_where_and_op(where=where, op="none")
+            print(f"[AEP][attach][VOLUME] solving={solving} | no change")
+            print(f"[AEP][attach][VOLUME]   closest_face={info.get('closest_face')} dist={info.get('closest_face_dist'):.6f} method={info.get('method')}")
+        return None
+
+    # PERPENDICULAR -> scale (V3)
+    if rel == "perpendicular":
+        solving = "V3(perpendicular_to_edited_face)->scale"
+        where = f"volume_closest_face perpendicular_to edited_face({edited_face_str}) | closest={info.get('closest_face')} method={info.get('method')}"
+        after_obb, m, old, new = _apply_scale_along_dir(other_obb, edit_decomp["uk"], edit_decomp["r"], min_extent)
+
+        if verbose:
+            _print_where_and_op(where=where, op="scaling")
+            print(f"[AEP][attach][VOLUME] solving={solving} | chosen_B_axis=u{m} | E: {old:.6f}->{new:.6f} | r={edit_decomp['r']:.6f}")
+            print(f"[AEP][attach][VOLUME]   closest_face={info.get('closest_face')} dist={info.get('closest_face_dist'):.6f} method={info.get('method')}")
+
+        return {
+            "kind": "volume",
+            "solving": solving,
+            "edge": {
+                "a": e.get("a"),
+                "b": e.get("b"),
+                "anchor_world": e.get("anchor_world", None),
+                "overlap_box_local_min": e.get("overlap_box_local_min", None),
+                "overlap_box_local_max": e.get("overlap_box_local_max", None),
+            },
+            "before_obb": other_obb,
+            "after_obb": after_obb,
+            "op": {
+                "type": "scale",
+                "ratio": float(edit_decomp["r"]),
+                "edit_dir": edit_decomp["uk"].tolist(),
+                "axis_chosen": int(m),
+                "reason": "volume_perpendicular_to_edit_face",
+                "debug": info,
+            },
+        }
+
+    # UNKNOWN -> conservative scale
+    solving = "V?(unknown_volume_face)->scale"
+    where = f"cannot_classify_volume_face_vs_edited_face({edited_face_str}) -> scale (conservative)"
     after_obb, m, old, new = _apply_scale_along_dir(other_obb, edit_decomp["uk"], edit_decomp["r"], min_extent)
 
     if verbose:
-        _print_where_and_op(
-            where=f"{where} | edited_face={edited_face_str} | method={info.get('method')} "
-                  f"| dist_edit={info.get('dist_edit', None)} dist_opp={info.get('dist_opp', None)}",
-            op="scaling",
-        )
-        if info.get("method") == "volume_box_local":
-            print(f"[AEP][attach][VOLUME] interval_k={info['interval_k']} p_edit={info['p_edit']:.6f} p_opp={info['p_opp']:.6f}")
-        elif info.get("method") == "anchor_local_k_only":
-            print(f"[AEP][attach][VOLUME] qk={info['qk']:.6f} p_edit={info['p_edit']:.6f} p_opp={info['p_opp']:.6f}")
-        else:
-            print(f"[AEP][attach][VOLUME] WARNING: no box/anchor, defaulted to scale.")
+        _print_where_and_op(where=where, op="scaling")
         print(f"[AEP][attach][VOLUME] solving={solving} | chosen_B_axis=u{m} | E: {old:.6f}->{new:.6f} | r={edit_decomp['r']:.6f}")
 
     return {
@@ -765,15 +709,14 @@ def _solve_volume_edge(
             "ratio": float(edit_decomp["r"]),
             "edit_dir": edit_decomp["uk"].tolist(),
             "axis_chosen": int(m),
-            "reason": "volume_closer_to_opposite_face",
-            "where": where,
+            "reason": "unknown_volume_face_classification",
             "debug": info,
         },
     }
 
 
 # ----------------------------
-# Point attachment: always translate (P1+P2)
+# Point attachment: move anchor (P1), then translate neighbor (P2) (UNCHANGED)
 # ----------------------------
 
 def _solve_point_edge(
@@ -790,7 +733,7 @@ def _solve_point_edge(
 
     aw = e.get("anchor_world", None)
     if aw is None:
-        solving = "P(no_anchor)->skip"
+        solving = "P0(no_anchor)->skip"
         where = f"anchor_missing -> cannot_determine_closest_face_vs_edited_face({edited_face_str})"
         if verbose:
             _print_where_and_op(where=where, op="none")
