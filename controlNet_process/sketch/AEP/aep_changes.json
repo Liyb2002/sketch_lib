@@ -207,9 +207,21 @@
             ]
           },
           "scale_debug": {
-            "status": "stub_called",
-            "edited_face": "+u0",
-            "scale_ratio": 0.8236296410712575
+            "status": "inferred_blue_only_face_and_selected_neighbor_face",
+            "neighbor": "fender_0",
+            "inferred_target_face_axis": 0,
+            "inferred_target_face_sign": -1,
+            "inferred_target_face_str": "-u0",
+            "inferred_target_face_delta_plane": 0.017426509570662274,
+            "inferred_target_normal_world": [
+              0.0609890946040341,
+              -0.02654068140709778,
+              0.9977855093003843
+            ],
+            "chosen_neighbor_face_axis": 0,
+            "chosen_neighbor_face_sign": -1,
+            "chosen_neighbor_face_str": "-u0",
+            "chosen_neighbor_face_score": 1.0000000000000002
           }
         }
       },
@@ -356,9 +368,21 @@
             ]
           },
           "scale_debug": {
-            "status": "stub_called",
-            "edited_face": "+u0",
-            "scale_ratio": 0.8236296410712575
+            "status": "inferred_blue_only_face_and_selected_neighbor_face",
+            "neighbor": "handlebar_0",
+            "inferred_target_face_axis": 0,
+            "inferred_target_face_sign": -1,
+            "inferred_target_face_str": "-u0",
+            "inferred_target_face_delta_plane": 0.017426509570662274,
+            "inferred_target_normal_world": [
+              0.0609890946040341,
+              -0.02654068140709778,
+              0.9977855093003843
+            ],
+            "chosen_neighbor_face_axis": 0,
+            "chosen_neighbor_face_sign": -1,
+            "chosen_neighbor_face_str": "-u0",
+            "chosen_neighbor_face_score": 1.0000000000000002
           }
         }
       },
