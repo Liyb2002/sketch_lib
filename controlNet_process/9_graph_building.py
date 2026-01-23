@@ -46,7 +46,7 @@ def main():
 
     # 2) bboxes
     bbox_json_path = run_pca(SAVE_DIR, obj_space)
-    with open(bbox_json_path, "r") as f:
+    with open(bbox_json_path, "r") as f:w
         bboxes = json.load(f)
 
 
