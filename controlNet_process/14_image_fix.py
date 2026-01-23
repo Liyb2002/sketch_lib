@@ -1,168 +1,153 @@
 #!/usr/bin/env python3
-# 14_image_fix_local_fluxfill.py
+# 14_image_fix.py
 #
-# Local FLUX.1-Fill-dev inpainting:
-# - for each sketch/final_outputs/view_x/new.png
-# - generate seam_mask.png (from sketch/back_project_masks/view_x/mask_warps.json -> outputs.mask_new)
-# - run FluxFillPipeline inpaint
-# - save corrected.png in the same folder
+# Gemini API-key masked "inpainting" via Nano Banana (Gemini 2.5 Flash Image).
+# We provide (new.png, mask.png) as two images and instruct the model:
+#   white mask = editable, black mask = keep identical.
 #
-# NO BFL_API_KEY. No requests.
+# Inputs per view:
+#   sketch/final_outputs/view_x/gemini_fix/new.png
+#   sketch/final_outputs/view_x/gemini_fix/mask.png
+#
+# Outputs:
+#   sketch/final_outputs/view_x/gemini_fix/gemini_fixed.png
+#   sketch/final_outputs/view_x/gemini_fixed.png
 
 import os
-import json
 import glob
-from typing import List
+import base64
+import json
+import time
+from typing import Optional
 
-import cv2
-import numpy as np
+import requests
 
-import torch
-from PIL import Image
-from diffusers import FluxFillPipeline
 
+MODEL = "gemini-2.5-flash-image"
+API_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{MODEL}:generateContent"
 
 PROMPT = (
-    "Repair compositing artifacts caused by translating/scaling parts. "
-    "Only edit pixels inside the mask. Outside the mask, keep the image identical. "
-    "Inside the mask, fix boundary seams/gaps/overlaps/jagged edges and match neighboring shading/edges. "
-    "Do NOT move any components, do NOT change layout, do NOT add/remove parts."
+    "You are repairing compositing artifacts caused by translating/scaling components in a CAD-like render.\n"
+    "You are given two images:\n"
+    "  (1) The input image to fix.\n"
+    "  (2) A binary mask image of the same size.\n\n"
+    "Mask semantics:\n"
+    "- White pixels in the mask (value near 255) are the ONLY region you may change.\n"
+    "- Black pixels in the mask (value near 0) must remain IDENTICAL to the input image.\n\n"
+    "Task inside white mask ONLY:\n"
+    "- Fix boundary seams, small gaps, overlaps, jagged edges, and discontinuities.\n"
+    "- Blend edges/shading so neighboring regions look continuous and natural.\n\n"
+    "Hard rules:\n"
+    "- Do NOT move any components.\n"
+    "- Do NOT change layout/geometry.\n"
+    "- Do NOT add/remove parts.\n"
+    "- Do NOT change colors or lighting globally.\n"
+    "- Outside the mask must match the original input pixel-for-pixel.\n\n"
+    "Return a single corrected image."
 )
 
-# Tuning knobs (safe defaults for seam repair)
-R_BAND = 5          # seam band thickness in pixels
-BLUR_SIGMA = 1.0    # feather mask edge slightly
-STEPS = 30
-GUIDANCE = 30
-MAX_SEQ_LEN = 512
+
+def b64_file(path: str) -> str:
+    with open(path, "rb") as f:
+        return base64.b64encode(f.read()).decode("utf-8")
 
 
-def read_gray(path: str) -> np.ndarray:
-    m = cv2.imread(path, cv2.IMREAD_GRAYSCALE)
-    if m is None:
-        raise FileNotFoundError(path)
-    return m
-
-
-def write_png(path: str, img: np.ndarray) -> None:
+def write_bytes(path: str, data: bytes) -> None:
     os.makedirs(os.path.dirname(path), exist_ok=True)
-    ok = cv2.imwrite(path, img)
-    if not ok:
-        raise RuntimeError(f"cv2.imwrite failed: {path}")
+    with open(path, "wb") as f:
+        f.write(data)
 
 
-def load_masknew_paths_for_view(view_name: str) -> List[str]:
-    warp_json = os.path.join("sketch", "back_project_masks", view_name, "mask_warps.json")
-    if not os.path.exists(warp_json):
-        return []
+def call_gemini_image_edit(api_key: str, image_b64: str, mask_b64: str, prompt: str) -> bytes:
+    headers = {
+        "Content-Type": "application/json",
+        "x-goog-api-key": api_key,
+    }
 
-    with open(warp_json, "r") as f:
-        data = json.load(f)
+    # Two images as inline_data parts + text instruction.
+    payload = {
+        "contents": [{
+            "parts": [
+                {"text": prompt},
+                {"inline_data": {"mime_type": "image/png", "data": image_b64}},
+                {"inline_data": {"mime_type": "image/png", "data": mask_b64}},
+            ]
+        }],
+        # Ensure image output
+        "generationConfig": {
+            "responseModalities": ["IMAGE"]
+        }
+    }
 
-    out = []
-    for _, entry in (data.get("labels", {}) or {}).items():
-        if not entry.get("has_mask", False):
+    r = requests.post(API_URL, headers=headers, data=json.dumps(payload), timeout=300)
+
+    # Helpful error printing (Gemini often returns JSON error)
+    if r.status_code != 200:
+        txt = (r.text or "").strip()
+        raise RuntimeError(f"HTTP {r.status_code}: {txt[:2000]}")
+
+    j = r.json()
+
+    # Parse returned image bytes:
+    # candidates[0].content.parts[*].inline_data.data
+    cands = j.get("candidates", [])
+    if not cands:
+        raise RuntimeError(f"No candidates in response: {json.dumps(j)[:2000]}")
+
+    parts = (((cands[0] or {}).get("content") or {}).get("parts")) or []
+    for p in parts:
+        inline = p.get("inline_data") or p.get("inlineData")
+        if not inline:
             continue
-        p = ((entry.get("outputs", {}) or {}).get("mask_new", "") or "").strip()
-        if p and os.path.exists(p):
-            out.append(p)
-    return out
+        data = inline.get("data")
+        mime = inline.get("mime_type") or inline.get("mimeType") or ""
+        if isinstance(data, str) and len(data) > 100 and ("image" in mime or mime == ""):
+            return base64.b64decode(data)
 
-
-def make_seam_mask_from_masknew(mask_new_paths: List[str], H: int, W: int, r: int, blur_sigma: float) -> np.ndarray:
-    k = 2 * r + 1
-    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (k, k))
-    seam = np.zeros((H, W), dtype=np.uint8)
-
-    for p in mask_new_paths:
-        m = read_gray(p)
-        if m.shape[:2] != (H, W):
-            m = cv2.resize(m, (W, H), interpolation=cv2.INTER_NEAREST)
-        m01 = (m > 127).astype(np.uint8)
-
-        dil = cv2.dilate(m01, kernel, iterations=1)
-        ero = cv2.erode(m01, kernel, iterations=1)
-        band = ((dil - ero) > 0).astype(np.uint8)
-
-        seam = np.maximum(seam, band)
-
-    seam = (seam * 255).astype(np.uint8)
-
-    if blur_sigma and blur_sigma > 0:
-        seam_f = seam.astype(np.float32) / 255.0
-        seam_f = cv2.GaussianBlur(seam_f, (0, 0), blur_sigma)
-        seam = np.clip(seam_f * 255.0, 0, 255).astype(np.uint8)
-
-    return seam
-
-
-def pil_rgb(path: str) -> Image.Image:
-    return Image.open(path).convert("RGB")
-
-
-def pil_mask(path: str) -> Image.Image:
-    # white=inpaint, black=keep
-    return Image.open(path).convert("L")
+    raise RuntimeError(f"Could not find image inline_data in response: {json.dumps(j)[:2000]}")
 
 
 def main():
-    device = "cuda" if torch.cuda.is_available() else "cpu"
-    if device != "cuda":
-        raise RuntimeError("CUDA not found. FLUX fill is heavy; please run on a GPU node.")
-
-    # Model card recommends bfloat16.
-    pipe = FluxFillPipeline.from_pretrained(
-    "black-forest-labs/FLUX.1-Fill-dev",
-    torch_dtype=torch.bfloat16,
-    )
-
-    # Key: don't do .to("cuda"); offload instead
-    pipe.enable_model_cpu_offload()        # moves modules to GPU only when needed
-    pipe.enable_attention_slicing()        # reduces peak mem
-
+    api_key = (os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY") or "").strip()
+    if not api_key:
+        raise RuntimeError("Set env var GEMINI_API_KEY (or GOOGLE_API_KEY).")
 
     view_dirs = sorted(glob.glob(os.path.join("sketch", "final_outputs", "view_*")))
     if not view_dirs:
         raise FileNotFoundError("No folders found: sketch/final_outputs/view_*")
 
-    for folder in view_dirs:
-        view_name = os.path.basename(folder)
-        new_png = os.path.join(folder, "new.png")
-        if not os.path.exists(new_png):
+    for view_dir in view_dirs:
+        view_name = os.path.basename(view_dir)
+        fix_dir = os.path.join(view_dir, "gemini_fix")
+        new_png = os.path.join(fix_dir, "new.png")
+        mask_png = os.path.join(fix_dir, "mask.png")
+
+        if not (os.path.exists(new_png) and os.path.exists(mask_png)):
             continue
 
-        img_bgr = cv2.imread(new_png, cv2.IMREAD_COLOR)
-        if img_bgr is None:
-            raise FileNotFoundError(new_png)
-        H, W = img_bgr.shape[:2]
+        out_in_fix = os.path.join(fix_dir, "gemini_fixed.png")
+        out_in_view = os.path.join(view_dir, "gemini_fixed.png")
 
-        mask_new_paths = load_masknew_paths_for_view(view_name)
-        if not mask_new_paths:
-            print(f"[skip] {view_name}: no mask_new paths found in mask_warps.json")
-            continue
+        img_b64 = b64_file(new_png)
+        mask_b64 = b64_file(mask_png)
 
-        seam_mask = make_seam_mask_from_masknew(mask_new_paths, H, W, r=R_BAND, blur_sigma=BLUR_SIGMA)
-        seam_mask_path = os.path.join(folder, "seam_mask.png")
-        write_png(seam_mask_path, seam_mask)
+        last_err: Optional[Exception] = None
+        for attempt in range(3):
+            try:
+                out_bytes = call_gemini_image_edit(api_key, img_b64, mask_b64, PROMPT)
+                write_bytes(out_in_fix, out_bytes)
+                write_bytes(out_in_view, out_bytes)
+                print(f"[OK] {view_name} -> {out_in_view}")
+                last_err = None
+                break
+            except Exception as e:
+                last_err = e
+                time.sleep(1.0 + attempt)
 
-        image = pil_rgb(new_png)
-        mask = pil_mask(seam_mask_path)
+        if last_err is not None:
+            raise last_err
 
-        out = pipe(
-            prompt=PROMPT,
-            image=image,
-            mask_image=mask,
-            height=H,
-            width=W,
-            guidance_scale=GUIDANCE,
-            num_inference_steps=STEPS,
-            max_sequence_length=MAX_SEQ_LEN,
-            generator=torch.Generator("cpu").manual_seed(0),
-        ).images[0]
-
-        out_path = os.path.join(folder, "corrected.png")
-        out.save(out_path)
-        print(f"[OK] {out_path}")
+    print("Done.")
 
 
 if __name__ == "__main__":
