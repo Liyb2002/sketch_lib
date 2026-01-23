@@ -104,9 +104,11 @@ def main():
         aep_dir=AEP_DATA_DIR,
         target_edit=edit,
         symcon_res=symcon_res,
-        attach_res=attach_res,     # NEW
+        attach_res=attach_res,
         out_filename=os.path.basename(AEP_CHANGES_PATH),
-        )
+        constraints=constraints,  # <-- NEW: pass filtered_relations.json in
+    )
+
 
 
     # ------------------------------------------------------------

@@ -1,36 +1,23 @@
 #!/usr/bin/env python3
 # AEP/save_json.py
 #
-# Fixes your crash:
-#   AttributeError: 'str' object has no attribute 'get'
+# Saves AEP propagation results into a compact JSON schema for visualization.
 #
-# Why it happened:
-# - attach_res is NOT {name: {...}}.
-# - attach_res is the full dict returned by apply_attachments():
-#     {
-#       "target": ...,
-#       "applied": ...,
-#       "changed_nodes": { "<neighbor>": {...rec...}, ... },
-#       "summary": {...}
-#     }
-# - Your old save code iterated: for name, r in (attach_res or {}).items()
-#   which yields keys like "target", "applied", "changed_nodes", "summary".
-#   Some of those values are strings/bools, so r.get(...) crashes.
+# Fixes:
+# - Save BEFORE and AFTER OBB for each changed neighbor:
+#     before_obb := constraints["nodes"][name]["obb"]
+#     after_obb  := record.after_obb if provided, else computed from before_obb + record
 #
-# Updated behavior:
-# - Only read attachment neighbor changes from attach_res["changed_nodes"].
-# - Keep priority: symmetry > containment > attachment.
-# - Update _compact_change() for attachment records produced by your new attachment.py:
-#     r contains: kind, solving, after_obb, op, edge, (optional) anchor
-#   We store:
-#     case := r["solving"]
-#     kind := r["kind"]
-#     op   := r["op"]
-#     debug := small debug bundle (edge/anchor optional)
+# Priority:
+#   symmetry > containment > attachment
+#
+# Attachment neighbor changes are read ONLY from attach_res["changed_nodes"].
 
 import os
 import json
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, Tuple
+import copy
+import numpy as np
 
 
 def safe_write_json(path: str, data: Dict[str, Any]) -> None:
@@ -41,21 +28,193 @@ def safe_write_json(path: str, data: Dict[str, Any]) -> None:
     os.replace(tmp, path)
 
 
-def _compact_change(reason: str, r: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Normalize different propagation outputs into a compact schema for vis.
+# ------------------------------------------------------------
+# OBB helpers
+# ------------------------------------------------------------
 
-    Expected inputs:
-      - symmetry/containment item r: dict with after_obb + mapping fields
-      - attachment item r: dict with after_obb + kind/solving/op + optional debug
+def _as_np(x) -> np.ndarray:
+    return np.array(x, dtype=np.float64)
+
+
+def _obb_valid(obb: Any) -> bool:
+    return (
+        isinstance(obb, dict)
+        and isinstance(obb.get("center"), (list, tuple))
+        and isinstance(obb.get("axes"), (list, tuple))
+        and isinstance(obb.get("extents"), (list, tuple))
+        and len(obb.get("center")) == 3
+        and len(obb.get("axes")) == 3
+        and len(obb.get("extents")) == 3
+    )
+
+
+def _get_node_obb(constraints: Optional[Dict[str, Any]], name: str) -> Optional[Dict[str, Any]]:
+    if not isinstance(constraints, dict):
+        return None
+    nodes = constraints.get("nodes", {})
+    if not isinstance(nodes, dict):
+        return None
+    rec = nodes.get(name, {})
+    if not isinstance(rec, dict):
+        return None
+    obb = rec.get("obb")
+    return obb if _obb_valid(obb) else None
+
+
+def _world_to_object(p_world: np.ndarray, origin: np.ndarray, axes: np.ndarray) -> np.ndarray:
+    # axes columns are object axes
+    return (p_world - origin) @ axes
+
+
+def _object_to_world(p_local: np.ndarray, origin: np.ndarray, axes: np.ndarray) -> np.ndarray:
+    # axes columns are object axes
+    return origin + axes @ p_local
+
+
+def _extract_op_delta_local(op: Any) -> Optional[Tuple[int, float]]:
+    """
+    Try to parse an operation payload and extract a "scale along axis" delta in LOCAL coords.
+
+    Supported minimal patterns (keep permissive):
+      op = {"type":"scale","axis":0,"delta":0.01,...}
+      op = {"type":"scale","axis":"u0","delta":0.01,...}
+      op = {"op":"scale","axis":0,"delta":0.01,...}
+      op = {"kind":"scale", ...}
+
+    Returns:
+      (axis_index, delta) where axis_index in {0,1,2}, delta is float,
+      or None if cannot parse.
+    """
+    if not isinstance(op, dict):
+        return None
+
+    t = op.get("type", op.get("op", op.get("kind", None)))
+    if isinstance(t, str) and t.lower() != "scale":
+        return None
+
+    axis = op.get("axis", op.get("u", op.get("dim", None)))
+    delta = op.get("delta", op.get("amount", op.get("d", None)))
+
+    if delta is None:
+        return None
+    try:
+        delta_f = float(delta)
+    except Exception:
+        return None
+
+    axis_idx = None
+    if isinstance(axis, int) and axis in (0, 1, 2):
+        axis_idx = axis
+    elif isinstance(axis, str):
+        a = axis.strip().lower()
+        if a in ("u0", "x", "0"):
+            axis_idx = 0
+        elif a in ("u1", "y", "1"):
+            axis_idx = 1
+        elif a in ("u2", "z", "2"):
+            axis_idx = 2
+
+    if axis_idx is None:
+        return None
+
+    return axis_idx, delta_f
+
+
+def _apply_scale_keep_far_face(before_obb: Dict[str, Any], axis_idx: int, signed_delta: float) -> Dict[str, Any]:
+    """
+    Apply a face-like scaling to an OBB in its local frame:
+    - Change the "near" face at +u_axis or -u_axis (depending on signed_delta),
+      while keeping the opposite (far) face fixed.
+    - This implies center shifts by signed_delta/2 along that axis
+      and extent changes by signed_delta/2 (because extents are half-lengths).
+
+    Convention:
+      signed_delta > 0 means expanding towards +axis direction (move +face outward)
+      signed_delta < 0 means shrinking towards +axis direction (move +face inward)
+    This matches "change one face, keep the opposite face unchanged".
+    """
+    out = copy.deepcopy(before_obb)
+    c = _as_np(out["center"])
+    R = _as_np(out["axes"])          # 3x3, columns are axes
+    e = _as_np(out["extents"])
+
+    # Local displacement vector (in local coords)
+    # center shift is delta/2 along axis
+    dc_local = np.zeros(3, dtype=np.float64)
+    dc_local[axis_idx] = signed_delta / 2.0
+
+    # extent changes by delta/2 (half-lengths)
+    e_new = e.copy()
+    e_new[axis_idx] = max(1e-9, e_new[axis_idx] + signed_delta / 2.0)
+
+    # transform center shift to world
+    dc_world = R @ dc_local
+    c_new = c + dc_world
+
+    out["center"] = c_new.tolist()
+    out["extents"] = e_new.tolist()
+    return out
+
+
+def _compute_after_obb_from_record(
+    before_obb: Optional[Dict[str, Any]],
+    reason: str,
+    r: Dict[str, Any],
+) -> Optional[Dict[str, Any]]:
+    """
+    If r already contains after_obb, return it.
+    Otherwise, try to compute after_obb from before_obb and info in r.
+
+    We keep this conservative: only compute when we can parse a scale op.
+    For translate ops, attachment.py should already have written after_obb;
+    if not, we leave it None so you can detect missing propagation output.
     """
     if not isinstance(r, dict):
-        # be defensive (never crash save)
-        return {"reason": reason, "after_obb": None, "debug": {"non_dict_value": str(r)}}
+        return None
+
+    after = r.get("after_obb", None)
+    if _obb_valid(after):
+        return after
+
+    if not _obb_valid(before_obb):
+        return None
+
+    # Attachment: try to parse scale op and apply
+    if reason == "attachment":
+        op = r.get("op", None)
+        parsed = _extract_op_delta_local(op)
+        if parsed is None:
+            return None
+        axis_idx, delta = parsed
+        return _apply_scale_keep_far_face(before_obb, axis_idx, delta)
+
+    # Symmetry / containment:
+    # These should normally already provide after_obb.
+    # If not, we do NOT guess—return None to expose the bug upstream.
+    return None
+
+
+# ------------------------------------------------------------
+# Compacting changes
+# ------------------------------------------------------------
+
+def _compact_change(reason: str, r: Dict[str, Any], before_obb: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    """
+    Normalize different propagation outputs into a compact schema for vis.
+    Adds before_obb always; after_obb either from r["after_obb"] or computed.
+    """
+    if not isinstance(r, dict):
+        return {
+            "reason": reason,
+            "before_obb": before_obb,
+            "after_obb": None,
+            "debug": {"non_dict_value": str(r)},
+        }
 
     out: Dict[str, Any] = {
         "reason": reason,
-        "after_obb": r.get("after_obb"),
+        "before_obb": before_obb,
+        "after_obb": _compute_after_obb_from_record(before_obb, reason, r),
     }
 
     # symmetry/containment fields
@@ -66,30 +225,25 @@ def _compact_change(reason: str, r: Dict[str, Any]) -> Dict[str, Any]:
             "delta_dst_applied": r.get("delta_dst_applied"),
         })
 
-    # attachment fields (new attachment.py format)
+    # attachment fields
     if reason == "attachment":
         out.update({
-            "case": r.get("solving"),      # e.g. A1, A3, B1->A1, P1+P2(rigid)
-            "kind": r.get("kind"),         # face/volume/point
-            "op": r.get("op"),             # translate/scale + params
+            "case": r.get("solving"),
+            "kind": r.get("kind"),
+            "op": r.get("op"),
         })
 
-        # optional compact debug
         dbg: Dict[str, Any] = {}
         if "edge" in r:
             dbg["edge"] = r.get("edge")
         if "anchor" in r:
-            # anchor can be big; keep only key bits
             anc = r.get("anchor", {}) if isinstance(r.get("anchor"), dict) else {}
             dbg["anchor"] = {
                 "P0": anc.get("P0"),
                 "P1": anc.get("P1"),
                 "infoA": anc.get("infoA"),
             }
-        if dbg:
-            out["debug"] = dbg
-        else:
-            out["debug"] = None
+        out["debug"] = dbg if dbg else None
 
     return out
 
@@ -100,6 +254,7 @@ def save_aep_changes(
     symcon_res: Dict[str, Any],
     attach_res: Optional[Dict[str, Any]] = None,
     out_filename: str = "aep_changes.json",
+    constraints: Optional[Dict[str, Any]] = None,
 ) -> str:
     """
     Args:
@@ -115,6 +270,8 @@ def save_aep_changes(
                     "summary": {...}
                   }
       out_filename: default "aep_changes.json"
+      constraints: (optional) full constraints json; if provided, we save
+                   before_obb for each changed neighbor from constraints["nodes"][name]["obb"].
 
     Saves:
       {
@@ -123,7 +280,8 @@ def save_aep_changes(
         "neighbor_changes": {
           "<neighbor>": {
             "reason": "symmetry"|"containment"|"attachment",
-            "after_obb": {...},
+            "before_obb": {...} | null,
+            "after_obb": {...} | null,
             ...
           },
           ...
@@ -140,17 +298,18 @@ def save_aep_changes(
 
     # Priority 1: symmetry
     for name, r in (symcon_res.get("symmetry", {}) or {}).items():
-        neighbor_changes[name] = _compact_change("symmetry", r)
+        before = _get_node_obb(constraints, name)
+        neighbor_changes[name] = _compact_change("symmetry", r, before)
 
-    # Priority 2: containment (skip if symmetry already changed it)
+    # Priority 2: containment
     for name, r in (symcon_res.get("containment", {}) or {}).items():
         if name in neighbor_changes:
             continue
-        neighbor_changes[name] = _compact_change("containment", r)
+        before = _get_node_obb(constraints, name)
+        neighbor_changes[name] = _compact_change("containment", r, before)
 
-    # Priority 3: attachment (skip if already changed by sym/contain)
+    # Priority 3: attachment
     if attach_res is not None:
-        # IMPORTANT FIX: only iterate over attach_res["changed_nodes"]
         changed_nodes = attach_res.get("changed_nodes", {}) if isinstance(attach_res, dict) else {}
         if not isinstance(changed_nodes, dict):
             changed_nodes = {}
@@ -158,15 +317,23 @@ def save_aep_changes(
         for name, r in changed_nodes.items():
             if name in neighbor_changes:
                 continue
-            neighbor_changes[name] = _compact_change("attachment", r)
+            before = _get_node_obb(constraints, name)
+            neighbor_changes[name] = _compact_change("attachment", r, before)
 
     payload = {
         "target": target,
-        "target_edit": target_edit,           # full, exact
-        "neighbor_changes": neighbor_changes, # changed neighbors (red boxes)
+        "target_edit": target_edit,            # full, exact
+        "neighbor_changes": neighbor_changes,  # compact per-neighbor changes
     }
 
     safe_write_json(out_path, payload)
     print("[AEP][SAVE] saved:", out_path)
     print(f"[AEP][SAVE] changed neighbors: {len(neighbor_changes)}")
+
+    # Helpful warning if after_obb is missing
+    missing_after = [n for n, rec in neighbor_changes.items()
+                     if isinstance(rec, dict) and rec.get("after_obb") is None]
+    if missing_after:
+        print("[AEP][SAVE][WARN] after_obb missing for:", missing_after)
+
     return out_path
