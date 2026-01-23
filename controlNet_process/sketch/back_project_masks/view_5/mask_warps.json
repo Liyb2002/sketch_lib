@@ -1,0 +1,97 @@
+{
+  "view": "view_5",
+  "image": "sketch/views/view_5.png",
+  "camera": "sketch/3d_reconstruction/view_5_cam.json",
+  "H": 320,
+  "W": 320,
+  "labels": {
+    "headlight_0": {
+      "has_mask": true,
+      "mask_path": "sketch/segmentation_original_image/view_5/headlight_0_mask.png",
+      "obb_before_after_overlay": "sketch/back_project_masks/view_5/3d_project/headlight_0_obb_before_after.png",
+      "homography_before_to_after": [
+        [
+          0.9409504681343153,
+          0.04932854099857903,
+          21.818062722564996
+        ],
+        [
+          0.08129973597237315,
+          0.984478923497056,
+          -16.84506828303146
+        ],
+        [
+          0.00016558127481824733,
+          -0.00011111782798455096,
+          1.0
+        ]
+      ],
+      "homography_status": "ok",
+      "valid_pairs": 8,
+      "outputs": {
+        "mask_new": "sketch/back_project_masks/view_5/headlight_0_mask_new.png",
+        "origmask_overlay": "sketch/back_project_masks/view_5/headlight_0_origmask_overlay.png",
+        "newmask_overlay": "sketch/back_project_masks/view_5/headlight_0_newmask_overlay.png"
+      }
+    },
+    "fender_0": {
+      "has_mask": true,
+      "mask_path": "sketch/segmentation_original_image/view_5/fender_0_mask.png",
+      "obb_before_after_overlay": "sketch/back_project_masks/view_5/3d_project/fender_0_obb_before_after.png",
+      "homography_before_to_after": [
+        [
+          0.9580073345106499,
+          0.051554845342639315,
+          23.98039695909776
+        ],
+        [
+          0.0977708384016331,
+          1.029925718402878,
+          -24.742782283564022
+        ],
+        [
+          0.0002145371952223465,
+          -1.2179644359943815e-05,
+          1.0
+        ]
+      ],
+      "homography_status": "ok",
+      "valid_pairs": 7,
+      "outputs": {
+        "mask_new": "sketch/back_project_masks/view_5/fender_0_mask_new.png",
+        "origmask_overlay": "sketch/back_project_masks/view_5/fender_0_origmask_overlay.png",
+        "newmask_overlay": "sketch/back_project_masks/view_5/fender_0_newmask_overlay.png"
+      }
+    },
+    "handlebar_0": {
+      "has_mask": true,
+      "mask_path": "sketch/segmentation_original_image/view_5/handlebar_0_mask.png",
+      "obb_before_after_overlay": "sketch/back_project_masks/view_5/3d_project/handlebar_0_obb_before_after.png",
+      "homography_before_to_after": [
+        [
+          0.9305148114449563,
+          0.0774447889993299,
+          17.580548524745115
+        ],
+        [
+          0.0683663124655615,
+          0.9586882158597044,
+          -13.156636977244732
+        ],
+        [
+          0.00011025392413234499,
+          -0.00010776990645284558,
+          1.0
+        ]
+      ],
+      "homography_status": "ok",
+      "valid_pairs": 8,
+      "outputs": {
+        "mask_new": "sketch/back_project_masks/view_5/handlebar_0_mask_new.png",
+        "origmask_overlay": "sketch/back_project_masks/view_5/handlebar_0_origmask_overlay.png",
+        "newmask_overlay": "sketch/back_project_masks/view_5/handlebar_0_newmask_overlay.png"
+      }
+    }
+  },
+  "all_new_masks_overlay": "sketch/back_project_masks/view_5/all_new_masks_overlay.png"
+}
