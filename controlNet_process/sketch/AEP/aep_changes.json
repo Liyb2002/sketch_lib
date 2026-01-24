@@ -175,8 +175,8 @@
       },
       "after_obb": {
         "center": [
-          0.0036389584997391367,
-          0.026150902458856092,
+          0.022284206729025348,
+          -0.0018038803703492102,
           1.0600704905056704
         ],
         "axes": [
@@ -301,24 +301,25 @@
             "status": "neighbor_scaled_anchored",
             "neighbor": "storage_0",
             "target_inferred_face": "+u2",
-            "target_inferred_face_delta_plane": 0.030884367753491793,
+            "target_inferred_face_delta_plane": 0.04469861080391874,
             "target_ratio_r": 1.4,
             "neighbor_face_moved": "+u2",
-            "neighbor_align_score": 0.9975714706346981,
+            "neighbor_align_score": 1.0,
             "neighbor_scale_debug": {
               "neighbor_axis": 2,
               "neighbor_sign_move": 1,
               "r": 1.4,
               "extent_before": 0.07185725035900793,
               "extent_after": 0.1006001505026111,
-              "center_shift_world": [
-                0.010034001029268966,
-                0.026887850526180142,
+              "center_shift_obj": [
+                0.028679249258555178,
+                -0.00106693230302516,
                 0.0015863877494379786
               ],
               "anchored_fixed_face": "-u2",
               "moving_face": "+u2"
-            }
+            },
+            "has_object_space_for_vis": true
           }
         }
       },
@@ -543,9 +544,9 @@
       },
       "after_obb": {
         "center": [
-          -6.050830238448629e-05,
-          0.0690081333486671,
-          1.244343016499897
+          0.007825622280546101,
+          0.033124953835689655,
+          1.2438426074362916
         ],
         "axes": [
           [
@@ -566,8 +567,8 @@
         ],
         "extents": [
           0.01468882404335092,
-          0.12630442943458384,
-          0.03800955467955242
+          0.09021744959613132,
+          0.05321337655137339
         ]
       },
       "case": "V3(perp)->scale",
@@ -669,24 +670,25 @@
             "status": "neighbor_scaled_anchored",
             "neighbor": "unknown_1",
             "target_inferred_face": "+u2",
-            "target_inferred_face_delta_plane": 0.030884367753491793,
+            "target_inferred_face_delta_plane": 0.04469861080391874,
             "target_ratio_r": 1.4,
-            "neighbor_face_moved": "+u1",
-            "neighbor_align_score": 0.9749964176671976,
+            "neighbor_face_moved": "-u2",
+            "neighbor_align_score": 1.0000000000000002,
             "neighbor_scale_debug": {
-              "neighbor_axis": 1,
-              "neighbor_sign_move": 1,
+              "neighbor_axis": 2,
+              "neighbor_sign_move": -1,
               "r": 1.4,
-              "extent_before": 0.09021744959613132,
-              "extent_after": 0.12630442943458384,
-              "center_shift_world": [
-                0.0072840225667566184,
-                0.03531881584043772,
-                0.0013395434808560758
+              "extent_before": 0.03800955467955242,
+              "extent_after": 0.05321337655137339,
+              "center_shift_obj": [
+                0.015170153149687206,
+                -0.0005643636725397166,
+                0.0008391344172506976
               ],
-              "anchored_fixed_face": "-u1",
-              "moving_face": "+u1"
-            }
+              "anchored_fixed_face": "+u2",
+              "moving_face": "-u2"
+            },
+            "has_object_space_for_vis": true
           }
         }
       },
