@@ -1,5 +1,13 @@
 #!/usr/bin/env python3
 # debug_save_pre_post_and_diff_masks.py
+#
+# Saves per-label pre/post/diff masks and aggregates.
+# Computes:
+#   - diff_sum_mask.png (OR over thickened diffs)
+#   - sum_after_mask.png (OR over post masks)
+#   - sum_after_count.npy (per-pixel count of how many post masks cover it)
+#   - sum_after_count.png (a 0..255 visualization of the count map)
+#   - sum_after_plus_diff_sum_mask.png (OR(sum_after_mask, diff_sum_mask))
 
 import os
 import json
@@ -94,7 +102,19 @@ def _summarize_label_edit(entry: Dict[str, Any]) -> str:
     return ", ".join(parts) if parts else "(no explicit edit fields)"
 
 
-def process_view(mask_warps_json: str, out_root: str, remove_radius_px: int = 5, diff_thicken_px: int = 8) -> None:
+def _count_to_vis_png(count_map: np.ndarray) -> np.ndarray:
+    """
+    Visualize count map as 8-bit PNG.
+    Scales [0..max] to [0..255]. If max==0, returns zeros.
+    """
+    mx = int(count_map.max()) if count_map.size else 0
+    if mx <= 0:
+        return np.zeros_like(count_map, dtype=np.uint8)
+    vis = (count_map.astype(np.float32) / float(mx) * 255.0).round().astype(np.uint8)
+    return vis
+
+
+def process_view(mask_warps_json: str, out_root: str, remove_radius_px: int = 5, diff_thicken_px: int = 5) -> None:
     data = _read_json(mask_warps_json)
 
     view_name = data.get("view", os.path.basename(os.path.dirname(mask_warps_json)))
@@ -122,6 +142,10 @@ def process_view(mask_warps_json: str, out_root: str, remove_radius_px: int = 5,
 
     diff_sum01 = np.zeros((Ht, Wt), dtype=np.uint8)
 
+    # NEW aggregates for "after"
+    sum_after01 = np.zeros((Ht, Wt), dtype=np.uint8)      # binary union of post masks
+    sum_after_count = np.zeros((Ht, Wt), dtype=np.uint16) # per-pixel counts
+
     for comp_name, entry in edited:
         mask_path = entry.get("mask_path", os.path.join(seg_dir, f"{comp_name}_mask.png"))
         if not os.path.exists(mask_path):
@@ -142,10 +166,14 @@ def process_view(mask_warps_json: str, out_root: str, remove_radius_px: int = 5,
         post01 = cv2.resize(post01, (Wt, Ht), interpolation=cv2.INTER_NEAREST)
         post01 = _dilate_mask(post01, remove_radius_px)
 
-        # diff: XOR first (your request)
+        # NEW: accumulate after masks
+        sum_after01 = np.maximum(sum_after01, post01)          # union
+        sum_after_count += post01.astype(np.uint16)            # count
+
+        # diff: XOR
         diff01 = (pre01 ^ post01).astype(np.uint8)
 
-        # then expand diff "both ways" around its boundary
+        # expand diff "both ways"
         diff01 = _thicken_both_ways(diff01, radius_px=diff_thicken_px)
 
         diff_sum01 = np.maximum(diff_sum01, diff01)
@@ -154,7 +182,21 @@ def process_view(mask_warps_json: str, out_root: str, remove_radius_px: int = 5,
         cv2.imwrite(os.path.join(out_dir, f"{comp_name}_post_mask.png"), _mask01_to_png(post01))
         cv2.imwrite(os.path.join(out_dir, f"{comp_name}_diff_mask.png"), _mask01_to_png(diff01))
 
-    cv2.imwrite(os.path.join(out_dir, "diff_sum_mask.png"), _mask01_to_png(diff_sum01))
+    # Save aggregates
+    diff_sum_path = os.path.join(out_dir, "diff_sum_mask.png")
+    sum_after_mask_path = os.path.join(out_dir, "sum_after_mask.png")  # binary union
+    sum_after_count_npy_path = os.path.join(out_dir, "sum_after_count.npy")
+    sum_after_count_png_path = os.path.join(out_dir, "sum_after_count.png")
+    combined_path = os.path.join(out_dir, "sum_after_plus_diff_sum_mask.png")
+
+    cv2.imwrite(diff_sum_path, _mask01_to_png(diff_sum01))
+    cv2.imwrite(sum_after_mask_path, _mask01_to_png(sum_after01))
+
+    np.save(sum_after_count_npy_path, sum_after_count)
+    cv2.imwrite(sum_after_count_png_path, _count_to_vis_png(sum_after_count))
+
+    combined01 = np.maximum(sum_after01, diff_sum01)
+    cv2.imwrite(combined_path, _mask01_to_png(combined01))
 
     with open(os.path.join(out_dir, "_index.txt"), "w") as f:
         f.write(f"view_name: {view_name}\n")
@@ -162,14 +204,20 @@ def process_view(mask_warps_json: str, out_root: str, remove_radius_px: int = 5,
         f.write(f"view_image: {view_img_path}\n")
         f.write(f"remove_radius_px(dilation): {remove_radius_px}\n")
         f.write(f"diff_thicken_px(both-ways): {diff_thicken_px}\n\n")
+
         f.write("Saved files per label:\n")
         for comp_name, _ in edited:
             f.write(f"- {comp_name}\n")
             f.write(f"  pre : {comp_name}_pre_mask.png\n")
             f.write(f"  post: {comp_name}_post_mask.png\n")
             f.write(f"  diff: {comp_name}_diff_mask.png\n")
+
         f.write("\nAggregate:\n")
         f.write("  diff_sum_mask.png\n")
+        f.write("  sum_after_mask.png\n")
+        f.write("  sum_after_count.npy\n")
+        f.write("  sum_after_count.png\n")
+        f.write("  sum_after_plus_diff_sum_mask.png\n")
 
     print(f"saved fix outputs to: {out_dir}")
 

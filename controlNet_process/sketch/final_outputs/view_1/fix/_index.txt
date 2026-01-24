@@ -20,3 +20,7 @@ Saved files per label:
 
 Aggregate:
   diff_sum_mask.png
+  sum_after_mask.png
+  sum_after_count.npy
+  sum_after_count.png
+  sum_after_plus_diff_sum_mask.png
