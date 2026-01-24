@@ -35,6 +35,22 @@ def _fix_axis_signs_deterministic(R: np.ndarray) -> np.ndarray:
     return R2
 
 
+def _orthonormalize_axes_columns(R: np.ndarray) -> np.ndarray:
+    """
+    Orthonormalize a 3x3 matrix whose columns are intended axes.
+    Uses SVD projection to closest proper rotation.
+    """
+    R = np.asarray(R, dtype=np.float64)
+    if R.shape != (3, 3):
+        raise ValueError("axes must be 3x3")
+    U, _, Vt = np.linalg.svd(R)
+    Rn = U @ Vt
+    if np.linalg.det(Rn) < 0:
+        U[:, -1] *= -1.0
+        Rn = U @ Vt
+    return Rn
+
+
 def _obb_half_extents_volume(extents_half: np.ndarray) -> float:
     # extents_half are half-lengths; full lengths = 2*e
     # volume = prod(full lengths) = 8 * prod(e)
@@ -75,44 +91,97 @@ def compute_aabb_in_object_space(points_world: np.ndarray, origin: np.ndarray, a
     }
 
 
-def _compute_tight_obb_open3d(points_world: np.ndarray):
-    """
-    Compute a tighter oriented bounding box for the component, allowing rotation.
+# ----------------------------
+# New constrained "tight OBB"
+# ----------------------------
 
-    Returns dict with:
-      center (world), axes (3x3, columns), extents (half-lengths)
-    or None if not possible.
+def _rotation_about_unit_axis(axis_world: np.ndarray, theta: float) -> np.ndarray:
+    """
+    Rodrigues rotation matrix for rotating around a unit axis in world space.
+    """
+    a = np.asarray(axis_world, dtype=np.float64)
+    n = np.linalg.norm(a)
+    if n < 1e-12:
+        return np.eye(3, dtype=np.float64)
+    a = a / n
+
+    x, y, z = float(a[0]), float(a[1]), float(a[2])
+    c = float(np.cos(theta))
+    s = float(np.sin(theta))
+    C = 1.0 - c
+
+    return np.array([
+        [c + x*x*C,     x*y*C - z*s, x*z*C + y*s],
+        [y*x*C + z*s,   c + y*y*C,   y*z*C - x*s],
+        [z*x*C - y*s,   z*y*C + x*s, c + z*z*C],
+    ], dtype=np.float64)
+
+
+def _compute_tight_obb_constrained(points_world: np.ndarray,
+                                  object_axes_cols: np.ndarray,
+                                  n_steps: int = 180):
+    """
+    Constrained tight OBB search:
+      - Start from object-space axes (3 columns).
+      - Keep ONE object axis fixed (exactly aligned with object space).
+      - Rotate the other two axes around that fixed axis (i.e., rotate within the perpendicular plane).
+      - Try all three choices of which axis is fixed, and all angles.
+      - Pick the smallest-volume box (by AABB in that rotated frame).
+
+    Returns dict with {center, axes, extents} (half-lengths), or None.
     """
     if points_world.shape[0] < 4:
         return None
 
-    import open3d as o3d
+    A = _orthonormalize_axes_columns(object_axes_cols)
+    # Deterministic sign so results don't flip randomly
+    A = _fix_axis_signs_deterministic(A)
 
-    # Open3D expects float64 points
-    pts = np.asarray(points_world, dtype=np.float64)
-    try:
-        obb = o3d.geometry.OrientedBoundingBox.create_from_points(
-            o3d.utility.Vector3dVector(pts)
-        )
-    except Exception:
+    # Use centroid as origin for stable numerics; this does NOT affect tightness (AABB extents are translation-invariant)
+    origin = np.asarray(points_world, dtype=np.float64).mean(axis=0)
+
+    best = None
+    best_vol = float("inf")
+    best_meta = None
+
+    # Try: fix axis i, rotate around it
+    for fix_i in (0, 1, 2):
+        axis_fixed = A[:, fix_i]  # world direction
+
+        for k in range(n_steps):
+            theta = (2.0 * np.pi) * (k / float(n_steps))
+            Rax = _rotation_about_unit_axis(axis_fixed, theta)
+
+            # Rotate the whole frame around axis_fixed in world space
+            # This keeps the fixed axis aligned (since rotating around itself doesn't move it).
+            axes_try = Rax @ A
+
+            # Clean up numerics and make deterministic
+            axes_try = _orthonormalize_axes_columns(axes_try)
+            axes_try = _fix_axis_signs_deterministic(axes_try)
+
+            obb = compute_aabb_in_object_space(points_world, origin, axes_try)
+            if obb is None:
+                continue
+
+            ext = np.asarray(obb["extents"], dtype=np.float64)
+            vol = _obb_half_extents_volume(ext)
+
+            if vol < best_vol:
+                best_vol = vol
+                best = {
+                    "center": obb["center"],
+                    "axes": obb["axes"],
+                    "extents": obb["extents"],
+                }
+                best_meta = {"fixed_axis_index": int(fix_i), "theta": float(theta)}
+
+    if best is None:
         return None
 
-    c = np.asarray(obb.center, dtype=np.float64)
-    R = np.asarray(obb.R, dtype=np.float64)  # rotation matrix
-    # In Open3D, obb.extent is full lengths along local axes
-    full = np.asarray(obb.extent, dtype=np.float64)
-    if full.shape != (3,):
-        return None
-
-    # Make axes deterministic & right-handed (doesn't change the box)
-    R = _fix_axis_signs_deterministic(R)
-
-    ext_half = 0.5 * full
-    return {
-        "center": c.tolist(),
-        "axes": R.tolist(),            # 3x3 (columns are axes)
-        "extents": ext_half.tolist(),  # half-lengths
-    }
+    # Attach a little debug if you want it later (kept separate from schema)
+    best["_debug_constrained"] = best_meta
+    return best
 
 
 def run(label_assign_dir: str, object_space: dict):
@@ -123,11 +192,14 @@ def run(label_assign_dir: str, object_space: dict):
     Output schema remains compatible:
       results[name]["obb_pca"] = {center, axes, extents}
 
-    Behavior change:
-      - Always compute the current object-frame AABB-lifted OBB (the old behavior).
-      - Also compute a tighter per-component OBB (rotation allowed) using Open3D.
-      - If the tighter OBB reduces bbox "size" (volume) by >10%, use it.
-        Otherwise keep the old object-frame AABB version.
+    Behavior:
+      - Always compute the current object-frame AABB-lifted OBB (unchanged).
+      - Also compute a constrained tight OBB:
+          * start from object_space axes
+          * keep one object axis fixed
+          * rotate other two around it
+          * pick smallest-volume AABB-in-frame
+      - If constrained tight OBB reduces bbox volume by >10%, use it.
     """
     ids_path = os.path.join(label_assign_dir, "assigned_label_ids.npy")
     sem_path = os.path.join(label_assign_dir, "labels_semantic.json")
@@ -156,8 +228,15 @@ def run(label_assign_dir: str, object_space: dict):
     if axes.shape != (3, 3):
         raise ValueError("object_space['axes'] must be 3x3")
 
+    # Make sure object-space axes form a proper rigid frame (important for tightness!)
+    axes = _orthonormalize_axes_columns(axes)
+    axes = _fix_axis_signs_deterministic(axes)
+
     results = {}
-    improve_thresh = 0.1  # >10% volume reduction
+    improve_thresh = 0.10  # require >10% volume reduction to switch
+
+    # More steps = tighter but slower; 180 is usually fine. Use 360 if you want.
+    n_steps = 180
 
     for lid, name in label_id_to_name.items():
         mask = (assigned_ids == lid)
@@ -165,7 +244,7 @@ def run(label_assign_dir: str, object_space: dict):
         if label_pts.shape[0] == 0:
             continue
 
-        # (A) baseline: object-space AABB lifted back as an OBB with global axes
+        # (A) baseline: object-space AABB lifted back as an OBB with global object axes (UNCHANGED)
         obb_base = compute_aabb_in_object_space(label_pts, origin, axes)
         if obb_base is None:
             continue
@@ -173,8 +252,8 @@ def run(label_assign_dir: str, object_space: dict):
         base_ext = np.asarray(obb_base["extents"], dtype=np.float64)
         base_vol = _obb_half_extents_volume(base_ext)
 
-        # (B) candidate: tighter per-component OBB with rotation allowed
-        obb_tight = _compute_tight_obb_open3d(label_pts)
+        # (B) candidate: constrained tight OBB (2 axes rotate in a plane, 1 axis fixed to object space)
+        obb_tight = _compute_tight_obb_constrained(label_pts, axes, n_steps=n_steps)
 
         chosen = "object_aabb"
         chosen_obb = {
@@ -192,6 +271,7 @@ def run(label_assign_dir: str, object_space: dict):
                 "min": obb_base["aabb_local_min"],
                 "max": obb_base["aabb_local_max"],
             },
+            "tight_debug": None,
         }
 
         if obb_tight is not None:
@@ -199,6 +279,7 @@ def run(label_assign_dir: str, object_space: dict):
             tight_vol = _obb_half_extents_volume(tight_ext)
 
             debug["tight_volume"] = float(tight_vol)
+            debug["tight_debug"] = obb_tight.get("_debug_constrained", None)
 
             if np.isfinite(base_vol) and base_vol > 0:
                 improvement = (base_vol - tight_vol) / base_vol
@@ -206,7 +287,7 @@ def run(label_assign_dir: str, object_space: dict):
 
                 # Use tight OBB only if it is >10% smaller in volume
                 if improvement > improve_thresh:
-                    chosen = "tight_obb"
+                    chosen = "tight_obb_constrained"
                     chosen_obb = {
                         "center": obb_tight["center"],
                         "axes": obb_tight["axes"],

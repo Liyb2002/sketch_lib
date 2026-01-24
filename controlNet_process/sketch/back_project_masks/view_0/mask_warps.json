@@ -5,92 +5,61 @@
   "H": 320,
   "W": 320,
   "labels": {
-    "headlight_0": {
+    "wheel_1": {
+      "has_mask": false,
+      "mask_path": null,
+      "obb_before_after_overlay": "sketch/back_project_masks/view_0/3d_project/wheel_1_obb_before_after.png",
+      "homography_before_to_after": null,
+      "homography_status": null,
+      "valid_pairs": 0,
+      "outputs": {}
+    },
+    "wheel_0": {
       "has_mask": true,
-      "mask_path": "sketch/segmentation_original_image/view_0/headlight_0_mask.png",
-      "obb_before_after_overlay": "sketch/back_project_masks/view_0/3d_project/headlight_0_obb_before_after.png",
+      "mask_path": "sketch/segmentation_original_image/view_0/wheel_0_mask.png",
+      "obb_before_after_overlay": "sketch/back_project_masks/view_0/3d_project/wheel_0_obb_before_after.png",
       "homography_before_to_after": [
         [
-          0.9624028284895533,
-          -0.017617968785610748,
-          3.7735135807983196
+          0.6068366563101226,
+          -0.11949477427308403,
+          53.79092939578987
         ],
         [
-          -0.01186216021761626,
-          0.968003354018746,
-          2.855611728997947
+          -0.234994355853283,
+          0.9320946390858961,
+          -20.0715597993073
         ],
         [
-          -0.00010486383255088949,
-          -0.00010029288663116385,
+          -0.0008678034022776853,
+          -0.00041048358942672624,
           1.0
         ]
       ],
       "homography_status": "ok",
-      "valid_pairs": 8,
+      "valid_pairs": 7,
       "outputs": {
-        "mask_new": "sketch/back_project_masks/view_0/headlight_0_mask_new.png",
-        "origmask_overlay": "sketch/back_project_masks/view_0/headlight_0_origmask_overlay.png",
-        "newmask_overlay": "sketch/back_project_masks/view_0/headlight_0_newmask_overlay.png"
+        "mask_new": "sketch/back_project_masks/view_0/wheel_0_mask_new.png",
+        "origmask_overlay": "sketch/back_project_masks/view_0/wheel_0_origmask_overlay.png",
+        "newmask_overlay": "sketch/back_project_masks/view_0/wheel_0_newmask_overlay.png"
       }
     },
-    "fender_0": {
-      "has_mask": true,
-      "mask_path": "sketch/segmentation_original_image/view_0/fender_0_mask.png",
-      "obb_before_after_overlay": "sketch/back_project_masks/view_0/3d_project/fender_0_obb_before_after.png",
-      "homography_before_to_after": [
-        [
-          0.9999541750708905,
-          0.00507871049931933,
-          -1.9766877847443698
-        ],
-        [
-          -0.008798537670832246,
-          1.014414077114257,
-          -0.9753265467820265
-        ],
-        [
-          -5.217323468925242e-05,
-          3.000841238701219e-05,
-          1.0
-        ]
-      ],
-      "homography_status": "ok",
-      "valid_pairs": 8,
-      "outputs": {
-        "mask_new": "sketch/back_project_masks/view_0/fender_0_mask_new.png",
-        "origmask_overlay": "sketch/back_project_masks/view_0/fender_0_origmask_overlay.png",
-        "newmask_overlay": "sketch/back_project_masks/view_0/fender_0_newmask_overlay.png"
-      }
+    "storage_0": {
+      "has_mask": false,
+      "mask_path": null,
+      "obb_before_after_overlay": "sketch/back_project_masks/view_0/3d_project/storage_0_obb_before_after.png",
+      "homography_before_to_after": null,
+      "homography_status": null,
+      "valid_pairs": 0,
+      "outputs": {}
     },
-    "handlebar_0": {
-      "has_mask": true,
-      "mask_path": "sketch/segmentation_original_image/view_0/handlebar_0_mask.png",
-      "obb_before_after_overlay": "sketch/back_project_masks/view_0/3d_project/handlebar_0_obb_before_after.png",
-      "homography_before_to_after": [
-        [
-          0.9679456633085104,
-          -0.014827298650149954,
-          1.3518521763820155
-        ],
-        [
-          -0.009469606673995337,
-          0.9731960728318536,
-          1.1200881500018902
-        ],
-        [
-          -9.574236376242091e-05,
-          -8.398663515711978e-05,
-          1.0
-        ]
-      ],
-      "homography_status": "ok",
-      "valid_pairs": 8,
-      "outputs": {
-        "mask_new": "sketch/back_project_masks/view_0/handlebar_0_mask_new.png",
-        "origmask_overlay": "sketch/back_project_masks/view_0/handlebar_0_origmask_overlay.png",
-        "newmask_overlay": "sketch/back_project_masks/view_0/handlebar_0_newmask_overlay.png"
-      }
+    "unknown_1": {
+      "has_mask": false,
+      "mask_path": null,
+      "obb_before_after_overlay": "sketch/back_project_masks/view_0/3d_project/unknown_1_obb_before_after.png",
+      "homography_before_to_after": null,
+      "homography_status": null,
+      "valid_pairs": 0,
+      "outputs": {}
     }
   },
   "all_new_masks_overlay": "sketch/back_project_masks/view_0/all_new_masks_overlay.png"
