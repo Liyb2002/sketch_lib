@@ -185,15 +185,15 @@ def main():
     # ------------------------------------------------------------
 
     # target label (None => random non-unknown)
-    TARGET_LABEL = None        # e.g. "wheel_0"
+    TARGET_LABEL = "wheel_1"        # e.g. "wheel_0"
 
     # face (None => random among 6)
     TARGET_FACE = None         # e.g. "+u2"
 
     # delta is a RATIO of the ORIGINAL half-extent on that axis
     # face displacement magnitude = ratio * original_extent(axis)
-    DELTA_RATIO_MIN = 0.3
-    DELTA_RATIO_MAX = 0.5
+    DELTA_RATIO_MIN = 0.8
+    DELTA_RATIO_MAX = 0.8
 
     # randomly choose increase/decrease each run:
     #   +1 => expand outward
