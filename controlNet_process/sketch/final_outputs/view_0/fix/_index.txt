@@ -1,0 +1,21 @@
+view_name: view_0
+mask_warps_json: sketch/back_project_masks/view_0/mask_warps.json
+view_image: sketch/views/view_0.png
+remove_radius_px(dilation): 5
+
+Saved files per label:
+- headlight_0
+  pre : headlight_0_pre_mask.png
+  post: headlight_0_post_mask.png
+  diff: headlight_0_diff_mask.png
+- fender_0
+  pre : fender_0_pre_mask.png
+  post: fender_0_post_mask.png
+  diff: fender_0_diff_mask.png
+- handlebar_0
+  pre : handlebar_0_pre_mask.png
+  post: handlebar_0_post_mask.png
+  diff: handlebar_0_diff_mask.png
+
+Aggregate:
+  diff_sum_mask.png
