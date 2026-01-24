@@ -151,7 +151,7 @@ def main():
     for view_dir in view_dirs:
         view_name = os.path.basename(view_dir)
 
-        mask_path = os.path.join(view_dir, "fix", "diff_sum_mask.png")
+        mask_path = os.path.join(view_dir, "fix", "sum_after_mask_boundary_out.png")
         if not os.path.exists(mask_path):
             continue
 
