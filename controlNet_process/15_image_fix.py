@@ -33,29 +33,39 @@ MODEL = "gemini-2.5-flash-image"
 API_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{MODEL}:generateContent"
 
 PROMPT = (
-    "You are repairing compositing artifacts after CAD-like components were translated/scaled.\n"
-    "You are given two images:\n"
-    "  (1) The input image to fix.\n"
-    "  (2) A binary mask image of the same size.\n\n"
-    "Mask semantics:\n"
-    "- White pixels in the mask (value near 255) are the ONLY region you may change.\n"
-    "- Black pixels in the mask (value near 0) must remain EXACTLY the same as the input.\n\n"
-    "What the white mask contains:\n"
-    "- Only the contours and connection regions between components (seams, borders, small gaps).\n\n"
-    "Task (inside white mask ONLY):\n"
-    "- Make component connections smoother and more continuous.\n"
-    "- Fix boundary seams, tiny gaps/holes, overlaps, jagged edges, and discontinuities.\n"
-    "- Blend local edge shading so adjacent regions connect naturally.\n"
-    "- Keep the overall shapes unchanged; only refine the contour/connection quality.\n\n"
-    "Hard rules:\n"
-    "- Do NOT move any components.\n"
-    "- Do NOT change geometry/layout.\n"
-    "- Do NOT add/remove parts.\n"
-    "- Do NOT change colors or lighting globally.\n"
-    "- Outside the mask must match the original input pixel-for-pixel.\n\n"
-    "Return a single corrected image."
-)
+    "You are repairing the boundary between two overlaid sketch drawings.\n\n"
 
+    "You are given TWO images of the same size:\n"
+    "1) The input sketch image where two design pieces have already been placed together.\n"
+    "2) A binary mask image.\n\n"
+
+    "Mask meaning:\n"
+    "- White pixels (≈255): the ONLY region you may edit.\n"
+    "- Black pixels (≈0): must remain EXACTLY identical to the input image.\n\n"
+
+    "What the white region contains:\n"
+    "- A narrow band along the boundary where the two sketches meet.\n"
+    "- This area may contain broken lines, small gaps, overlaps, misaligned strokes, or jagged edges.\n\n"
+
+    "Your task (ONLY inside the white region):\n"
+    "- Blend the two sketch pieces into a single coherent drawing.\n"
+    "- Reconnect broken strokes and close tiny gaps.\n"
+    "- Remove overlaps or doubled lines caused by compositing.\n"
+    "- Make line thickness, curvature, and spacing consistent across the boundary.\n"
+    "- Keep the original hand-drawn style.\n\n"
+
+    "Strict rules:\n"
+    "- Do NOT move, scale, rotate, or reshape either sketch piece.\n"
+    "- Do NOT change the overall design or layout.\n"
+    "- Do NOT add new objects or features.\n"
+    "- Do NOT modify anything outside the white mask.\n"
+    "- Outside the mask must be pixel-for-pixel identical to the input image.\n\n"
+
+    "Be conservative: make the smallest changes necessary to achieve a clean connection.\n\n"
+
+    "Output:\n"
+    "- Return exactly one corrected sketch image."
+)
 
 def b64_file(path: str) -> str:
     with open(path, "rb") as f:
