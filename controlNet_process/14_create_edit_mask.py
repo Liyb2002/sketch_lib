@@ -1,15 +1,5 @@
 #!/usr/bin/env python3
 # debug_save_pre_post_and_diff_masks.py
-#
-# For each view_* / mask_warps.json:
-#   - Print edited labels
-#   - Save per-label:
-#       pre  = deletion mask (old mask dilated by remove_radius_px)
-#       post = paste-back mask (outputs.mask_new) dilated by remove_radius_px
-#       diff = XOR(pre, post)  (binary difference)
-#   - Aggregate diff across labels to a single "diff_sum_mask.png"
-# All saved under:
-#   sketch/final_outputs/view_{x}/fix/
 
 import os
 import json
@@ -45,6 +35,25 @@ def _dilate_mask(mask01: np.ndarray, radius_px: int) -> np.ndarray:
     k = 2 * radius_px + 1
     kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (k, k))
     return cv2.dilate(mask01, kernel, iterations=1)
+
+
+def _thicken_both_ways(mask01: np.ndarray, radius_px: int) -> np.ndarray:
+    """
+    Symmetric thickening around boundary:
+      thick = mask ∪ (dilate(mask) XOR erode(mask))
+    """
+    if radius_px <= 0:
+        return mask01
+
+    k = 2 * radius_px + 1
+    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (k, k))
+
+    dil = cv2.dilate(mask01, kernel, iterations=1)
+    ero = cv2.erode(mask01, kernel, iterations=1)
+
+    band = (dil ^ ero).astype(np.uint8)
+    thick = np.maximum(mask01, band)
+    return thick
 
 
 def _mask01_to_png(mask01: np.ndarray) -> np.ndarray:
@@ -85,13 +94,12 @@ def _summarize_label_edit(entry: Dict[str, Any]) -> str:
     return ", ".join(parts) if parts else "(no explicit edit fields)"
 
 
-def process_view(mask_warps_json: str, out_root: str, remove_radius_px: int = 5) -> None:
+def process_view(mask_warps_json: str, out_root: str, remove_radius_px: int = 5, diff_thicken_px: int = 8) -> None:
     data = _read_json(mask_warps_json)
 
     view_name = data.get("view", os.path.basename(os.path.dirname(mask_warps_json)))
     view_id = view_name.replace("view_", "").strip()
 
-    # Ensure we can size masks to the view resolution (same as your apply_view)
     view_img_path = _infer_view_image_path(view_name, view_id, data)
     base_bgr = _imread_rgb(view_img_path)
     Ht, Wt = base_bgr.shape[:2]
@@ -107,7 +115,6 @@ def process_view(mask_warps_json: str, out_root: str, remove_radius_px: int = 5)
     for name, entry in edited:
         print(f"  - {name}: {_summarize_label_edit(entry)}")
 
-    # Output folder: sketch/final_outputs/view_{x}/fix
     out_dir = os.path.join(out_root, view_name, "fix")
     os.makedirs(out_dir, exist_ok=True)
 
@@ -135,26 +142,26 @@ def process_view(mask_warps_json: str, out_root: str, remove_radius_px: int = 5)
         post01 = cv2.resize(post01, (Wt, Ht), interpolation=cv2.INTER_NEAREST)
         post01 = _dilate_mask(post01, remove_radius_px)
 
-        # diff: XOR (pixels that differ)
+        # diff: XOR first (your request)
         diff01 = (pre01 ^ post01).astype(np.uint8)
 
-        # aggregate
+        # then expand diff "both ways" around its boundary
+        diff01 = _thicken_both_ways(diff01, radius_px=diff_thicken_px)
+
         diff_sum01 = np.maximum(diff_sum01, diff01)
 
-        # save per-label
         cv2.imwrite(os.path.join(out_dir, f"{comp_name}_pre_mask.png"), _mask01_to_png(pre01))
         cv2.imwrite(os.path.join(out_dir, f"{comp_name}_post_mask.png"), _mask01_to_png(post01))
         cv2.imwrite(os.path.join(out_dir, f"{comp_name}_diff_mask.png"), _mask01_to_png(diff01))
 
-    # save aggregated diff
     cv2.imwrite(os.path.join(out_dir, "diff_sum_mask.png"), _mask01_to_png(diff_sum01))
 
-    # optional index file
     with open(os.path.join(out_dir, "_index.txt"), "w") as f:
         f.write(f"view_name: {view_name}\n")
         f.write(f"mask_warps_json: {mask_warps_json}\n")
         f.write(f"view_image: {view_img_path}\n")
-        f.write(f"remove_radius_px(dilation): {remove_radius_px}\n\n")
+        f.write(f"remove_radius_px(dilation): {remove_radius_px}\n")
+        f.write(f"diff_thicken_px(both-ways): {diff_thicken_px}\n\n")
         f.write("Saved files per label:\n")
         for comp_name, _ in edited:
             f.write(f"- {comp_name}\n")
@@ -175,7 +182,7 @@ def main():
         raise FileNotFoundError("No mask_warps.json found under sketch/back_project_masks/view_*/mask_warps.json")
 
     for p in warp_paths:
-        process_view(p, out_root=out_root, remove_radius_px=5)
+        process_view(p, out_root=out_root, remove_radius_px=5, diff_thicken_px=8)
 
 
 if __name__ == "__main__":

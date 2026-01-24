@@ -2,6 +2,7 @@ view_name: view_4
 mask_warps_json: sketch/back_project_masks/view_4/mask_warps.json
 view_image: sketch/views/view_4.png
 remove_radius_px(dilation): 5
+diff_thicken_px(both-ways): 8
 
 Saved files per label:
 - fender_0
