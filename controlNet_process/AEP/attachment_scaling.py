@@ -544,17 +544,17 @@ def scale_neighbor_obb(
             print("[AEP][attachment_scaling] WARN: object_space not found in stack -> visualization will be object-space-as-world.")
         print("[AEP][attachment_scaling] opening Open3D verify window...")
 
-        _vis_verify_neighbor_change(
-            target_before_obj=target_before_obb,
-            target_after_obj=target_after_obb,
-            t_axis=t_axis,
-            t_sign=t_sign,
-            neighbor_before_obj=neighbor_before_obb,
-            neighbor_after_obj=neighbor_after_obb,
-            nb_axis=nb_axis,
-            nb_sign=nb_sign,
-            object_space=object_space,
-        )
+        # _vis_verify_neighbor_change(
+        #     target_before_obj=target_before_obb,
+        #     target_after_obj=target_after_obb,
+        #     t_axis=t_axis,
+        #     t_sign=t_sign,
+        #     neighbor_before_obj=neighbor_before_obb,
+        #     neighbor_after_obj=neighbor_after_obb,
+        #     nb_axis=nb_axis,
+        #     nb_sign=nb_sign,
+        #     object_space=object_space,
+        # )
 
     debug_info = {
         "status": "neighbor_scaled_anchored",

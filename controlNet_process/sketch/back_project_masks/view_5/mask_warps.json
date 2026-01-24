@@ -11,18 +11,18 @@
       "obb_before_after_overlay": "sketch/back_project_masks/view_5/3d_project/wheel_1_obb_before_after.png",
       "homography_before_to_after": [
         [
-          1.2065127736203518,
-          0.16846154956885287,
-          -57.09668514228896
+          1.1385357327226775,
+          0.17437993115519262,
+          -39.643317901248324
         ],
         [
-          0.24003706640033995,
-          1.4868604238699008,
-          -116.59210859090595
+          0.22029350495068853,
+          1.423913899730287,
+          -100.33946326690298
         ],
         [
-          0.00019105228402921737,
-          0.000246207196406537,
+          0.0001494521507621796,
+          0.00023791941212391075,
           1.0
         ]
       ],
@@ -40,18 +40,18 @@
       "obb_before_after_overlay": "sketch/back_project_masks/view_5/3d_project/wheel_0_obb_before_after.png",
       "homography_before_to_after": [
         [
-          2.559360115736182,
-          0.2785339286147592,
-          -238.65451587157028
+          2.342681014428838,
+          0.2610450038002304,
+          -193.68482729767197
         ],
         [
-          0.5311751955123706,
-          2.154087226439533,
-          -198.71271845671342
+          0.47994078919163247,
+          1.9663548790073968,
+          -162.40029647969837
         ],
         [
-          0.00252861969674646,
-          0.001062394626892934,
+          0.0022431097626127296,
+          0.000954095092074017,
           1.0
         ]
       ],
@@ -69,28 +69,37 @@
       "obb_before_after_overlay": "sketch/back_project_masks/view_5/3d_project/storage_0_obb_before_after.png",
       "homography_before_to_after": [
         [
-          1.4227572957356858,
-          0.28603852694804716,
-          -80.73353710141504
+          1.012588610174191,
+          0.13819566387688023,
+          -19.310909348939596
         ],
         [
-          0.29785999137648045,
-          1.7767331151185484,
-          -148.45707551388023
+          0.13086485933322203,
+          1.2890414813574802,
+          -65.709180172649
         ],
         [
-          0.0006415048425583292,
-          0.00086639998822377,
+          -2.8664694383630167e-05,
+          -2.6180325688136833e-05,
           1.0
         ]
       ],
       "homography_status": "ok",
-      "valid_pairs": 7,
+      "valid_pairs": 8,
       "outputs": {
         "mask_new": "sketch/back_project_masks/view_5/storage_0_mask_new.png",
         "origmask_overlay": "sketch/back_project_masks/view_5/storage_0_origmask_overlay.png",
         "newmask_overlay": "sketch/back_project_masks/view_5/storage_0_newmask_overlay.png"
       }
+    },
+    "unknown_0": {
+      "has_mask": false,
+      "mask_path": null,
+      "obb_before_after_overlay": "sketch/back_project_masks/view_5/3d_project/unknown_0_obb_before_after.png",
+      "homography_before_to_after": null,
+      "homography_status": null,
+      "valid_pairs": 0,
+      "outputs": {}
     },
     "unknown_1": {
       "has_mask": false,
