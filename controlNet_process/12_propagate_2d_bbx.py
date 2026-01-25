@@ -10,17 +10,12 @@
 #   2) save per-view JSON containing warps:
 #        sketch/back_project_masks/view_{x}/mask_warps.json
 #
-# NOTE (ONLY CHANGES MADE):
-# - Fix OBB placement for projection by matching the same coordinate handling as your
-#   working Open3D vis script:
-#   - Auto-detect whether to apply object_space OBJECT->WORLD transform using
-#     anchor_local vs anchor_world stored in aep_changes.json.
-#   - Interpret obb["axes"] as COLUMNS = local axes (same as the working vis).
-#   - If needed, convert OBBs object->world before projecting.
-# - Draw order tweak per your request:
-#   - Draw RED (after) first, then BLUE (before) so BLUE covers RED.
-#
-# Everything else is unchanged.
+# NOTE (ONLY CHANGE MADE IN THIS EDIT):
+# - In ALL mask visualizations:
+#     * original mask is BLUE
+#     * new mask is RED
+#   (This affects: {label}_origmask_overlay.png and {label}_newmask_overlay.png.
+#    Everything else remains unchanged.)
 
 import os
 import json
@@ -198,7 +193,7 @@ def draw_projected_obb(img_bgr, corners_px, color_bgr, thickness=2):
         (0,4),(1,5),(2,6),(3,7)
     ]
 
-    for a,b in edges:
+    for a, b in edges:
         cv2.line(out, tuple(p[a]), tuple(p[b]), color_bgr, thickness, lineType=cv2.LINE_AA)
     return out
 
@@ -265,7 +260,8 @@ def overlay_mask_on_image(img_bgr, mask_u8, color_bgr, alpha=0.35, contour_thick
     return out
 
 
-def compute_homography_from_obb(before_obb, after_obb, w2c, K, H, W, apply_obj2world=False, origin=None, A_obj=None):
+def compute_homography_from_obb(before_obb, after_obb, w2c, K, H, W,
+                               apply_obj2world=False, origin=None, A_obj=None):
     Pw0 = obb_corners_world(before_obb, apply_obj2world=apply_obj2world, origin=origin, A_obj=A_obj)
     Pw1 = obb_corners_world(after_obb,  apply_obj2world=apply_obj2world, origin=origin, A_obj=A_obj)
 
@@ -331,6 +327,10 @@ def main():
 
     items = load_aep_items(AEP_PATH)
     os.makedirs(OUT_ROOT, exist_ok=True)
+
+    # Mask viz colors (BGR)
+    ORIG_MASK_COLOR = (255, 0, 0)  # BLUE
+    NEW_MASK_COLOR  = (0, 0, 255)  # RED
 
     for x in range(NUM_VIEWS):
         view_name = f"view_{x}"
@@ -432,9 +432,13 @@ def main():
             out_mask_path = os.path.join(out_dir, f"{label}_mask_new.png")
             cv2.imwrite(out_mask_path, mask1)
 
-            col = color_for_label(label)
-            orig_overlay = overlay_mask_on_image(base, mask0, col, alpha=ALPHA_FILL, contour_thick=CONTOUR_THICK)
-            new_overlay  = overlay_mask_on_image(base, mask1, col, alpha=ALPHA_FILL, contour_thick=CONTOUR_THICK)
+            # ---- CHANGED: original mask always BLUE, new mask always RED ----
+            orig_overlay = overlay_mask_on_image(
+                base, mask0, ORIG_MASK_COLOR, alpha=ALPHA_FILL, contour_thick=CONTOUR_THICK
+            )
+            new_overlay = overlay_mask_on_image(
+                base, mask1, NEW_MASK_COLOR, alpha=ALPHA_FILL, contour_thick=CONTOUR_THICK
+            )
 
             out_orig_overlay = os.path.join(out_dir, f"{label}_origmask_overlay.png")
             out_new_overlay  = os.path.join(out_dir, f"{label}_newmask_overlay.png")
@@ -442,6 +446,8 @@ def main():
             cv2.imwrite(out_orig_overlay, orig_overlay)
             cv2.imwrite(out_new_overlay, new_overlay)
 
+            # keep aggregate overlay behavior unchanged (still per-label color)
+            col = color_for_label(label)
             all_new_overlay = overlay_mask_on_image(all_new_overlay, mask1, col, alpha=ALPHA_FILL, contour_thick=1)
 
             label_entry["homography_before_to_after"] = Hmat.tolist()
