@@ -5,53 +5,24 @@
   "H": 320,
   "W": 320,
   "labels": {
-    "wheel_1": {
-      "has_mask": true,
-      "mask_path": "sketch/segmentation_original_image/view_4/wheel_1_mask.png",
-      "obb_before_after_overlay": "sketch/back_project_masks/view_4/3d_project/wheel_1_obb_before_after.png",
-      "homography_before_to_after": [
-        [
-          1.0467209425780708,
-          0.004075577828908219,
-          -0.7831980644750784
-        ],
-        [
-          0.02758326766424833,
-          1.4212859641779687,
-          -105.35267730145871
-        ],
-        [
-          -6.816816895572538e-05,
-          0.0002139047633990905,
-          1.0
-        ]
-      ],
-      "homography_status": "ok",
-      "valid_pairs": 8,
-      "outputs": {
-        "mask_new": "sketch/back_project_masks/view_4/wheel_1_mask_new.png",
-        "origmask_overlay": "sketch/back_project_masks/view_4/wheel_1_origmask_overlay.png",
-        "newmask_overlay": "sketch/back_project_masks/view_4/wheel_1_newmask_overlay.png"
-      }
-    },
     "wheel_0": {
       "has_mask": true,
       "mask_path": "sketch/segmentation_original_image/view_4/wheel_0_mask.png",
       "obb_before_after_overlay": "sketch/back_project_masks/view_4/3d_project/wheel_0_obb_before_after.png",
       "homography_before_to_after": [
         [
-          1.057738911082089,
-          0.0913149532768223,
-          -21.25460522135596
+          1.0439889440697734,
+          0.09086997944367255,
+          -15.373677763289749
         ],
         [
-          0.08696310055759318,
-          1.4395201415919225,
-          -107.33970928820168
+          0.07758133220638262,
+          1.4187986229198442,
+          -78.35036664988972
         ],
         [
-          -2.6983096755524453e-05,
-          0.0002744498039988634,
+          -1.3423179294719694e-05,
+          0.00027436346557134733,
           1.0
         ]
       ],
@@ -63,33 +34,33 @@
         "newmask_overlay": "sketch/back_project_masks/view_4/wheel_0_newmask_overlay.png"
       }
     },
-    "storage_0": {
+    "wheel_1": {
       "has_mask": true,
-      "mask_path": "sketch/segmentation_original_image/view_4/storage_0_mask.png",
-      "obb_before_after_overlay": "sketch/back_project_masks/view_4/3d_project/storage_0_obb_before_after.png",
+      "mask_path": "sketch/segmentation_original_image/view_4/wheel_1_mask.png",
+      "obb_before_after_overlay": "sketch/back_project_masks/view_4/3d_project/wheel_1_obb_before_after.png",
       "homography_before_to_after": [
         [
-          0.9826846291435323,
-          -0.00761672868288441,
-          14.59226343746402
+          0.948073893920201,
+          -0.04367196725092311,
+          9.831777688416896
         ],
         [
-          0.01744068400435941,
-          1.0007363735985892,
-          -19.59129849462842
+          0.07525089568184372,
+          1.170006421889975,
+          -53.07562516298952
         ],
         [
-          -4.228394505820718e-06,
-          -1.6274692670281406e-05,
+          0.00023075274398637994,
+          -0.000341684249635708,
           1.0
         ]
       ],
       "homography_status": "ok",
       "valid_pairs": 7,
       "outputs": {
-        "mask_new": "sketch/back_project_masks/view_4/storage_0_mask_new.png",
-        "origmask_overlay": "sketch/back_project_masks/view_4/storage_0_origmask_overlay.png",
-        "newmask_overlay": "sketch/back_project_masks/view_4/storage_0_newmask_overlay.png"
+        "mask_new": "sketch/back_project_masks/view_4/wheel_1_mask_new.png",
+        "origmask_overlay": "sketch/back_project_masks/view_4/wheel_1_origmask_overlay.png",
+        "newmask_overlay": "sketch/back_project_masks/view_4/wheel_1_newmask_overlay.png"
       }
     },
     "unknown_0": {

@@ -185,7 +185,7 @@ def main():
     # ------------------------------------------------------------
 
     # target label (None => random non-unknown)
-    TARGET_LABEL = "wheel_1"        # e.g. "wheel_0"
+    TARGET_LABEL = "wheel_0"        # e.g. "wheel_0"
 
     # face (None => random among 6)
     TARGET_FACE = None         # e.g. "+u2"

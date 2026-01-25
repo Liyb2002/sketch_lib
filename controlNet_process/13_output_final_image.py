@@ -74,6 +74,14 @@ def _warp_rgba(src_rgba: np.ndarray, H: np.ndarray, out_hw: Tuple[int, int]) -> 
     )
 
 
+def _erode_mask(mask01: np.ndarray, radius_px: int) -> np.ndarray:
+    if radius_px <= 0:
+        return mask01
+    k = 2 * radius_px + 1
+    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (k, k))
+    return cv2.erode(mask01, kernel, iterations=1)
+
+
 def _composite_rgb_over(base_bgr: np.ndarray, fg_rgba: np.ndarray, mask01: np.ndarray) -> np.ndarray:
     """
     Composite fg_rgba over base_bgr, but ONLY where mask01==1.
@@ -306,7 +314,13 @@ def apply_view(mask_warps_json: str, out_root: str, remove_radius_px: int = 5) -
         # --- removal mask (in view space) ---
         old_mask01 = _imread_mask01(mask_path)
         old_mask01 = cv2.resize(old_mask01, (Wt, Ht), interpolation=cv2.INTER_NEAREST)
-        remove_mask01 = _dilate_mask(old_mask01, remove_radius_px)
+
+        # shrink inward by 5px so we remove LESS of the old area
+        old_mask01_shrunk = _erode_mask(old_mask01, 5)
+
+        # then (optionally) still apply your outward tolerance
+        remove_mask01 = _dilate_mask(old_mask01_shrunk, remove_radius_px)
+
         removed_bgr[remove_mask01.astype(bool)] = (255, 255, 255)
 
         # --- load + warp component rgba ---
