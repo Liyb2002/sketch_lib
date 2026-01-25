@@ -7,7 +7,8 @@
 #   - sum_after_mask.png (OR over post masks)
 #   - sum_after_count.png (a 0..255 visualization of the count map)
 #   - sum_after_plus_diff_sum_mask.png (OR(sum_after_mask, diff_sum_mask))
-#   - sum_after_mask_boundary_out.png (OUTWARD boundary band of sum_after_mask, 5px)
+#   - sum_after_mask_boundary_out.png (boundary band of sum_after_mask: outward 15px, inward 5px)
+#   - corrupted.png : overlay new.png with red wherever sum_after_mask_boundary_out is 1
 
 import os
 import json
@@ -138,6 +139,54 @@ def _boundary_band_in_out(mask01: np.ndarray, outward_px: int, inward_px: int) -
     return band
 
 
+def _find_new_png_for_view(view_name: str) -> str:
+    """
+    Find the composited image you call new.png for this view.
+    Tries a few likely locations (you can add more if needed).
+    """
+    candidates = [
+        os.path.join("sketch", "final_outputs", view_name, "new.png"),
+        os.path.join("sketch", "final_outputs", view_name, "fix", "new.png"),
+        os.path.join("sketch", "final_outputs", view_name, "gemini_fixed.png"),
+    ]
+    p = next((c for c in candidates if os.path.exists(c)), None)
+    if p is None:
+        raise FileNotFoundError(f"Cannot find new.png for {view_name}. Tried: {candidates}")
+    return p
+
+
+def _make_corrupted_overlay(new_bgr: np.ndarray, boundary01: np.ndarray, red_alpha: float = 1.0) -> np.ndarray:
+    """
+    Overlay RED where boundary01==1.
+    red_alpha=1.0 => solid red
+    red_alpha<1.0 => blend with underlying image
+    """
+    boundary01 = (boundary01 > 0).astype(np.uint8)
+    if boundary01.shape[:2] != new_bgr.shape[:2]:
+        boundary01 = cv2.resize(boundary01, (new_bgr.shape[1], new_bgr.shape[0]), interpolation=cv2.INTER_NEAREST)
+
+    out = new_bgr.copy()
+    if boundary01.max() == 0:
+        return out
+
+    # BGR for red
+    red = np.zeros_like(out, dtype=np.uint8)
+    red[:, :] = (0, 0, 255)
+
+    mask = boundary01.astype(bool)
+
+    if red_alpha >= 1.0:
+        out[mask] = red[mask]
+    else:
+        # blend only on masked pixels
+        a = float(max(0.0, min(1.0, red_alpha)))
+        out_m = out[mask].astype(np.float32)
+        red_m = red[mask].astype(np.float32)
+        out[mask] = (out_m * (1.0 - a) + red_m * a).round().astype(np.uint8)
+
+    return out
+
+
 def process_view(mask_warps_json: str, out_root: str, remove_radius_px: int = 5, diff_thicken_px: int = 5) -> None:
     data = _read_json(mask_warps_json)
 
@@ -212,8 +261,8 @@ def process_view(mask_warps_json: str, out_root: str, remove_radius_px: int = 5,
     sum_after_count_png_path = os.path.join(out_dir, "sum_after_count.png")
     combined_path = os.path.join(out_dir, "sum_after_plus_diff_sum_mask.png")
 
-    # NEW: outward boundary (5px) of sum_after_mask
     sum_after_boundary_path = os.path.join(out_dir, "sum_after_mask_boundary_out.png")
+    corrupted_path = os.path.join(out_dir, "corrupted.png")
 
     cv2.imwrite(diff_sum_path, _mask01_to_png(diff_sum01))
     cv2.imwrite(sum_after_mask_path, _mask01_to_png(sum_after01))
@@ -222,9 +271,20 @@ def process_view(mask_warps_json: str, out_root: str, remove_radius_px: int = 5,
     combined01 = np.maximum(sum_after01, diff_sum01)
     cv2.imwrite(combined_path, _mask01_to_png(combined01))
 
-
+    # boundary band: outward 15px, inward 5px (as in your code)
     boundary01 = _boundary_band_in_out(sum_after01, outward_px=15, inward_px=5)
     cv2.imwrite(sum_after_boundary_path, _mask01_to_png(boundary01))
+
+    # NEW: corrupted.png = new.png with boundary painted RED
+    new_png_path = _find_new_png_for_view(view_name)
+    new_bgr = _imread_rgb(new_png_path)
+    if new_bgr.shape[:2] != (Ht, Wt):
+        new_bgr = cv2.resize(new_bgr, (Wt, Ht), interpolation=cv2.INTER_AREA)
+
+    # Make red very obvious to GENAI (solid red). If you want semi-transparent, set <1.0.
+    RED_ALPHA = 1.0
+    corrupted_bgr = _make_corrupted_overlay(new_bgr, boundary01, red_alpha=RED_ALPHA)
+    cv2.imwrite(corrupted_path, corrupted_bgr)
 
     print(f"saved fix outputs to: {out_dir}")
 
