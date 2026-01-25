@@ -20,19 +20,19 @@
       "obb_before_after_overlay": "sketch/back_project_masks/view_0/3d_project/wheel_0_obb_before_after.png",
       "homography_before_to_after": [
         [
-          1.439778867812759,
-          -0.014244591145769366,
-          -55.102454325671204
+          0.37488078444264183,
+          -0.3466713260829734,
+          94.6064227866415
         ],
         [
-          0.00784050054842341,
-          1.0168787542850517,
-          -1.6532788676174484
+          -0.06320504461232981,
+          0.13603160789968644,
+          72.34650020166987
         ],
         [
-          0.0001070757700257441,
-          -8.519551740515922e-07,
-          0.9999999999999999
+          -0.00028681873874435637,
+          -0.0021089231648939682,
+          1.0
         ]
       ],
       "homography_status": "ok",
@@ -56,15 +56,6 @@
       "has_mask": false,
       "mask_path": null,
       "obb_before_after_overlay": "sketch/back_project_masks/view_0/3d_project/unknown_0_obb_before_after.png",
-      "homography_before_to_after": null,
-      "homography_status": null,
-      "valid_pairs": 0,
-      "outputs": {}
-    },
-    "unknown_1": {
-      "has_mask": false,
-      "mask_path": null,
-      "obb_before_after_overlay": "sketch/back_project_masks/view_0/3d_project/unknown_1_obb_before_after.png",
       "homography_before_to_after": null,
       "homography_status": null,
       "valid_pairs": 0,
