@@ -5,15 +5,15 @@
     "delta_ratio_min": 0.8,
     "delta_ratio_max": 0.8,
     "ratio_sampled": 0.8,
-    "expand_or_shrink": "expand",
-    "face": "+u1",
+    "expand_or_shrink": "shrink",
+    "face": "-u1",
     "axis": 1,
     "axis_name": "u1",
-    "sign": 1,
-    "delta_requested": 0.04826879067248524,
-    "delta_applied": 0.04826879067248524,
+    "sign": -1,
+    "delta_requested": -0.04826879067248524,
+    "delta_applied": -0.04826879067248524,
     "old_extent": 0.06033598834060654,
-    "new_extent": 0.08447038367684917,
+    "new_extent": 0.03620159300436392,
     "min_extent": 0.0001,
     "before_obb": {
       "center": [
@@ -69,7 +69,7 @@
       ],
       "extents": [
         0.07859414896174322,
-        0.08447038367684917,
+        0.03620159300436392,
         0.04855833565101317
       ]
     }

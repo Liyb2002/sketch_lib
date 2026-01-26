@@ -1,12 +1,17 @@
 #!/usr/bin/env python3
 # 11_AEP.py
 #
-# Updated launcher:
+# Launcher (step 1 of iterative refactor, but behavior remains the same as before):
 # - read constraints + edit
-# - compute neighbors
+# - compute neighbors ONCE (sym / attach / contain) using find_affected_neighbors
 # - run sym/contain propagation
+# - run attachments propagation
 # - save changes to sketch/AEP/aep_changes.json
-# - vis reads from saved changes (not from in-memory)
+# - vis AFTER everything (outside any future loop scaffolding)
+#
+# NOTE:
+# - No iterative solving yet (no neighbor->neighbors expansion).
+# - verbose is ALWAYS False.
 
 import os
 import json
@@ -15,6 +20,7 @@ from AEP.sym_and_containment import apply_symmetry_and_containment
 from AEP.attachment import apply_attachments
 from AEP.save_json import save_aep_changes
 from AEP.vis import vis_from_saved_changes
+from AEP.find_affect_neighbors import find_affected_neighbors
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 
@@ -50,52 +56,29 @@ def main():
         raise ValueError(f"Edit file missing 'target': {EDIT_PATH}")
 
     nodes = constraints.get("nodes", {}) or {}
-    symmetry = constraints.get("symmetry", {}) or {}
-    attachments = constraints.get("attachments", []) or []
-    containment = constraints.get("containment", []) or []
 
     # ------------------------------------------------------------
-    # Collect neighbors (sym / attach / contain)
+    # Collect neighbors ONCE (same behavior as before)
     # ------------------------------------------------------------
-    sym_neighbors = set()
-    for p in symmetry.get("pairs", []) or []:
-        a = p.get("a")
-        b = p.get("b")
-        if a == target and b:
-            sym_neighbors.add(b)
-        elif b == target and a:
-            sym_neighbors.add(a)
-
-    attach_neighbors = set()
-    for e in attachments:
-        a = e.get("a")
-        b = e.get("b")
-        if a == target and b:
-            attach_neighbors.add(b)
-        elif b == target and a:
-            attach_neighbors.add(a)
-
-    contain_neighbors = set()
-    for c in containment:
-        outer = c.get("outer")
-        inner = c.get("inner")
-        if outer == target and inner:
-            contain_neighbors.add(inner)
-        elif inner == target and outer:
-            contain_neighbors.add(outer)
-
-    all_neighbors = sorted(sym_neighbors | attach_neighbors | contain_neighbors)
+    all_neighbors = find_affected_neighbors(constraints=constraints, target=target)
 
     # ------------------------------------------------------------
-    # Apply symmetry + containment edits (and print verification)
+    # Apply symmetry + containment edits
     # ------------------------------------------------------------
-    symcon_res = apply_symmetry_and_containment(constraints=constraints, edit=edit, verbose=True)
+    symcon_res = apply_symmetry_and_containment(
+        constraints=constraints,
+        edit=edit,
+        verbose=False,
+    )
 
     # ------------------------------------------------------------
-    # Attachments: still stub-print only (per your instruction)
+    # Apply attachments
     # ------------------------------------------------------------
-    attach_res = apply_attachments(constraints=constraints, edit=edit, verbose=True)
-
+    attach_res = apply_attachments(
+        constraints=constraints,
+        edit=edit,
+        verbose=False,
+    )
 
     # ------------------------------------------------------------
     # SAVE: target edit + neighbor changes
@@ -106,14 +89,11 @@ def main():
         symcon_res=symcon_res,
         attach_res=attach_res,
         out_filename=os.path.basename(AEP_CHANGES_PATH),
-        constraints=constraints,  # <-- NEW: pass filtered_relations.json in
+        constraints=constraints,
     )
 
-
-
     # ------------------------------------------------------------
-    # VIS: neighbors in blue, changed neighbors in red
-    #     (reads from saved json, not from symcon_res)
+    # VIS: outside any future loop scaffolding
     # ------------------------------------------------------------
     if DO_VIS:
         vis_from_saved_changes(
@@ -125,7 +105,6 @@ def main():
             window_name=f"AEP: target+neighbors (blue) + changed (red) | target={target}",
             show_overlay=True,
         )
-
 
 
 if __name__ == "__main__":

@@ -255,14 +255,6 @@ def apply_symmetry_and_containment(
             min_extent=float(min_extent),
         )
 
-        print(f"[AEP][SYM/CON][VERIFY][{rel_tag}] relation={rel_obj}")
-        print(f"[AEP][SYM/CON][VERIFY][{rel_tag}] neighbor={neighbor}")
-        print(f"[AEP][SYM/CON][VERIFY][{rel_tag}] map: face_src={face_src} -> face_dst={face_dst}")
-        print(f"[AEP][SYM/CON][VERIFY][{rel_tag}] map: perm={map_dbg['perm_src_to_dst']} sign={map_dbg['sign_src_to_dst']}")
-        print(f"[AEP][SYM/CON][VERIFY][{rel_tag}] map: M=Rdst^T*Rsrc:\n{np.array(map_dbg['M'])}")
-        print(f"[AEP][SYM/CON][VERIFY][{rel_tag}] neighbor_extent(u{k_dst})={e_dst:.6f}")
-        print(f"[AEP][SYM/CON][VERIFY][{rel_tag}] delta_dst_req={delta_dst_req:+.6f} delta_dst_applied={info['delta_applied']:+.6f}")
-        print(f"[AEP][SYM/CON][VERIFY][{rel_tag}] extent: {info['old_extent']:.6f} -> {info['new_extent']:.6f}")
 
         # sanity: show that only ONE face moved (the opposite should remain unchanged)
         # Determine which face should be fixed:
@@ -282,9 +274,6 @@ def apply_symmetry_and_containment(
             fixed_name = "+face"
             moved_name = "-face"
 
-        print(f"[AEP][SYM/CON][VERIFY][{rel_tag}] {fixed_name} shift_norm={np.linalg.norm(fixed_after-fixed_before):.6e} (should be ~0)")
-        print(f"[AEP][SYM/CON][VERIFY][{rel_tag}] {moved_name} shift_norm={np.linalg.norm(moved_after-moved_before):.6e} (should be ~|delta|)")
-        print("")
 
         return {
             "relation_tag": rel_tag,
