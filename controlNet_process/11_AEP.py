@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # 11_AEP.py
 #
-# Launcher (queue-based, but still NON-iterative):
+# Queue-based, NON-iterative neighbor processing:
 # - read constraints + edit
 # - compute neighbors ONCE (sym / attach / contain) using find_affected_neighbors
 # - put neighbors into a queue
@@ -9,6 +9,8 @@
 #     - pop one neighbor
 #     - apply_symmetry_and_containment(..., neighbor=<that>)
 #     - apply_attachments(..., neighbor=<that>)
+#     - compute + save {counter}_face_edit_change.json for this neighbor (counter starts at 1)
+#       using AEP/find_face_edit_change.py (also debug-vis)
 #   (NO adding new neighbors during the loop)
 # - save + vis ONLY after the queue is empty
 #
@@ -24,6 +26,7 @@ from AEP.attachment import apply_attachments
 from AEP.save_json import save_aep_changes
 from AEP.vis import vis_from_saved_changes
 from AEP.find_affect_neighbors import find_affected_neighbors
+from AEP.find_face_edit_change import find_face_edit_change_and_save_and_vis
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 
@@ -87,6 +90,9 @@ def main():
     attach_total_edges = 0
     attach_applied_any = False
 
+    # Counter for {x}_face_edit_change.json
+    face_edit_counter = 1
+
     # ------------------------------------------------------------
     # Process queue (NO adding new neighbors)
     # ------------------------------------------------------------
@@ -125,6 +131,42 @@ def main():
             for kk in ("volume", "face", "point", "unknown"):
                 if kk in counts:
                     attach_summary_counts[kk] += int(counts.get(kk, 0) or 0)
+
+        # ------------------------------------------------------------
+        # Compute + save per-neighbor face_edit_change.json (and debug-vis)
+        # Prefer attachments result if present, else sym/contain result.
+        # ------------------------------------------------------------
+        before_obb = None
+        after_obb = None
+
+        # Prefer attachments (if it produced an edit)
+        cn = (attach_res_nb or {}).get("changed_nodes", {}) if isinstance(attach_res_nb, dict) else {}
+        rec = cn.get(nb, None)
+        if isinstance(rec, dict) and isinstance(rec.get("before_obb"), dict) and isinstance(rec.get("after_obb"), dict):
+            before_obb = rec["before_obb"]
+            after_obb = rec["after_obb"]
+        else:
+            # Fallback to sym/contain
+            if isinstance(symcon_res_nb, dict):
+                for kk in ("symmetry", "containment"):
+                    m = symcon_res_nb.get(kk, {}) or {}
+                    rec2 = m.get(nb, None)
+                    if isinstance(rec2, dict) and isinstance(rec2.get("before_obb"), dict) and isinstance(rec2.get("after_obb"), dict):
+                        before_obb = rec2["before_obb"]
+                        after_obb = rec2["after_obb"]
+                        break
+
+        if before_obb is not None and after_obb is not None:
+            find_face_edit_change_and_save_and_vis(
+                aep_dir=AEP_DATA_DIR,
+                counter=face_edit_counter,
+                target=nb,
+                before_obb=before_obb,
+                after_obb=after_obb,
+                overlay_ply_path=OVERLAY_PLY,
+                do_vis=True,
+            )
+            face_edit_counter += 1
 
     # Build final attachment result in the same shape expected by save_aep_changes
     attach_res_all = {
