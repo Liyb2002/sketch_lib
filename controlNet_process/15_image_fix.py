@@ -1,22 +1,19 @@
 #!/usr/bin/env python3
-# 14_image_fix.py
+# 15_image_fix_corrupted_gemini.py
 #
-# Gemini API-key masked "inpainting" via Gemini Image model.
-# We provide (input.png, mask.png) as two images and instruct the model:
-#   white mask = editable, black mask = keep identical.
+# For each view_x:
+#   input:  sketch/final_outputs/view_x/fix/corrupted.png
+#   output: sketch/final_outputs/view_x/gemini_fix/raw.png
+#           sketch/final_outputs/view_x/gemini_fix/final.png
 #
-# Per view:
-#   mask:  sketch/final_outputs/view_x/fix/diff_sum_mask.png
-#   input: tries (in order):
-#          sketch/final_outputs/view_x/gemini_fixed.png
-#          sketch/final_outputs/view_x/new.png
-#          sketch/final_outputs/view_x/fix/new.png
-#          sketch/final_outputs/view_x/fix/input.png
-#          sketch/final_outputs/view_x/view.png
-#          sketch/view/view_x.png   (fallback)
+# IMPORTANT ENFORCEMENT:
+# - Define editable region as RED pixels in the INPUT corrupted.png (not Gemini output).
+# - final.png = composite:
+#     * outside red region: take INPUT exactly
+#     * inside red region:  take GEMINI, but if GEMINI pixel is red-ish => set to WHITE
 #
-# Output:
-#   sketch/final_outputs/view_x/fix/gemini_fixed.png
+# Env:
+#   export GEMINI_API_KEY="..."
 
 import os
 import glob
@@ -24,48 +21,44 @@ import base64
 import json
 import time
 from io import BytesIO
-from typing import Optional, List
+from typing import Optional
 
 import requests
+import cv2
+import numpy as np
+from PIL import Image
 
 
 MODEL = "gemini-2.5-flash-image"
 API_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{MODEL}:generateContent"
 
 PROMPT = (
-    "You are repairing the boundary between two overlaid sketch drawings.\n\n"
-
-    "You are given TWO images of the same size:\n"
-    "1) The input sketch image where two design pieces have already been placed together.\n"
-    "2) A binary mask image.\n\n"
-
-    "Mask meaning:\n"
-    "- White pixels (≈255): the ONLY region you may edit.\n"
-    "- Black pixels (≈0): must remain EXACTLY identical to the input image.\n\n"
-
-    "What the white region contains:\n"
-    "- A narrow band along the boundary where the two sketches meet.\n"
-    "- This area may contain broken lines, small gaps, overlaps, misaligned strokes, or jagged edges.\n\n"
-
-    "Your task (ONLY inside the white region):\n"
-    "- Blend the two sketch pieces into a single coherent drawing.\n"
-    "- Reconnect broken strokes and close tiny gaps.\n"
-    "- Remove overlaps or doubled lines caused by compositing.\n"
-    "- Make line thickness, curvature, and spacing consistent across the boundary.\n"
-    "- Keep the original hand-drawn style.\n\n"
-
-    "Strict rules:\n"
-    "- Do NOT move, scale, rotate, or reshape either sketch piece.\n"
-    "- Do NOT change the overall design or layout.\n"
-    "- Do NOT add new objects or features.\n"
-    "- Do NOT modify anything outside the white mask.\n"
-    "- Outside the mask must be pixel-for-pixel identical to the input image.\n\n"
-
-    "Be conservative: make the smallest changes necessary to achieve a clean connection.\n\n"
-
-    "Output:\n"
-    "- Return exactly one corrected sketch image."
+    "You are given one image.\n\n"
+    "This image is a hand-drawn style sketch created by blending two separate design pieces together.\n\n"
+    "Some regions in the image are deliberately marked in pure red. These red regions indicate corrupted blending "
+    "boundaries between the two pieces.\n\n"
+    "Your task is to repair the sketch so that the two pieces form a single clean, continuous drawing.\n\n"
+    "Rules and goals:\n"
+    "1) Meaning of red regions\n"
+    "- Red pixels mark the ONLY areas that need fixing.\n"
+    "- They indicate seams, gaps, overlaps, broken strokes, or misaligned boundaries caused by blending.\n\n"
+    "2) What to do inside red regions\n"
+    "- Reconnect broken lines smoothly.\n"
+    "- Close small gaps and holes.\n"
+    "- Remove doubled or overlapping strokes.\n"
+    "- Align contours so edges flow naturally across the boundary.\n"
+    "- Keep the sketch style consistent with the surrounding drawing (thin black hand-drawn lines on white background).\n\n"
+    "3) What NOT to do\n"
+    "- Do NOT move, resize, or redesign the components.\n"
+    "- Do NOT introduce new parts or decorative details.\n"
+    "- Do NOT change the overall structure or proportions.\n\n"
+    "4) Output requirements\n"
+    "- Output a single repaired image.\n"
+    "- The final image should look like a clean, continuous sketch with no visible seams or red marks.\n"
+    "- The red color must be completely removed and replaced by natural sketch strokes that blend with neighboring lines.\n\n"
+    "Think of this as surgically repairing the seam between two overlaid sketches, not redrawing the design."
 )
+
 
 def b64_file(path: str) -> str:
     with open(path, "rb") as f:
@@ -78,12 +71,15 @@ def write_bytes(path: str, data: bytes) -> None:
         f.write(data)
 
 
-def call_gemini_image_edit(api_key: str, image_b64: str, mask_b64: str, prompt: str) -> bytes:
-    headers = {
-        "Content-Type": "application/json",
-        "x-goog-api-key": api_key,
-    }
+def make_full_white_mask_png_bytes(w: int, h: int) -> bytes:
+    img = Image.fromarray(np.full((h, w), 255, dtype=np.uint8), mode="L")
+    buf = BytesIO()
+    img.save(buf, format="PNG")
+    return buf.getvalue()
 
+
+def call_gemini_image_edit(api_key: str, image_b64: str, mask_b64: str, prompt: str) -> bytes:
+    headers = {"Content-Type": "application/json", "x-goog-api-key": api_key}
     payload = {
         "contents": [{
             "parts": [
@@ -92,22 +88,17 @@ def call_gemini_image_edit(api_key: str, image_b64: str, mask_b64: str, prompt: 
                 {"inline_data": {"mime_type": "image/png", "data": mask_b64}},
             ]
         }],
-        "generationConfig": {
-            "responseModalities": ["IMAGE"]
-        }
+        "generationConfig": {"responseModalities": ["IMAGE"]}
     }
 
     r = requests.post(API_URL, headers=headers, data=json.dumps(payload), timeout=300)
-
     if r.status_code != 200:
-        txt = (r.text or "").strip()
-        raise RuntimeError(f"HTTP {r.status_code}: {txt[:2000]}")
+        raise RuntimeError(f"HTTP {r.status_code}: {r.text[:2000]}")
 
     j = r.json()
-
     cands = j.get("candidates", [])
     if not cands:
-        raise RuntimeError(f"No candidates in response: {json.dumps(j)[:2000]}")
+        raise RuntimeError("No candidates in Gemini response")
 
     parts = (((cands[0] or {}).get("content") or {}).get("parts")) or []
     for p in parts:
@@ -119,88 +110,101 @@ def call_gemini_image_edit(api_key: str, image_b64: str, mask_b64: str, prompt: 
         if isinstance(data, str) and len(data) > 100 and ("image" in mime or mime == ""):
             return base64.b64decode(data)
 
-    raise RuntimeError(f"Could not find image inline_data in response: {json.dumps(j)[:2000]}")
+    raise RuntimeError("No image payload found in Gemini response")
 
 
-def enforce_mask_composite(orig_png: str, mask_png: str, gen_bytes: bytes, thresh: int = 128) -> bytes:
-    # Hard guarantee: outside-mask stays identical to orig_png
-    from PIL import Image
-    import numpy as np
-
-    orig = Image.open(orig_png).convert("RGBA")
-    mask = Image.open(mask_png).convert("L")
-    gen  = Image.open(BytesIO(gen_bytes)).convert("RGBA")
-
-    if gen.size != orig.size:
-        gen = gen.resize(orig.size, resample=Image.BILINEAR)
-    if mask.size != orig.size:
-        mask = mask.resize(orig.size, resample=Image.NEAREST)
-
-    m = np.array(mask, dtype=np.uint8)
-    m = (m >= thresh).astype(np.uint8)  # 1 where editable
-
-    o = np.array(orig, dtype=np.uint8)
-    g = np.array(gen,  dtype=np.uint8)
-
-    m4 = m[..., None]  # broadcast to RGBA
-    out = o * (1 - m4) + g * m4
-
-    out_img = Image.fromarray(out.astype(np.uint8), mode="RGBA")
-    buf = BytesIO()
-    out_img.save(buf, format="PNG")
-    return buf.getvalue()
+def decode_png_bytes_to_bgr(png_bytes: bytes) -> np.ndarray:
+    bgr = cv2.imdecode(np.frombuffer(png_bytes, dtype=np.uint8), cv2.IMREAD_COLOR)
+    if bgr is not None:
+        return bgr
+    rgb = np.array(Image.open(BytesIO(png_bytes)).convert("RGB"))
+    return cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR)
 
 
-def first_existing(paths: List[str]) -> Optional[str]:
-    for p in paths:
-        if p and os.path.exists(p):
-            return p
-    return None
+def red_mask_from_bgr(bgr: np.ndarray) -> np.ndarray:
+    """
+    Return boolean mask where pixels are 'red' (in HSV).
+    """
+    hsv = cv2.cvtColor(bgr, cv2.COLOR_BGR2HSV)
+
+    lower1 = np.array([0, 120, 80], dtype=np.uint8)
+    upper1 = np.array([10, 255, 255], dtype=np.uint8)
+    lower2 = np.array([170, 120, 80], dtype=np.uint8)
+    upper2 = np.array([180, 255, 255], dtype=np.uint8)
+
+    m1 = cv2.inRange(hsv, lower1, upper1)
+    m2 = cv2.inRange(hsv, lower2, upper2)
+    return (m1 | m2) > 0
+
+
+def enforce_red_region_only(input_bgr: np.ndarray, gemini_bgr: np.ndarray) -> np.ndarray:
+    """
+    final rule:
+      - outside RED region (computed from input): output = input
+      - inside  RED region: output = gemini, but any red-ish pixel in gemini => white
+    """
+    H, W = input_bgr.shape[:2]
+
+    if gemini_bgr.shape[:2] != (H, W):
+        gemini_bgr = cv2.resize(gemini_bgr, (W, H), interpolation=cv2.INTER_AREA)
+
+    edit = red_mask_from_bgr(input_bgr)  # editable area from INPUT red
+
+    out = input_bgr.copy()
+
+    # inside editable region: start with Gemini
+    out[edit] = gemini_bgr[edit]
+
+    # but if Gemini still outputs red inside editable region => white it out
+    gem_red = red_mask_from_bgr(gemini_bgr)
+    red_inside = edit & gem_red
+    out[red_inside] = (255, 255, 255)
+
+    return out
 
 
 def main():
     api_key = (os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY") or "").strip()
     if not api_key:
-        raise RuntimeError("Set env var GEMINI_API_KEY (or GOOGLE_API_KEY).")
+        raise RuntimeError("Set GEMINI_API_KEY or GOOGLE_API_KEY")
 
     view_dirs = sorted(glob.glob(os.path.join("sketch", "final_outputs", "view_*")))
     if not view_dirs:
-        raise FileNotFoundError("No folders found: sketch/final_outputs/view_*")
+        raise FileNotFoundError("No sketch/final_outputs/view_* folders found")
 
     for view_dir in view_dirs:
-        view_name = os.path.basename(view_dir)  # e.g. view_0
-        fix_dir = os.path.join(view_dir, "fix")
-        mask_png = os.path.join(fix_dir, "diff_sum_mask.png")
+        view_name = os.path.basename(view_dir)
+        corrupted_png = os.path.join(view_dir, "fix", "corrupted.png")
 
-        if not os.path.exists(mask_png):
+        if not os.path.exists(corrupted_png):
+            print(f"[SKIP] {view_name}: no fix/corrupted.png")
             continue
 
-        # choose an input image to fix
-        candidates = [
-            os.path.join(view_dir, "gemini_fixed.png"),
-            os.path.join(view_dir, "new.png"),
-            os.path.join(fix_dir, "new.png"),
-            os.path.join(fix_dir, "input.png"),
-            os.path.join(view_dir, "view.png"),
-            os.path.join("sketch", "view", f"{view_name}.png"),
-        ]
-        in_png = first_existing(candidates)
-        if in_png is None:
-            print(f"[SKIP] {view_name}: no input image found (checked: {candidates})")
+        input_bgr = cv2.imread(corrupted_png, cv2.IMREAD_COLOR)
+        if input_bgr is None:
+            print(f"[SKIP] {view_name}: failed to read {corrupted_png}")
             continue
 
-        out_path = os.path.join(fix_dir, "gemini_fixed.png")
+        H, W = input_bgr.shape[:2]
 
-        img_b64 = b64_file(in_png)
-        mask_b64 = b64_file(mask_png)
+        # We still send a full-white mask; enforcement happens locally.
+        mask_bytes = make_full_white_mask_png_bytes(W, H)
+        mask_b64 = base64.b64encode(mask_bytes).decode("utf-8")
+        img_b64 = b64_file(corrupted_png)
 
+        out_dir = os.path.join(view_dir, "gemini_fix")
+        raw_path = os.path.join(out_dir, "raw.png")
+        final_path = os.path.join(out_dir, "final.png")
+        os.makedirs(out_dir, exist_ok=True)
+
+        print(f"[PROC] {view_name}  input={corrupted_png}")
+
+        raw_bytes: Optional[bytes] = None
         last_err: Optional[Exception] = None
+
         for attempt in range(3):
             try:
                 raw_bytes = call_gemini_image_edit(api_key, img_b64, mask_b64, PROMPT)
-                out_bytes = enforce_mask_composite(in_png, mask_png, raw_bytes, thresh=128)
-                write_bytes(out_path, out_bytes)
-                print(f"[OK] {view_name} -> {out_path} (input={os.path.relpath(in_png)})")
                 last_err = None
                 break
             except Exception as e:
@@ -208,7 +212,18 @@ def main():
                 time.sleep(1.0 + attempt)
 
         if last_err is not None:
-            raise last_err
+            print(f"  ! FAILED: {last_err}")
+            continue
+
+        assert raw_bytes is not None
+        write_bytes(raw_path, raw_bytes)
+
+        gem_bgr = decode_png_bytes_to_bgr(raw_bytes)
+        final_bgr = enforce_red_region_only(input_bgr, gem_bgr)
+        cv2.imwrite(final_path, final_bgr)
+
+        print(f"  saved: {raw_path}")
+        print(f"  saved: {final_path}")
 
     print("Done.")
 
