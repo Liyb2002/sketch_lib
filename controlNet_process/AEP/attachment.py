@@ -652,7 +652,19 @@ def _solve_volume_edge(
 # Public API (DO NOT BREAK)
 # ----------------------------
 
-def apply_attachments(constraints: Dict[str, Any], edit: Dict[str, Any], verbose: bool = True) -> Dict[str, Any]:
+def apply_attachments(
+    constraints: Dict[str, Any],
+    edit: Dict[str, Any],
+    verbose: bool = True,
+    neighbor: str = None,   # <-- NEW (optional)
+) -> Dict[str, Any]:
+    """
+    If neighbor is None:
+        Old behavior: apply to ALL attachment edges touching edit['target'].
+    If neighbor is provided:
+        Apply ONLY if there exists an attachment edge between (target, neighbor).
+        No searching/applying to any other neighbors.
+    """
     attachments = constraints.get("attachments", []) or []
 
     target = edit.get("target", None)
@@ -663,31 +675,57 @@ def apply_attachments(constraints: Dict[str, Any], edit: Dict[str, Any], verbose
     if not isinstance(change, dict):
         raise ValueError("edit missing 'change' dict")
 
+    # compute edit decomposition once (same as before)
     ed = _compute_edit_decomp(change)
     min_extent = _min_extent_from_edit(change)
 
     all_edges = [e for e in attachments if isinstance(e, dict)]
-    target_edges = [e for e in all_edges if e.get("a") == target or e.get("b") == target]
+
+    # ------------------------------------------------------------------
+    # NEW: filter edges based on optional neighbor
+    # ------------------------------------------------------------------
+    if neighbor is None:
+        target_edges = [e for e in all_edges if e.get("a") == target or e.get("b") == target]
+    else:
+        if not isinstance(neighbor, str) or not neighbor:
+            raise ValueError("neighbor must be a non-empty string")
+        if neighbor == target:
+            raise ValueError("neighbor must be different from target")
+        # only edges that connect target <-> neighbor
+        target_edges = [
+            e for e in all_edges
+            if (e.get("a") == target and e.get("b") == neighbor) or (e.get("a") == neighbor and e.get("b") == target)
+        ]
 
     if verbose:
-        counts_all = {"volume": 0, "face": 0, "point": 0, "unknown": 0}
-        for e in all_edges:
-            k = _infer_attachment_kind(e)
-            if k not in counts_all:
-                k = "unknown"
-            counts_all[k] += 1
-        print(f"[AEP][attach] ALL edges in file: {len(all_edges)}")
-        print(f"[AEP][attach] ALL counts: volume={counts_all['volume']} face={counts_all['face']} point={counts_all['point']} unknown={counts_all['unknown']}")
-        print(f"[AEP][attach] target={target} | edges_touching_target={len(target_edges)}")
+        if neighbor is None:
+            counts_all = {"volume": 0, "face": 0, "point": 0, "unknown": 0}
+            for e in all_edges:
+                k = _infer_attachment_kind(e)
+                if k not in counts_all:
+                    k = "unknown"
+                counts_all[k] += 1
+            print(f"[AEP][attach] ALL edges in file: {len(all_edges)}")
+            print(f"[AEP][attach] ALL counts: volume={counts_all['volume']} face={counts_all['face']} point={counts_all['point']} unknown={counts_all['unknown']}")
+            print(f"[AEP][attach] target={target} | edges_touching_target={len(target_edges)}")
+        else:
+            print(f"[AEP][attach] target={target} | neighbor={neighbor} | edges_between={len(target_edges)}")
+
         print(f"[AEP][attach] edited_face(meta)={_face_to_str(ed['axis'], ed['s_edit'])} | axis={ed['axis']} s_edit={ed['s_edit']} r(meta)={ed['r']:.6f}")
         print(f"[AEP][attach] dF(edited_face_disp meta)={ed['dF'].tolist()} | dC(center_disp)={ed['dC'].tolist()}")
 
     changed_nodes: Dict[str, Any] = {}
     applied_any = False
 
+    # If neighbor is specified, we should only ever produce changes for that neighbor.
     for idx, e in enumerate(target_edges):
         kind = _infer_attachment_kind(e)
         other = _other_name_in_edge(e, target)
+
+        # In neighbor-mode, enforce that "other" matches neighbor (robustness)
+        if neighbor is not None and other != neighbor:
+            continue
+
         if not other:
             if verbose:
                 print(f"\n[AEP][attach] edge#{idx} [SKIP] missing other endpoint: a={e.get('a')} b={e.get('b')}")
@@ -721,6 +759,11 @@ def apply_attachments(constraints: Dict[str, Any], edit: Dict[str, Any], verbose
             print(f"[AEP][attach] RESULT saved for neighbor '{other}': kind={rec['kind']} solving={rec['solving']} op={rec['op'].get('type')}")
             print(f"[AEP][attach]   after_obb.center={aob['center']} extents={aob['extents']}")
 
+        # In neighbor-mode, stop after the first applied record (optional but usually desired)
+        if neighbor is not None:
+            break
+
+    # Summary counts should reflect the filtered edge set we considered
     counts_target = {"volume": 0, "face": 0, "point": 0, "unknown": 0}
     for e in target_edges:
         k = _infer_attachment_kind(e)
@@ -735,5 +778,6 @@ def apply_attachments(constraints: Dict[str, Any], edit: Dict[str, Any], verbose
         "summary": {
             "total_edges": int(len(target_edges)),
             "counts": counts_target,
+            "neighbor": neighbor if neighbor is not None else None,  # harmless extra metadata
         },
     }

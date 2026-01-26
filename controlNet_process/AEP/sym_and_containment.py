@@ -163,15 +163,18 @@ def apply_symmetry_and_containment(
     edit: Dict[str, Any],
     min_extent: float = 1e-4,
     verbose: bool = True,
+    neighbor: str = None,   # <-- NEW (optional)
 ) -> Dict[str, Any]:
     """
-    Applies proportional one-face edits to symmetry + containment neighbors.
+    If neighbor is None:
+        Applies proportional one-face edits to ALL symmetry + containment neighbors of edit["target"] (old behavior).
+    If neighbor is provided:
+        Applies the propagated edit ONLY to that specific neighbor, if (and only if) it has a SYM or CONTAIN relation
+        with edit["target"].
 
-    Prints verification logs:
-    - relation
-    - target edit details
-    - axis mapping details
-    - neighbor before/after summary
+    Returns:
+        {"symmetry": {neighbor_name: ...}, "containment": {neighbor_name: ...}}
+        where at most one neighbor entry exists when neighbor != None.
     """
     nodes = constraints.get("nodes", {}) or {}
     if not isinstance(nodes, dict) or len(nodes) == 0:
@@ -207,7 +210,97 @@ def apply_symmetry_and_containment(
     symmetry = constraints.get("symmetry", {}) or {}
     containment = constraints.get("containment", []) or []
 
-    # Gather relations involving target (so we can print them cleanly)
+    out_sym: Dict[str, Any] = {}
+    out_con: Dict[str, Any] = {}
+
+    def _apply_to_neighbor(neighbor_name: str, rel_tag: str, rel_obj: Dict[str, Any]) -> Dict[str, Any]:
+        if neighbor_name not in nodes or nodes[neighbor_name].get("obb", None) is None:
+            if verbose:
+                print(f"[AEP][SYM/CON][VERIFY][WARN] neighbor '{neighbor_name}' missing obb. skip.")
+            return {}
+
+        nb_before = nodes[neighbor_name]["obb"]
+        R_dst = np.array(nb_before["axes"], dtype=np.float64)
+
+        face_dst, map_dbg = map_face_from_src_to_dst(face_src, R_src=R_src, R_dst=R_dst)
+        k_dst, s_dst = parse_face(face_dst)
+        e_dst = float(nb_before["extents"][k_dst])
+
+        delta_dst_req = signed_ratio * e_dst
+
+        nb_after, info = apply_face_move_one_face_fixed(
+            pre_obb=nb_before,
+            face=face_dst,
+            delta=float(delta_dst_req),
+            min_extent=float(min_extent),
+        )
+
+        return {
+            "relation_tag": rel_tag,
+            "relation": rel_obj,
+            "mapped_face": face_dst,
+            "signed_ratio": float(signed_ratio),
+            "delta_dst_requested": float(delta_dst_req),
+            "delta_dst_applied": float(info["delta_applied"]),
+            "before_obb": nb_before,
+            "after_obb": nb_after,
+            "mapping_debug": map_dbg,
+            "face_motion_debug": {
+                "plus_before": info["plus_face_before"],
+                "plus_after": info["plus_face_after"],
+                "minus_before": info["minus_face_before"],
+                "minus_after": info["minus_face_after"],
+            },
+        }
+
+    # ------------------------------------------------------------------
+    # NEW: single-neighbor mode
+    # ------------------------------------------------------------------
+    if neighbor is not None:
+        if neighbor == target:
+            raise ValueError("neighbor must be different from target")
+        if neighbor not in nodes:
+            raise ValueError(f"neighbor '{neighbor}' not found in constraints['nodes']")
+
+        # 1) try symmetry relation first
+        sym_rel = None
+        for p in symmetry.get("pairs", []) or []:
+            a = p.get("a"); b = p.get("b")
+            if (a == target and b == neighbor) or (b == target and a == neighbor):
+                sym_rel = p
+                break
+
+        if sym_rel is not None:
+            r = _apply_to_neighbor(neighbor, "SYM", sym_rel)
+            if r:
+                out_sym[neighbor] = r
+            return {"symmetry": out_sym, "containment": out_con}
+
+        # 2) try containment relation
+        cont_rel = None
+        for c in containment:
+            outer = c.get("outer"); inner = c.get("inner")
+            if (outer == target and inner == neighbor) or (inner == target and outer == neighbor):
+                cont_rel = c
+                break
+
+        if cont_rel is not None:
+            r = _apply_to_neighbor(neighbor, "CONTAIN", cont_rel)
+            if r:
+                out_con[neighbor] = r
+            return {"symmetry": out_sym, "containment": out_con}
+
+        # 3) no relation found
+        # choose one behavior:
+        # - return empty (non-fatal) OR
+        # - raise (strict)
+        return {"symmetry": {}, "containment": {}}
+
+    # ------------------------------------------------------------------
+    # OLD behavior (apply to all neighbors)
+    # ------------------------------------------------------------------
+
+    # Gather relations involving target
     sym_pairs_hit = []
     for p in symmetry.get("pairs", []) or []:
         a = p.get("a"); b = p.get("b")
@@ -231,69 +324,7 @@ def apply_symmetry_and_containment(
         print(f"[AEP][SYM/CON][VERIFY] symmetry_edges_hit={len(sym_pairs_hit)} containment_edges_hit={len(cont_edges_hit)}")
         print("[AEP][SYM/CON][VERIFY] =======================================\n")
 
-    out_sym: Dict[str, Any] = {}
-    out_con: Dict[str, Any] = {}
-
-    def _apply_to_neighbor(neighbor: str, rel_tag: str, rel_obj: Dict[str, Any]) -> Dict[str, Any]:
-        if neighbor not in nodes or nodes[neighbor].get("obb", None) is None:
-            print(f"[AEP][SYM/CON][VERIFY][WARN] neighbor '{neighbor}' missing obb. skip.")
-            return {}
-
-        nb_before = nodes[neighbor]["obb"]
-        R_dst = np.array(nb_before["axes"], dtype=np.float64)
-
-        face_dst, map_dbg = map_face_from_src_to_dst(face_src, R_src=R_src, R_dst=R_dst)
-        k_dst, s_dst = parse_face(face_dst)
-        e_dst = float(nb_before["extents"][k_dst])
-
-        delta_dst_req = signed_ratio * e_dst
-
-        nb_after, info = apply_face_move_one_face_fixed(
-            pre_obb=nb_before,
-            face=face_dst,
-            delta=float(delta_dst_req),
-            min_extent=float(min_extent),
-        )
-
-
-        # sanity: show that only ONE face moved (the opposite should remain unchanged)
-        # Determine which face should be fixed:
-        if s_dst > 0:
-            # + face moved, - face fixed
-            fixed_before = np.array(info["minus_face_before"])
-            fixed_after = np.array(info["minus_face_after"])
-            moved_before = np.array(info["plus_face_before"])
-            moved_after = np.array(info["plus_face_after"])
-            fixed_name = "-face"
-            moved_name = "+face"
-        else:
-            fixed_before = np.array(info["plus_face_before"])
-            fixed_after = np.array(info["plus_face_after"])
-            moved_before = np.array(info["minus_face_before"])
-            moved_after = np.array(info["minus_face_after"])
-            fixed_name = "+face"
-            moved_name = "-face"
-
-
-        return {
-            "relation_tag": rel_tag,
-            "relation": rel_obj,
-            "mapped_face": face_dst,
-            "signed_ratio": float(signed_ratio),
-            "delta_dst_requested": float(delta_dst_req),
-            "delta_dst_applied": float(info["delta_applied"]),
-            "before_obb": nb_before,
-            "after_obb": nb_after,
-            "mapping_debug": map_dbg,
-            "face_motion_debug": {
-                "plus_before": info["plus_face_before"],
-                "plus_after": info["plus_face_after"],
-                "minus_before": info["minus_face_before"],
-                "minus_after": info["minus_face_after"],
-            },
-        }
-
-    # --- symmetry: apply per pair
+    # symmetry
     for p in sym_pairs_hit:
         a = p.get("a"); b = p.get("b")
         other = b if a == target else a
@@ -303,7 +334,7 @@ def apply_symmetry_and_containment(
         if r:
             out_sym[other] = r
 
-    # --- containment: apply per edge
+    # containment
     for c in cont_edges_hit:
         outer = c.get("outer"); inner = c.get("inner")
         other = inner if outer == target else outer

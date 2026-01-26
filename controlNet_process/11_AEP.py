@@ -1,20 +1,23 @@
 #!/usr/bin/env python3
 # 11_AEP.py
 #
-# Launcher (step 1 of iterative refactor, but behavior remains the same as before):
+# Launcher (queue-based, but still NON-iterative):
 # - read constraints + edit
 # - compute neighbors ONCE (sym / attach / contain) using find_affected_neighbors
-# - run sym/contain propagation
-# - run attachments propagation
-# - save changes to sketch/AEP/aep_changes.json
-# - vis AFTER everything (outside any future loop scaffolding)
+# - put neighbors into a queue
+# - while queue not empty:
+#     - pop one neighbor
+#     - apply_symmetry_and_containment(..., neighbor=<that>)
+#     - apply_attachments(..., neighbor=<that>)
+#   (NO adding new neighbors during the loop)
+# - save + vis ONLY after the queue is empty
 #
 # NOTE:
-# - No iterative solving yet (no neighbor->neighbors expansion).
 # - verbose is ALWAYS False.
 
 import os
 import json
+from collections import deque
 
 from AEP.sym_and_containment import apply_symmetry_and_containment
 from AEP.attachment import apply_attachments
@@ -42,6 +45,20 @@ def load_json(path: str):
         return json.load(f)
 
 
+def _merge_neighbor_results(dst: dict, src: dict):
+    """
+    Merge {"symmetry": {...}, "containment": {...}} dicts by neighbor key.
+    Later entries overwrite earlier ones for the same neighbor.
+    """
+    if not isinstance(dst, dict) or not isinstance(src, dict):
+        return
+    for k in ("symmetry", "containment"):
+        if k not in dst or not isinstance(dst.get(k), dict):
+            dst[k] = {}
+        if isinstance(src.get(k), dict):
+            dst[k].update(src[k])
+
+
 def main():
     if not os.path.isfile(CONSTRAINTS_PATH):
         raise FileNotFoundError(f"Missing constraints: {CONSTRAINTS_PATH}")
@@ -58,42 +75,82 @@ def main():
     nodes = constraints.get("nodes", {}) or {}
 
     # ------------------------------------------------------------
-    # Collect neighbors ONCE (same behavior as before)
+    # Collect neighbors ONCE, enqueue them
     # ------------------------------------------------------------
     all_neighbors = find_affected_neighbors(constraints=constraints, target=target)
+    q = deque(all_neighbors)
+
+    # We'll aggregate results across per-neighbor calls
+    symcon_res_all = {"symmetry": {}, "containment": {}}
+    attach_changed_nodes_all = {}
+    attach_summary_counts = {"volume": 0, "face": 0, "point": 0, "unknown": 0}
+    attach_total_edges = 0
+    attach_applied_any = False
 
     # ------------------------------------------------------------
-    # Apply symmetry + containment edits
+    # Process queue (NO adding new neighbors)
     # ------------------------------------------------------------
-    symcon_res = apply_symmetry_and_containment(
-        constraints=constraints,
-        edit=edit,
-        verbose=False,
-    )
+    while q:
+        nb = q.popleft()
+
+        # Symmetry + containment: apply ONLY to this neighbor
+        symcon_res_nb = apply_symmetry_and_containment(
+            constraints=constraints,
+            edit=edit,
+            verbose=False,
+            neighbor=nb,
+        )
+        _merge_neighbor_results(symcon_res_all, symcon_res_nb)
+
+        # Attachments: apply ONLY to this neighbor
+        attach_res_nb = apply_attachments(
+            constraints=constraints,
+            edit=edit,
+            verbose=False,
+            neighbor=nb,
+        )
+
+        # Accumulate attachment results (changed_nodes is keyed by neighbor name)
+        if isinstance(attach_res_nb, dict):
+            if attach_res_nb.get("applied", False):
+                attach_applied_any = True
+
+            cn = attach_res_nb.get("changed_nodes", {})
+            if isinstance(cn, dict) and cn:
+                attach_changed_nodes_all.update(cn)
+
+            summ = attach_res_nb.get("summary", {}) or {}
+            attach_total_edges += int(summ.get("total_edges", 0) or 0)
+            counts = summ.get("counts", {}) or {}
+            for kk in ("volume", "face", "point", "unknown"):
+                if kk in counts:
+                    attach_summary_counts[kk] += int(counts.get(kk, 0) or 0)
+
+    # Build final attachment result in the same shape expected by save_aep_changes
+    attach_res_all = {
+        "target": target,
+        "applied": bool(attach_applied_any),
+        "changed_nodes": attach_changed_nodes_all,
+        "summary": {
+            "total_edges": int(attach_total_edges),
+            "counts": attach_summary_counts,
+        },
+    }
 
     # ------------------------------------------------------------
-    # Apply attachments
-    # ------------------------------------------------------------
-    attach_res = apply_attachments(
-        constraints=constraints,
-        edit=edit,
-        verbose=False,
-    )
-
-    # ------------------------------------------------------------
-    # SAVE: target edit + neighbor changes
+    # SAVE once: target edit + aggregated neighbor changes
     # ------------------------------------------------------------
     save_aep_changes(
         aep_dir=AEP_DATA_DIR,
         target_edit=edit,
-        symcon_res=symcon_res,
-        attach_res=attach_res,
+        symcon_res=symcon_res_all,
+        attach_res=attach_res_all,
         out_filename=os.path.basename(AEP_CHANGES_PATH),
         constraints=constraints,
     )
 
     # ------------------------------------------------------------
-    # VIS: outside any future loop scaffolding
+    # VIS once (after everything)
     # ------------------------------------------------------------
     if DO_VIS:
         vis_from_saved_changes(
