@@ -66,12 +66,12 @@ def find_next_face_edit_change_and_save_and_vis(
     out_path = save_face_edit_change_json(aep_dir=aep_dir, counter=counter, face_edit_change=fec)
 
     # Visualize
-    if do_vis:
-        vis_next_face_edit_change(
-            fec,
-            overlay_ply_path=overlay_ply_path,
-            show_overlay=True,
-            window_name=f"NextFaceEdit#{counter} | neighbor={neighbor_name} | type={connection_type}",
-        )
+    # if do_vis:
+    #     vis_next_face_edit_change(
+    #         fec,
+    #         overlay_ply_path=overlay_ply_path,
+    #         show_overlay=True,
+    #         window_name=f"NextFaceEdit#{counter} | neighbor={neighbor_name} | type={connection_type}",
+    #     )
 
     return out_path
