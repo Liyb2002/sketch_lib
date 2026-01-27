@@ -26,7 +26,7 @@ from AEP.attachment import apply_attachments
 from AEP.save_json import save_aep_changes
 from AEP.vis import vis_from_saved_changes
 from AEP.find_affect_neighbors import find_affected_neighbors
-from AEP.find_face_edit_change import find_face_edit_change_and_save_and_vis
+from AEP.find_next_face_edit_change import find_next_face_edit_change_and_save_and_vis
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 
@@ -99,6 +99,9 @@ def main():
     while q:
         nb = q.popleft()
 
+        # Track which connection type applied to this neighbor
+        connection_type = None  # Will be 'attachment', 'symmetry', 'containment', or None
+
         # Symmetry + containment: apply ONLY to this neighbor
         symcon_res_nb = apply_symmetry_and_containment(
             constraints=constraints,
@@ -108,6 +111,13 @@ def main():
         )
         _merge_neighbor_results(symcon_res_all, symcon_res_nb)
 
+        # Check if symmetry or containment produced a change for this neighbor
+        if isinstance(symcon_res_nb, dict):
+            if symcon_res_nb.get("symmetry", {}).get(nb) is not None:
+                connection_type = "symmetry"
+            elif symcon_res_nb.get("containment", {}).get(nb) is not None:
+                connection_type = "containment"
+
         # Attachments: apply ONLY to this neighbor
         attach_res_nb = apply_attachments(
             constraints=constraints,
@@ -115,6 +125,12 @@ def main():
             verbose=False,
             neighbor=nb,
         )
+
+        # Attachment takes precedence if it produced a change
+        if isinstance(attach_res_nb, dict):
+            cn = attach_res_nb.get("changed_nodes", {})
+            if isinstance(cn, dict) and cn.get(nb) is not None:
+                connection_type = "attachment"
 
         # Accumulate attachment results (changed_nodes is keyed by neighbor name)
         if isinstance(attach_res_nb, dict):
@@ -134,6 +150,7 @@ def main():
 
         # ------------------------------------------------------------
         # Compute + save per-neighbor face_edit_change.json (and debug-vis)
+        # NOW WITH connection_type information
         # Prefer attachments result if present, else sym/contain result.
         # ------------------------------------------------------------
         before_obb = None
@@ -157,15 +174,18 @@ def main():
                         break
 
         if before_obb is not None and after_obb is not None:
-            find_face_edit_change_and_save_and_vis(
+            find_next_face_edit_change_and_save_and_vis(
                 aep_dir=AEP_DATA_DIR,
                 counter=face_edit_counter,
-                target=nb,
-                before_obb=before_obb,
-                after_obb=after_obb,
+                edit=edit,
+                neighbor_name=nb,
+                neighbor_before_obb=before_obb,
+                neighbor_after_obb=after_obb,
+                connection_type=connection_type,  # <-- NEW PARAMETER
                 overlay_ply_path=OVERLAY_PLY,
                 do_vis=True,
             )
+
             face_edit_counter += 1
 
     # Build final attachment result in the same shape expected by save_aep_changes
