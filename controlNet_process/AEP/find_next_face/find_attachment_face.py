@@ -127,10 +127,10 @@ def find_attachment_face(
     axes_tol: float = 1e-6,
     min_translation: float = 1e-8,
     normal_alignment_min: float = 0.95,
-) -> Dict[str, Any]:
+) -> List[Dict[str, Any]]:
     """
     Find passive face for ATTACHMENT connection.
-    Returns face_edit_change structure (without 'target' field).
+    Returns list of face_edit_change structures (without 'target' field).
     
     Main functionality: Establish face correspondence and find faces translated along normals.
     """
@@ -421,8 +421,5 @@ def find_attachment_face(
         print(f"  Passive face: {passive_face}")
         print(f"  Delta: {delta_face:.6f}")
     
-    # Return list if multiple results, single dict if one result
-    if len(results) == 1:
-        return results[0]
-    else:
-        return results
+    # Always return a list for consistency
+    return results
