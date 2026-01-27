@@ -4,7 +4,7 @@
 # SYMMETRY/CONTAINMENT logic: Find corresponding face (same as target's edited face)
 
 from __future__ import annotations
-from typing import Any, Dict, Tuple
+from typing import Any, Dict, Tuple, List
 import numpy as np
 
 
@@ -46,24 +46,6 @@ def _face_center_world(obb: Dict[str, Any], axis: int, sign: int) -> np.ndarray:
     R = _axes_cols(obb["axes"])
     E = _as_np(obb["extents"])
     return C + float(sign) * float(E[axis]) * R[:, axis]
-
-
-def _get_target_edit_obbs_and_face(edit: Dict[str, Any]) -> Tuple[Dict[str, Any], Dict[str, Any], str]:
-    target = edit.get("target", None)
-    if not isinstance(target, str) or not target:
-        raise ValueError("edit missing valid 'target'")
-
-    ch = edit.get("change", {}) or {}
-    face = ch.get("face", None)
-    if not isinstance(face, str):
-        raise ValueError("edit['change'] missing 'face' string")
-
-    before_obb = ch.get("before_obb", None)
-    after_obb = ch.get("after_obb", None)
-    if not isinstance(before_obb, dict) or not isinstance(after_obb, dict):
-        raise ValueError("edit['change'] missing before_obb/after_obb")
-
-    return before_obb, after_obb, face
 
 
 def _get_target_edit_obbs_and_face(edit: Dict[str, Any]) -> Tuple[Dict[str, Any], Dict[str, Any], str]:
@@ -155,11 +137,11 @@ def find_sym_and_containment_face(
     neighbor_after_obb: Dict[str, Any],
     connection_type: str,  # 'symmetry' or 'containment'
     neighbor_name: str = "unknown",  # For debug visualization
-) -> Dict[str, Any]:
+) -> List[Dict[str, Any]]:
     """
     Find corresponding face for SYMMETRY/CONTAINMENT connection.
     Uses axis mapping to find the corresponding face in neighbor's frame.
-    Returns face_edit_change structure (without 'target' field).
+    Returns list of face_edit_change structures (without 'target' field).
     """
     t_before, t_after, t_face = _get_target_edit_obbs_and_face(edit)
     k_t, s_t = _parse_face(t_face)
@@ -207,7 +189,7 @@ def find_sym_and_containment_face(
         ratio = abs(delta_face) / max(abs(old_extent), 1e-12)
         expand_or_shrink = "translate"
     
-    return {
+    return [{
         "connection_type": connection_type,
         "change": {
             "type": "move_single_face",
@@ -244,4 +226,4 @@ def find_sym_and_containment_face(
                 "target_edit_face": t_face,
             },
         },
-    }
+    }]
