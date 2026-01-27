@@ -8,6 +8,11 @@ from typing import Any, Dict, Tuple, List
 import numpy as np
 import copy
 
+try:
+    import open3d as o3d
+except Exception:
+    o3d = None
+
 
 def _as_np(x) -> np.ndarray:
     return np.asarray(x, dtype=np.float64)
@@ -77,6 +82,155 @@ def _translated_obb_along(obb_before: Dict[str, Any], delta: float, n_hat: np.nd
     return out
 
 
+def _make_lineset_from_obb(obb: Dict[str, Any]) -> "o3d.geometry.LineSet":
+    if o3d is None:
+        raise RuntimeError("open3d is required")
+    C = _as_np(obb["center"])
+    R = _axes_cols(obb["axes"])
+    E = _as_np(obb["extents"])
+    obb_o3d = o3d.geometry.OrientedBoundingBox(center=C, R=R, extent=2.0 * E)
+    return o3d.geometry.LineSet.create_from_oriented_bounding_box(obb_o3d)
+
+
+def _color_geom(geom, rgb: Tuple[float, float, float]):
+    if hasattr(geom, "paint_uniform_color"):
+        geom.paint_uniform_color(list(rgb))
+    return geom
+
+
+def _obb_face_corners_world(obb: Dict[str, Any], axis: int, sign: int) -> np.ndarray:
+    C = _as_np(obb["center"])
+    R = _axes_cols(obb["axes"])
+    E = _as_np(obb["extents"])
+
+    a = int(axis)
+    s = +1 if int(sign) >= 0 else -1
+
+    idx = [0, 1, 2]
+    idx.remove(a)
+    b, c = idx[0], idx[1]
+
+    q_list = []
+    for sb in (-1.0, +1.0):
+        for sc in (-1.0, +1.0):
+            q = np.zeros(3, dtype=np.float64)
+            q[a] = s * float(E[a])
+            q[b] = sb * float(E[b])
+            q[c] = sc * float(E[c])
+            q_list.append(q)
+
+    Q = np.stack(q_list, axis=0)   # (4,3)
+    P = C[None, :] + (Q @ R.T)
+    return P
+
+
+def _make_face_patch(
+    obb: Dict[str, Any],
+    axis: int,
+    sign: int,
+    color_rgb: Tuple[float, float, float] = (0.0, 1.0, 0.0),
+) -> Tuple["o3d.geometry.TriangleMesh", "o3d.geometry.LineSet"]:
+    if o3d is None:
+        raise RuntimeError("open3d is required")
+
+    P = _obb_face_corners_world(obb, axis=axis, sign=sign)
+    pts = np.array([P[0], P[1], P[3], P[2]], dtype=np.float64)
+
+    mesh = o3d.geometry.TriangleMesh()
+    mesh.vertices = o3d.utility.Vector3dVector(pts)
+    mesh.triangles = o3d.utility.Vector3iVector(np.array([[0, 1, 2], [0, 2, 3]], dtype=np.int32))
+    mesh.compute_vertex_normals()
+    _color_geom(mesh, color_rgb)
+
+    border = o3d.geometry.LineSet()
+    border.points = o3d.utility.Vector3dVector(pts)
+    border.lines = o3d.utility.Vector2iVector(np.array([[0, 1], [1, 2], [2, 3], [3, 0]], dtype=np.int32))
+    _color_geom(border, color_rgb)
+
+    return mesh, border
+
+
+def _visualize_attachment_debug(
+    t_before: Dict[str, Any],
+    t_after: Dict[str, Any],
+    t_face: str,
+    neighbor_before: Dict[str, Any],
+    neighbor_after_raw: Dict[str, Any],
+    neighbor_after_fixed: Dict[str, Any],
+    attached_face: str,
+    chosen_face: str,
+    neighbor_name: str,
+):
+    """Visualize attachment logic for debugging"""
+    if o3d is None:
+        return
+    
+    k_t, s_t = _parse_face(t_face)
+    k_att, s_att = _parse_face(attached_face)
+    k_chosen, s_chosen = _parse_face(chosen_face)
+    
+    geoms = []
+    
+    # Target BEFORE (BLUE)
+    tls_before = _make_lineset_from_obb(t_before)
+    _color_geom(tls_before, (0.0, 0.0, 1.0))
+    geoms.append(tls_before)
+    
+    # Target AFTER (RED)
+    tls_after = _make_lineset_from_obb(t_after)
+    _color_geom(tls_after, (1.0, 0.0, 0.0))
+    geoms.append(tls_after)
+    
+    # Target's edited face (CYAN)
+    try:
+        t_face_mesh, t_face_border = _make_face_patch(t_after, axis=k_t, sign=s_t, color_rgb=(0.0, 1.0, 1.0))
+        geoms.extend([t_face_mesh, t_face_border])
+    except Exception:
+        pass
+    
+    # Neighbor BEFORE (BLUE)
+    nls_before = _make_lineset_from_obb(neighbor_before)
+    _color_geom(nls_before, (0.0, 0.0, 1.0))
+    geoms.append(nls_before)
+    
+    # Neighbor AFTER RAW (MAGENTA)
+    nls_after_raw = _make_lineset_from_obb(neighbor_after_raw)
+    _color_geom(nls_after_raw, (1.0, 0.0, 1.0))
+    geoms.append(nls_after_raw)
+    
+    # Neighbor AFTER FIXED (RED)
+    nls_after_fixed = _make_lineset_from_obb(neighbor_after_fixed)
+    _color_geom(nls_after_fixed, (1.0, 0.0, 0.0))
+    geoms.append(nls_after_fixed)
+    
+    # Attachment face on neighbor BEFORE (YELLOW)
+    try:
+        att_mesh, att_border = _make_face_patch(neighbor_before, axis=k_att, sign=s_att, color_rgb=(1.0, 1.0, 0.0))
+        geoms.extend([att_mesh, att_border])
+    except Exception:
+        pass
+    
+    # Chosen passive face on neighbor AFTER FIXED (GREEN)
+    try:
+        chosen_mesh, chosen_border = _make_face_patch(neighbor_after_fixed, axis=k_chosen, sign=s_chosen, color_rgb=(0.0, 1.0, 0.0))
+        geoms.extend([chosen_mesh, chosen_border])
+    except Exception:
+        pass
+    
+    title = f"ATTACHMENT DEBUG | neighbor={neighbor_name} | attached={attached_face} chosen={chosen_face}"
+    try:
+        o3d.visualization.draw_geometries(geoms, window_name=title)
+    except TypeError:
+        o3d.visualization.draw_geometries(geoms)
+
+
+def _translated_obb_along(obb_before: Dict[str, Any], delta: float, n_hat: np.ndarray) -> Dict[str, Any]:
+    out = copy.deepcopy(obb_before)
+    C0 = _as_np(obb_before["center"]).reshape(3,)
+    out["center"] = (C0 + float(delta) * _unit(n_hat)).tolist()
+    return out
+
+
 def _get_target_edit_obbs_and_face(edit: Dict[str, Any]) -> Tuple[Dict[str, Any], Dict[str, Any], str]:
     target = edit.get("target", None)
     if not isinstance(target, str) or not target:
@@ -109,6 +263,31 @@ def find_attachment_face(
     Find passive face for ATTACHMENT connection.
     Returns face_edit_change structure (without 'target' field).
     """
+    
+    # VIS: Show neighbor before and after
+    if o3d is not None:
+        geoms = []
+        
+        # Neighbor BEFORE (BLUE)
+        C0 = _as_np(neighbor_before_obb["center"])
+        R0 = _axes_cols(neighbor_before_obb["axes"])
+        E0 = _as_np(neighbor_before_obb["extents"])
+        obb0 = o3d.geometry.OrientedBoundingBox(center=C0, R=R0, extent=2.0 * E0)
+        ls0 = o3d.geometry.LineSet.create_from_oriented_bounding_box(obb0)
+        ls0.paint_uniform_color([0.0, 0.0, 1.0])  # BLUE
+        geoms.append(ls0)
+        
+        # Neighbor AFTER (RED)
+        C1 = _as_np(neighbor_after_obb["center"])
+        R1 = _axes_cols(neighbor_after_obb["axes"])
+        E1 = _as_np(neighbor_after_obb["extents"])
+        obb1 = o3d.geometry.OrientedBoundingBox(center=C1, R=R1, extent=2.0 * E1)
+        ls1 = o3d.geometry.LineSet.create_from_oriented_bounding_box(obb1)
+        ls1.paint_uniform_color([1.0, 0.0, 0.0])  # RED
+        geoms.append(ls1)
+        
+        o3d.visualization.draw_geometries(geoms, window_name="Neighbor: BEFORE (blue) AFTER (red)")
+    
     t_before, t_after, t_face = _get_target_edit_obbs_and_face(edit)
     k_t, s_t = _parse_face(t_face)
 
@@ -209,6 +388,12 @@ def find_attachment_face(
 
     old_extent = float(E0[axis])
     ratio = abs(delta_face) / max(abs(old_extent), 1e-12)
+
+    # DEBUG: Print info
+    print(f"\n[ATTACHMENT RESULT]")
+    print(f"  Attached face: {attached_face} (dist to target face={best_dist:.6f})")
+    print(f"  Chosen passive face: {face}")
+    print(f"  Delta: {delta_face:.6f}")
 
     return {
         "connection_type": "attachment",

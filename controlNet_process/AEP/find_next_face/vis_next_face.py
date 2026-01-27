@@ -102,11 +102,12 @@ def vis_next_face_edit_change(
     window_name: Optional[str] = None,
 ):
     """
-    Visualization:
-      - overlay PLY in GREY
-      - ALL BEFORE boxes: BLUE (target before + neighbor before)
-      - ALL AFTER boxes: RED (target after + neighbor after)
-      - chosen face highlight on neighbor after (GREEN patch + border)
+    Visualization - MUST show 4 boxes:
+      1. Target BEFORE (BLUE)
+      2. Target AFTER (RED)
+      3. Neighbor BEFORE (BLUE)
+      4. Neighbor AFTER (RED)
+      + chosen face highlight on neighbor after (GREEN patch + border)
     """
     if o3d is None:
         return
@@ -124,7 +125,23 @@ def vis_next_face_edit_change(
     t_before = input_dbg.get("target_edit_before_obb", None)
     t_after = input_dbg.get("target_edit_after_obb", None)
 
-    if not isinstance(nb_before, dict) or not isinstance(nb_after, dict) or not isinstance(face, str):
+    # Debug: check what we have
+    print(f"\n[VIS DEBUG] neighbor before_obb present: {nb_before is not None and isinstance(nb_before, dict)}")
+    print(f"[VIS DEBUG] neighbor after_obb present: {nb_after is not None and isinstance(nb_after, dict)}")
+    print(f"[VIS DEBUG] target before_obb present: {t_before is not None and isinstance(t_before, dict)}")
+    print(f"[VIS DEBUG] target after_obb present: {t_after is not None and isinstance(t_after, dict)}")
+    
+    if not isinstance(nb_before, dict):
+        print("[VIS ERROR] neighbor before_obb is missing or invalid!")
+        return
+    if not isinstance(nb_after, dict):
+        print("[VIS ERROR] neighbor after_obb is missing or invalid!")
+        return
+    if not isinstance(t_before, dict):
+        print("[VIS ERROR] target before_obb is missing or invalid!")
+        return
+    if not isinstance(t_after, dict):
+        print("[VIS ERROR] target after_obb is missing or invalid!")
         return
 
     geoms = []
@@ -138,34 +155,53 @@ def vis_next_face_edit_change(
         except Exception:
             pass
 
-    # ALL BEFORE boxes: BLUE
-    if isinstance(t_before, dict):
+    # 1. Target BEFORE (BLUE)
+    try:
         tls_before = _make_lineset_from_obb(t_before)
         _color_geom(tls_before, (0.0, 0.0, 1.0))  # BLUE
         geoms.append(tls_before)
+        print("[VIS] Added target BEFORE (blue)")
+    except Exception as e:
+        print(f"[VIS ERROR] Failed to create target BEFORE: {e}")
     
-    ls_nb_before = _make_lineset_from_obb(nb_before)
-    _color_geom(ls_nb_before, (0.0, 0.0, 1.0))  # BLUE
-    geoms.append(ls_nb_before)
+    # 2. Neighbor BEFORE (BLUE)
+    try:
+        ls_nb_before = _make_lineset_from_obb(nb_before)
+        _color_geom(ls_nb_before, (0.0, 0.0, 1.0))  # BLUE
+        geoms.append(ls_nb_before)
+        print("[VIS] Added neighbor BEFORE (blue)")
+    except Exception as e:
+        print(f"[VIS ERROR] Failed to create neighbor BEFORE: {e}")
 
-    # ALL AFTER boxes: RED
-    if isinstance(t_after, dict):
+    # 3. Target AFTER (RED)
+    try:
         tls_after = _make_lineset_from_obb(t_after)
         _color_geom(tls_after, (1.0, 0.0, 0.0))  # RED
         geoms.append(tls_after)
+        print("[VIS] Added target AFTER (red)")
+    except Exception as e:
+        print(f"[VIS ERROR] Failed to create target AFTER: {e}")
     
-    ls_nb_after = _make_lineset_from_obb(nb_after)
-    _color_geom(ls_nb_after, (1.0, 0.0, 0.0))  # RED
-    geoms.append(ls_nb_after)
+    # 4. Neighbor AFTER (RED)
+    try:
+        ls_nb_after = _make_lineset_from_obb(nb_after)
+        _color_geom(ls_nb_after, (1.0, 0.0, 0.0))  # RED
+        geoms.append(ls_nb_after)
+        print("[VIS] Added neighbor AFTER (red)")
+    except Exception as e:
+        print(f"[VIS ERROR] Failed to create neighbor AFTER: {e}")
 
     # Chosen face highlight on neighbor AFTER (GREEN)
     try:
         face_mesh, face_border = _make_face_patch(nb_after, axis=axis, sign=sign, color_rgb=(0.0, 1.0, 0.0))
         geoms.append(face_mesh)
         geoms.append(face_border)
-    except Exception:
-        pass
+        print("[VIS] Added chosen face highlight (green)")
+    except Exception as e:
+        print(f"[VIS ERROR] Failed to create face patch: {e}")
 
+    print(f"[VIS] Total geometries: {len(geoms)}")
+    
     title = window_name or f"next_face_edit_change | target={face_edit_change.get('target')} face={face}"
     try:
         o3d.visualization.draw_geometries(geoms, window_name=title)
