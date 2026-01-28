@@ -163,97 +163,79 @@ def main():
     face_edit_counter = 1
 
     # ------------------------------------------------------------
-    # Process all neighbors ONCE (non-iterative)
+    # Queue-based propagation: process target -> neighbors iteratively
+    # Each entry: (target_component, edit, neighbors)
     # ------------------------------------------------------------
-    for nb in neighbors:
-        # Skip if already edited
-        if nb in edited_components:
-            continue
-        
-        # Process this neighbor
-        before_obb, after_obb, connection_type, face_edit_counter, was_saved = process_neighbor_edit(
-            constraints=constraints,
-            target_component=target_component,
-            target_edit=edit,
-            neighbor=nb,
-            symcon_res_all=symcon_res_all,
-            attach_res_all=attach_res_all,
-            face_edit_counter=face_edit_counter,
-        )
-        
-        # Mark as edited ONLY if an edit was actually saved
-        if was_saved:
-            edited_components.add(nb)
-
-    # ------------------------------------------------------------
-    # Collect new propagation pairs from saved face_edit_change files
-    # ------------------------------------------------------------
-    new_pairs = collect_new_propagation_pairs(
-        aep_dir=AEP_DATA_DIR,
-        constraints=constraints,
-        find_affected_neighbors_fn=find_affected_neighbors,
-    )
+    propagation_queue = deque()
+    propagation_queue.append((target_component, edit, neighbors))
     
-    # Filter the pairs
-    filtered_pairs = filter_propagation_pairs(
-        pairs=new_pairs,
-        edited_components=edited_components,
-    )
-
-    # ------------------------------------------------------------
-    # Process the filtered pairs (next round of propagation)
-    # ------------------------------------------------------------
-    if len(filtered_pairs) > 0:
-        for pair_idx, (target_component, edit, neighbors) in enumerate(filtered_pairs, 1):
-            # Track which neighbors are still valid for this pair
-            valid_neighbors_for_pair = [nb for nb in neighbors if nb not in edited_components]
+    while propagation_queue:
+        # Pop the next target to propagate from
+        current_target, current_edit, current_neighbors = propagation_queue.popleft()
+        
+        # Process each neighbor of this target
+        for nb in current_neighbors:
+            # Skip if already edited
+            if nb in edited_components:
+                continue
             
-            # Process each valid neighbor
-            for nb in valid_neighbors_for_pair:
-                # Skip if already edited (could have been edited by a previous pair in this round)
-                if nb in edited_components:
-                    continue
+            # Process this neighbor
+            before_obb, after_obb, connection_type, face_edit_counter, was_saved = process_neighbor_edit(
+                constraints=constraints,
+                target_component=current_target,
+                target_edit=current_edit,
+                neighbor=nb,
+                symcon_res_all=symcon_res_all,
+                attach_res_all=attach_res_all,
+                face_edit_counter=face_edit_counter,
+            )
+            
+            # If an edit was saved, mark as edited and add to propagation queue
+            if was_saved:
+                edited_components.add(nb)
                 
-                # Process this neighbor
-                before_obb, after_obb, connection_type, face_edit_counter, was_saved = process_neighbor_edit(
+                # This neighbor is now a potential target for further propagation
+                # Collect its edit and neighbors, then add to queue
+                new_pairs = collect_new_propagation_pairs(
+                    aep_dir=AEP_DATA_DIR,
                     constraints=constraints,
-                    target_component=target_component,
-                    target_edit=edit,
-                    neighbor=nb,
-                    symcon_res_all=symcon_res_all,
-                    attach_res_all=attach_res_all,
-                    face_edit_counter=face_edit_counter,
+                    find_affected_neighbors_fn=find_affected_neighbors,
                 )
                 
-                # If an edit was saved, this neighbor is no longer valid for future propagation
-                if was_saved:
-                    edited_components.add(nb)
+                # Filter to find the pair for this specific neighbor
+                for tgt, edt, nbrs in new_pairs:
+                    if tgt == nb:
+                        # Filter out already-edited neighbors
+                        valid_neighbors = [n for n in nbrs if n not in edited_components]
+                        if len(valid_neighbors) > 0:
+                            propagation_queue.append((tgt, edt, valid_neighbors))
+                        break
 
     # ------------------------------------------------------------
     # SAVE once: target edit + aggregated neighbor changes
     # ------------------------------------------------------------
-    save_aep_changes(
-        aep_dir=AEP_DATA_DIR,
-        target_edit=initial_edit,
-        symcon_res=symcon_res_all,
-        attach_res=attach_res_all,
-        out_filename=os.path.basename(AEP_CHANGES_PATH),
-        constraints=constraints,
-    )
+    # save_aep_changes(
+    #     aep_dir=AEP_DATA_DIR,
+    #     target_edit=initial_edit,
+    #     symcon_res=symcon_res_all,
+    #     attach_res=attach_res_all,
+    #     out_filename=os.path.basename(AEP_CHANGES_PATH),
+    #     constraints=constraints,
+    # )
 
     # ------------------------------------------------------------
     # VIS once (after everything)
     # ------------------------------------------------------------
-    if DO_VIS:
-        vis_from_saved_changes(
-            overlay_ply_path=OVERLAY_PLY,
-            nodes=nodes,
-            neighbor_names=list(edited_components - {initial_target}),
-            aep_changes_json=AEP_CHANGES_PATH,
-            target=initial_target,
-            window_name=f"AEP: target+neighbors (blue) + changed (red) | target={initial_target}",
-            show_overlay=True,
-        )
+    # if DO_VIS:
+    #     vis_from_saved_changes(
+    #         overlay_ply_path=OVERLAY_PLY,
+    #         nodes=nodes,
+    #         neighbor_names=list(edited_components - {initial_target}),
+    #         aep_changes_json=AEP_CHANGES_PATH,
+    #         target=initial_target,
+    #         window_name=f"AEP: target+neighbors (blue) + changed (red) | target={initial_target}",
+    #         show_overlay=True,
+    #     )
 
 
 if __name__ == "__main__":
