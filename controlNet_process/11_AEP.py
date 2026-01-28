@@ -1,22 +1,15 @@
 #!/usr/bin/env python3
 # 11_AEP.py
 #
-# Queue-based, NON-iterative neighbor processing:
-# - read constraints + edit
-# - compute neighbors ONCE (sym / attach / contain) using find_affected_neighbors
-# - put neighbors into a queue
-# - while queue not empty:
-#     - pop one neighbor
-#     - apply_symmetry_and_containment(..., neighbor=<that>)
-#     - IF symcon didn't work, THEN apply_attachments(..., neighbor=<that>)
-#     - compute + save {counter}_face_edit_change.json for this neighbor (counter starts at 1)
-#       using AEP/find_face_edit_change.py (also debug-vis)
-#   (NO adding new neighbors during the loop)
-# - save + vis ONLY after the queue is empty
+# Non-iterative neighbor processing:
+# - Start with initial target component and edit
+# - Find neighbors and propagate edits ONCE
+# - Each component is edited at most once
 #
-# NOTE:
-# - verbose is ALWAYS False.
-# - Priority: symmetry/containment > attachment
+# Structure:
+# 1. target_component: which component was edited (initial_target)
+# 2. edit: what edit was applied (initial_edit)
+# 3. neighbors: which neighbors to propagate to (from find_affected_neighbors)
 
 import os
 import json
@@ -55,6 +48,72 @@ def load_json(path: str):
         return json.load(f)
 
 
+def process_neighbor_edit(
+    constraints: dict,
+    target_edit: dict,
+    neighbor: str,
+    symcon_res_all: dict,
+    attach_res_all: dict,
+    face_edit_counter: int,
+):
+    """
+    Process a single neighbor edit: apply symmetry/containment/attachment,
+    extract OBB data, and save face edit change.
+    
+    Returns:
+        tuple: (before_obb, after_obb, connection_type, new_counter)
+    """
+    # Priority 1: Try symmetry + containment FIRST
+    symcon_res_nb = apply_symmetry_and_containment(
+        constraints=constraints,
+        edit=target_edit,
+        verbose=False,
+        neighbor=neighbor,
+    )
+    merge_neighbor_results(symcon_res_all, symcon_res_nb)
+
+    # Check if symmetry or containment produced a change
+    symcon_worked = False
+    if isinstance(symcon_res_nb, dict):
+        if symcon_res_nb.get("symmetry", {}).get(neighbor) is not None:
+            symcon_worked = True
+        elif symcon_res_nb.get("containment", {}).get(neighbor) is not None:
+            symcon_worked = True
+
+    # Priority 2: Only try attachments if symcon didn't work
+    attach_res_nb = None
+    if not symcon_worked:
+        attach_res_nb = apply_attachments(
+            constraints=constraints,
+            edit=target_edit,
+            verbose=False,
+            neighbor=neighbor,
+        )
+        accumulate_attachment_results(attach_res_all, attach_res_nb, neighbor)
+
+    # Extract OBB data and connection type (symcon > attachment)
+    before_obb, after_obb, connection_type = extract_obb_data(
+        symcon_res_nb, attach_res_nb, neighbor
+    )
+
+    # Save per-neighbor face_edit_change.json (and debug-vis)
+    if before_obb is not None and after_obb is not None:
+        find_next_face_edit_change_and_save_and_vis(
+            aep_dir=AEP_DATA_DIR,
+            counter=face_edit_counter,
+            edit=target_edit,
+            neighbor_name=neighbor,
+            neighbor_before_obb=before_obb,
+            neighbor_after_obb=after_obb,
+            connection_type=connection_type,
+            overlay_ply_path=OVERLAY_PLY,
+            do_vis=True,
+        )
+        return before_obb, after_obb, connection_type, face_edit_counter + 1
+    
+    return None, None, None, face_edit_counter
+
+
 def main():
     if not os.path.isfile(CONSTRAINTS_PATH):
         raise FileNotFoundError(f"Missing constraints: {CONSTRAINTS_PATH}")
@@ -62,126 +121,79 @@ def main():
         raise FileNotFoundError(f"Missing edit file: {EDIT_PATH}")
 
     constraints = load_json(CONSTRAINTS_PATH)
-    edit = load_json(EDIT_PATH)
+    initial_edit = load_json(EDIT_PATH)
 
-    target = edit.get("target", None)
-    if not target:
+    initial_target = initial_edit.get("target", None)
+    if not initial_target:
         raise ValueError(f"Edit file missing 'target': {EDIT_PATH}")
 
     nodes = constraints.get("nodes", {}) or {}
 
     # ------------------------------------------------------------
-    # Get all component names and track edited components
+    # Initialize: 1) target_component  2) edit  3) neighbors
     # ------------------------------------------------------------
+    target_component = initial_target
+    edit = initial_edit
+    neighbors = find_affected_neighbors(constraints=constraints, target=target_component)
+    
+    # Track edited components
     all_component_names = set(nodes.keys())
-    edited_components = {target}
-    unedited_components = all_component_names - edited_components
-
-    # ------------------------------------------------------------
-    # Collect neighbors ONCE, enqueue them
-    # ------------------------------------------------------------
-    all_neighbors = find_affected_neighbors(constraints=constraints, target=target)
-    q = deque(all_neighbors)
-
+    edited_components = {target_component}
+    
     # Initialize accumulators
     symcon_res_all = {"symmetry": {}, "containment": {}}
-    attach_res_all = init_attachment_accumulator(target)
-
+    attach_res_all = init_attachment_accumulator(target_component)
+    
     # Counter for {x}_face_edit_change.json
     face_edit_counter = 1
 
     # ------------------------------------------------------------
-    # Process queue (NO adding new neighbors)
+    # Process all neighbors ONCE (non-iterative)
     # ------------------------------------------------------------
-    while q:
-        nb = q.popleft()
-        
-        # Check if this component has already been edited
+    for nb in neighbors:
+        # Skip if already edited
         if nb in edited_components:
             continue
-
-        # Priority 1: Try symmetry + containment FIRST
-        symcon_res_nb = apply_symmetry_and_containment(
+        
+        # Process this neighbor
+        before_obb, after_obb, connection_type, face_edit_counter = process_neighbor_edit(
             constraints=constraints,
-            edit=edit,
-            verbose=False,
+            target_edit=edit,
             neighbor=nb,
+            symcon_res_all=symcon_res_all,
+            attach_res_all=attach_res_all,
+            face_edit_counter=face_edit_counter,
         )
-        merge_neighbor_results(symcon_res_all, symcon_res_nb)
-
-        # Check if symmetry or containment produced a change
-        symcon_worked = False
-        if isinstance(symcon_res_nb, dict):
-            if symcon_res_nb.get("symmetry", {}).get(nb) is not None:
-                symcon_worked = True
-            elif symcon_res_nb.get("containment", {}).get(nb) is not None:
-                symcon_worked = True
-
-        # Priority 2: Only try attachments if symcon didn't work
-        attach_res_nb = None
-        if not symcon_worked:
-            attach_res_nb = apply_attachments(
-                constraints=constraints,
-                edit=edit,
-                verbose=False,
-                neighbor=nb,
-            )
-            accumulate_attachment_results(attach_res_all, attach_res_nb, nb)
-
-        # ------------------------------------------------------------
-        # Extract OBB data and connection type (symcon > attachment)
-        # ------------------------------------------------------------
-        before_obb, after_obb, connection_type = extract_obb_data(
-            symcon_res_nb, attach_res_nb, nb
-        )
-
-        # ------------------------------------------------------------
-        # Compute + save per-neighbor face_edit_change.json (and debug-vis)
-        # ------------------------------------------------------------
+        
+        # Mark as edited if successful
         if before_obb is not None and after_obb is not None:
-            find_next_face_edit_change_and_save_and_vis(
-                aep_dir=AEP_DATA_DIR,
-                counter=face_edit_counter,
-                edit=edit,
-                neighbor_name=nb,
-                neighbor_before_obb=before_obb,
-                neighbor_after_obb=after_obb,
-                connection_type=connection_type,
-                overlay_ply_path=OVERLAY_PLY,
-                do_vis=True,
-            )
-            face_edit_counter += 1
-            
-            # Mark this component as edited
             edited_components.add(nb)
-            unedited_components.discard(nb)
-        print()
 
     # ------------------------------------------------------------
     # SAVE once: target edit + aggregated neighbor changes
     # ------------------------------------------------------------
-    # save_aep_changes(
-    #     aep_dir=AEP_DATA_DIR,
-    #     target_edit=edit,
-    #     symcon_res=symcon_res_all,
-    #     attach_res=attach_res_all,
-    #     out_filename=os.path.basename(AEP_CHANGES_PATH),
-    #     constraints=constraints,
-    # )
+    save_aep_changes(
+        aep_dir=AEP_DATA_DIR,
+        target_edit=initial_edit,
+        symcon_res=symcon_res_all,
+        attach_res=attach_res_all,
+        out_filename=os.path.basename(AEP_CHANGES_PATH),
+        constraints=constraints,
+    )
 
     # ------------------------------------------------------------
     # VIS once (after everything)
     # ------------------------------------------------------------
-    # if DO_VIS:
-    #     vis_from_saved_changes(
-    #         overlay_ply_path=OVERLAY_PLY,
-    #         nodes=nodes,
-    #         neighbor_names=all_neighbors,
-    #         aep_changes_json=AEP_CHANGES_PATH,
-    #         target=target,
-    #         window_name=f"AEP: target+neighbors (blue) + changed (red) | target={target}",
-    #         show_overlay=True,
-    #     )
+    if DO_VIS:
+        vis_from_saved_changes(
+            overlay_ply_path=OVERLAY_PLY,
+            nodes=nodes,
+            neighbor_names=list(edited_components - {initial_target}),
+            aep_changes_json=AEP_CHANGES_PATH,
+            target=initial_target,
+            window_name=f"AEP: target+neighbors (blue) + changed (red) | target={initial_target}",
+            show_overlay=True,
+        )
 
 
 if __name__ == "__main__":
