@@ -71,28 +71,17 @@ def main():
     nodes = constraints.get("nodes", {}) or {}
 
     # ------------------------------------------------------------
-    # Get all component names from the scene
+    # Get all component names and track edited components
     # ------------------------------------------------------------
     all_component_names = set(nodes.keys())
-    print(f"[DEBUG] All components in scene: {sorted(all_component_names)}")
-    print(f"[DEBUG] Target component: {target}")
-    
-    # ------------------------------------------------------------
-    # Track which components have been edited
-    # The target is already edited, so mark it as edited
-    # ------------------------------------------------------------
     edited_components = {target}
     unedited_components = all_component_names - edited_components
-    print(f"[DEBUG] Initially unedited components: {sorted(unedited_components)}")
-    print()
 
     # ------------------------------------------------------------
     # Collect neighbors ONCE, enqueue them
     # ------------------------------------------------------------
     all_neighbors = find_affected_neighbors(constraints=constraints, target=target)
     q = deque(all_neighbors)
-    print(f"[DEBUG] Initial neighbors to process: {list(all_neighbors)}")
-    print()
 
     # Initialize accumulators
     symcon_res_all = {"symmetry": {}, "containment": {}}
@@ -107,16 +96,9 @@ def main():
     while q:
         nb = q.popleft()
         
-        # Debug print: show current component and unedited list
-        print(f"[DEBUG] Popped component: '{nb}'")
-        print(f"[DEBUG]   Unedited components remaining: {sorted(unedited_components)}")
-        
         # Check if this component has already been edited
         if nb in edited_components:
-            print(f"[DEBUG]   -> SKIP: '{nb}' already edited")
             continue
-        
-        print(f"[DEBUG]   -> PROCESSING: '{nb}' (not yet edited)")
 
         # Priority 1: Try symmetry + containment FIRST
         symcon_res_nb = apply_symmetry_and_containment(
@@ -132,10 +114,8 @@ def main():
         if isinstance(symcon_res_nb, dict):
             if symcon_res_nb.get("symmetry", {}).get(nb) is not None:
                 symcon_worked = True
-                print(f"[DEBUG]   -> Applied SYMMETRY to '{nb}'")
             elif symcon_res_nb.get("containment", {}).get(nb) is not None:
                 symcon_worked = True
-                print(f"[DEBUG]   -> Applied CONTAINMENT to '{nb}'")
 
         # Priority 2: Only try attachments if symcon didn't work
         attach_res_nb = None
@@ -147,12 +127,6 @@ def main():
                 neighbor=nb,
             )
             accumulate_attachment_results(attach_res_all, attach_res_nb, nb)
-            
-            # Check if attachment produced a change
-            if isinstance(attach_res_nb, dict):
-                cn = attach_res_nb.get("changed_nodes", {})
-                if isinstance(cn, dict) and cn.get(nb) is not None:
-                    print(f"[DEBUG]   -> Applied ATTACHMENT to '{nb}'")
 
         # ------------------------------------------------------------
         # Extract OBB data and connection type (symcon > attachment)
@@ -181,10 +155,7 @@ def main():
             # Mark this component as edited
             edited_components.add(nb)
             unedited_components.discard(nb)
-            print(f"[DEBUG]   -> MARKED '{nb}' as edited")
-        else:
-            print(f"[DEBUG]   -> No OBB changes for '{nb}'")
-        
+        print()
 
     # ------------------------------------------------------------
     # SAVE once: target edit + aggregated neighbor changes

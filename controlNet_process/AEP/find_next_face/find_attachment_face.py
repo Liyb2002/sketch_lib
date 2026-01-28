@@ -166,9 +166,6 @@ def find_attachment_face(
     E1 = _as_np(neighbor_after_obb["extents"]).reshape(3,)
 
     # Establish face correspondence and check for translation along normals
-    print("\n" + "="*70)
-    print("FACE CORRESPONDENCE AND NEXT EDIT FACE DETECTION")
-    print("="*70)
     
     candidate_faces = []
     
@@ -190,24 +187,14 @@ def find_attachment_face(
             
             # Check criterion: translation should be non-zero
             if translation_magnitude < min_translation:
-                print(f"\n{face_name}: Translation too small ({translation_magnitude:.6e})")
                 continue
             
             # Check if translation is along the normal
             translation_unit = translation / translation_magnitude
             alignment = float(np.dot(translation_unit, normal_A_unit))
             
-            print(f"\n{face_name}:")
-            print(f"  A center (before):  {center_A}")
-            print(f"  A' center (after):  {center_A_prime}")
-            print(f"  Normal:             {normal_A_unit}")
-            print(f"  Translation:        {translation}")
-            print(f"  Translation mag:    {translation_magnitude:.6f}")
-            print(f"  Alignment w/normal: {alignment:.6f}")
-            
             # Check if translation is along normal (alignment close to ±1)
             if abs(alignment) >= normal_alignment_min:
-                print(f"  ✓ CANDIDATE - Translation is along normal!")
                 candidate_faces.append({
                     'axis': axis,
                     'sign': sign,
@@ -220,11 +207,7 @@ def find_attachment_face(
                     'alignment': alignment,
                 })
             else:
-                print(f"  ✗ Translation NOT along normal (alignment={alignment:.6f})")
-    
-    print("\n" + "="*70)
-    print(f"Found {len(candidate_faces)} candidate face(s)")
-    print("="*70)
+                continue
 
     # Visualize if requested and Open3D is available
     if vis and o3d is not None and len(candidate_faces) > 0:
@@ -270,8 +253,6 @@ def find_attachment_face(
 
     # Build results for all candidates, or return None if no candidates
     if not candidate_faces:
-        print(f"\n[ATTACHMENT RESULT]")
-        print(f"  No candidates found - returning None")
         return None
     
     results = []
@@ -351,10 +332,5 @@ def find_attachment_face(
             },
         }
         results.append(result)
-    
-    print(f"\n[ATTACHMENT RESULT]")
-    print(f"  Found {len(results)} candidate face(s)")
-    for i, res in enumerate(results):
-        print(f"  [{i}] Face: {res['change']['face']}, Delta: {res['change']['delta_applied']:.6f}")
-    
+        
     return results
