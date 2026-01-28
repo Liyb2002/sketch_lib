@@ -26,6 +26,7 @@ from AEP.accumulate_helper import (
     accumulate_attachment_results,
     extract_obb_data,
     init_attachment_accumulator,
+    collect_new_propagation_pairs,
 )
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
@@ -170,30 +171,52 @@ def main():
             edited_components.add(nb)
 
     # ------------------------------------------------------------
+    # Collect new propagation pairs from saved face_edit_change files
+    # ------------------------------------------------------------
+    print("\n" + "="*60)
+    print("DEBUG: Collecting new propagation pairs...")
+    print("="*60)
+    
+    new_pairs = collect_new_propagation_pairs(
+        aep_dir=AEP_DATA_DIR,
+        constraints=constraints,
+        find_affected_neighbors_fn=find_affected_neighbors,
+    )
+    
+    print(f"\nFound {len(new_pairs)} new propagation pair(s):\n")
+    for i, (tgt, edt, nbrs) in enumerate(new_pairs, 1):
+        print(f"  Pair {i}:")
+        print(f"    target_component: {tgt}")
+        print(f"    neighbors: {nbrs}")
+        print()
+    
+    print("="*60 + "\n")
+
+    # ------------------------------------------------------------
     # SAVE once: target edit + aggregated neighbor changes
     # ------------------------------------------------------------
-    save_aep_changes(
-        aep_dir=AEP_DATA_DIR,
-        target_edit=initial_edit,
-        symcon_res=symcon_res_all,
-        attach_res=attach_res_all,
-        out_filename=os.path.basename(AEP_CHANGES_PATH),
-        constraints=constraints,
-    )
+    # save_aep_changes(
+    #     aep_dir=AEP_DATA_DIR,
+    #     target_edit=initial_edit,
+    #     symcon_res=symcon_res_all,
+    #     attach_res=attach_res_all,
+    #     out_filename=os.path.basename(AEP_CHANGES_PATH),
+    #     constraints=constraints,
+    # )
 
     # ------------------------------------------------------------
     # VIS once (after everything)
     # ------------------------------------------------------------
-    if DO_VIS:
-        vis_from_saved_changes(
-            overlay_ply_path=OVERLAY_PLY,
-            nodes=nodes,
-            neighbor_names=list(edited_components - {initial_target}),
-            aep_changes_json=AEP_CHANGES_PATH,
-            target=initial_target,
-            window_name=f"AEP: target+neighbors (blue) + changed (red) | target={initial_target}",
-            show_overlay=True,
-        )
+    # if DO_VIS:
+    #     vis_from_saved_changes(
+    #         overlay_ply_path=OVERLAY_PLY,
+    #         nodes=nodes,
+    #         neighbor_names=list(edited_components - {initial_target}),
+    #         aep_changes_json=AEP_CHANGES_PATH,
+    #         target=initial_target,
+    #         window_name=f"AEP: target+neighbors (blue) + changed (red) | target={initial_target}",
+    #         show_overlay=True,
+    #     )
 
 
 if __name__ == "__main__":

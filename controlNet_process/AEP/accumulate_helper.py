@@ -3,6 +3,10 @@
 #
 # Helper functions for accumulating results from neighbor processing
 
+import os
+import json
+import glob
+
 
 def merge_neighbor_results(dst: dict, src: dict):
     """
@@ -112,3 +116,60 @@ def init_attachment_accumulator(target: str):
             "counts": {"volume": 0, "face": 0, "point": 0, "unknown": 0},
         },
     }
+
+
+def collect_new_propagation_pairs(aep_dir: str, constraints: dict, find_affected_neighbors_fn):
+    """
+    Read all {counter}_face_edit_change.json files and create new propagation pairs.
+    
+    Each file represents a neighbor that was edited. For each:
+    - target_component: the neighbor that was edited (from "target" field)
+    - edit: the edit applied to that neighbor (from "change" field)
+    - neighbors: find new neighbors of this target_component
+    
+    Args:
+        aep_dir: Directory containing face_edit_change files
+        constraints: Constraint graph for finding neighbors
+        find_affected_neighbors_fn: Function to find neighbors
+    
+    Returns:
+        list: List of (target_component, edit, neighbors) tuples
+    """
+    pairs = []
+    
+    # Find all *_face_edit_change.json files (e.g., 1_face_edit_change.json, 2_face_edit_change.json)
+    pattern = os.path.join(aep_dir, "*_face_edit_change.json")
+    files = sorted(glob.glob(pattern))
+    
+    for filepath in files:
+        try:
+            with open(filepath, "r") as f:
+                data = json.load(f)
+            
+            # Extract target_component (the neighbor that was edited)
+            target_component = data.get("target")
+            if not target_component:
+                continue
+            
+            # Extract edit (the change that was applied)
+            # We need to restructure it to match the format expected by propagation functions
+            change = data.get("change", {})
+            if not change:
+                continue
+            
+            # Build edit dict in the format expected by apply_symmetry_and_containment, etc.
+            edit = {
+                "target": target_component,
+                "change": change,
+            }
+            
+            # Find neighbors of this newly edited component
+            neighbors = find_affected_neighbors_fn(constraints=constraints, target=target_component)
+            
+            pairs.append((target_component, edit, neighbors))
+            
+        except Exception as e:
+            print(f"Warning: Failed to read {filepath}: {e}")
+            continue
+    
+    return pairs
