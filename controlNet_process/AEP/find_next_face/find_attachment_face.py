@@ -4,7 +4,7 @@
 # ATTACHMENT logic: Find the passive face (opposite of attachment face)
 
 from __future__ import annotations
-from typing import Any, Dict, Tuple, List
+from typing import Any, Dict, Tuple, List, Optional
 import numpy as np
 
 try:
@@ -127,12 +127,16 @@ def find_attachment_face(
     axes_tol: float = 1e-6,
     min_translation: float = 1e-8,
     normal_alignment_min: float = 0.95,
-) -> List[Dict[str, Any]]:
+    vis: bool = False,
+) -> Optional[List[Dict[str, Any]]]:
     """
     Find passive face for ATTACHMENT connection.
-    Returns list of face_edit_change structures (without 'target' field).
+    Returns list of face_edit_change structures (without 'target' field), or None if no candidates found.
     
     Main functionality: Establish face correspondence and find faces translated along normals.
+    
+    Args:
+        vis: If True, show 3D visualization (requires Open3D)
     """
     
     # Extract edit information
@@ -222,8 +226,8 @@ def find_attachment_face(
     print(f"Found {len(candidate_faces)} candidate face(s)")
     print("="*70)
 
-    # Visualize if Open3D is available - only AFTER faces
-    if o3d is not None:
+    # Visualize if requested and Open3D is available
+    if vis and o3d is not None and len(candidate_faces) > 0:
         geoms = []
         
         # Neighbor BEFORE (BLUE wireframe)
@@ -264,107 +268,33 @@ def find_attachment_face(
         title = f"Found {len(candidate_faces)} candidate(s) on AFTER (red) | BEFORE (blue)"
         o3d.visualization.draw_geometries(geoms, window_name=title)
 
-    # Build results for all candidates (or fallback if none)
-    results = []
-    
-    if candidate_faces:
-        candidate_faces.sort(key=lambda x: x['translation_magnitude'], reverse=True)
-        
-        for candidate in candidate_faces:
-            axis = candidate['axis']
-            sign = candidate['sign']
-            face_name = candidate['face_name']
-            
-            # Calculate delta along normal
-            n_hat = candidate['normal']
-            delta_face = float(np.dot(candidate['translation'], n_hat))
-            
-            # Get extents
-            old_extent = float(E0[axis])
-            new_extent = float(E1[axis])
-            extent_delta = new_extent - old_extent
-            
-            # Calculate ratio
-            ratio = abs(delta_face) / max(abs(old_extent), 1e-12)
-            
-            # Determine expand or shrink
-            if abs(extent_delta) < extents_tol:
-                expand_or_shrink = "translate"
-            elif extent_delta > 0:
-                expand_or_shrink = "expand"
-            else:
-                expand_or_shrink = "shrink"
-            
-            # Face centers
-            p0 = candidate['center_before']
-            p1 = candidate['center_after']
-            
-            # Center motion
-            vC = C1 - C0
-            vC_norm = float(np.linalg.norm(vC))
-            
-            result = {
-                "connection_type": "attachment",
-                "change": {
-                    "type": "move_single_face",
-                    "delta_ratio_min": float(ratio),
-                    "delta_ratio_max": float(ratio),
-                    "ratio_sampled": float(ratio),
-                    "expand_or_shrink": expand_or_shrink,
-                    "face": face_name,
-                    "axis": int(axis),
-                    "axis_name": f"u{int(axis)}",
-                    "sign": int(sign),
-                    "delta_requested": float(delta_face),
-                    "delta_applied": float(delta_face),
-                    "old_extent": float(old_extent),
-                    "new_extent": float(new_extent),
-                    "min_extent": 1e-4,
-                    "before_obb": neighbor_before_obb,
-                    "after_obb": neighbor_after_obb,
-                    "diagnostics": {
-                        "selection_reason": "corresponding_face_attachment",
-                        "target_edited_face": t_face,
-                        "neighbor_corresponding_face": face_name,
-                        "axis_mapping": f"axis_{axis}_sign_{sign}",
-                        "neighbor_center_delta": vC.tolist(),
-                        "neighbor_center_delta_norm": float(vC_norm),
-                        "face_center_before": p0.tolist(),
-                        "face_center_after": p1.tolist(),
-                        "face_normal_world_before": n_hat.tolist(),
-                        "extent_delta": float(extent_delta),
-                        "translation_magnitude": candidate['translation_magnitude'],
-                        "normal_alignment": candidate['alignment'],
-                    },
-                    "input_edit_debug": {
-                        "target_edit_before_obb": t_before,
-                        "target_edit_after_obb": t_after,
-                        "target_edit_face": t_face,
-                    },
-                },
-            }
-            results.append(result)
-        
+    # Build results for all candidates, or return None if no candidates
+    if not candidate_faces:
         print(f"\n[ATTACHMENT RESULT]")
-        print(f"  Found {len(results)} candidate face(s)")
-        for i, res in enumerate(results):
-            print(f"  [{i}] Face: {res['change']['face']}, Delta: {res['change']['delta_applied']:.6f}")
-    else:
-        # Fallback: opposite of attachment
-        passive_axis = int(attached_axis)
-        passive_sign = int(-attached_sign)
-        passive_face = _face_to_str(passive_axis, passive_sign)
+        print(f"  No candidates found - returning None")
+        return None
+    
+    results = []
+    candidate_faces.sort(key=lambda x: x['translation_magnitude'], reverse=True)
+    
+    for candidate in candidate_faces:
+        axis = candidate['axis']
+        sign = candidate['sign']
+        face_name = candidate['face_name']
         
-        vC = C1 - C0
-        vC_norm = float(np.linalg.norm(vC))
-        n_hat = _unit(R0[:, passive_axis] * float(passive_sign))
-        delta_face = float(np.dot(vC, n_hat))
+        # Calculate delta along normal
+        n_hat = candidate['normal']
+        delta_face = float(np.dot(candidate['translation'], n_hat))
         
-        old_extent = float(E0[passive_axis])
-        new_extent = float(E1[passive_axis])
+        # Get extents
+        old_extent = float(E0[axis])
+        new_extent = float(E1[axis])
         extent_delta = new_extent - old_extent
+        
+        # Calculate ratio
         ratio = abs(delta_face) / max(abs(old_extent), 1e-12)
         
+        # Determine expand or shrink
         if abs(extent_delta) < extents_tol:
             expand_or_shrink = "translate"
         elif extent_delta > 0:
@@ -372,8 +302,13 @@ def find_attachment_face(
         else:
             expand_or_shrink = "shrink"
         
-        p0 = _face_center_world(neighbor_before_obb, passive_axis, passive_sign)
-        p1 = _face_center_world(neighbor_after_obb, passive_axis, passive_sign)
+        # Face centers
+        p0 = candidate['center_before']
+        p1 = candidate['center_after']
+        
+        # Center motion
+        vC = C1 - C0
+        vC_norm = float(np.linalg.norm(vC))
         
         result = {
             "connection_type": "attachment",
@@ -383,10 +318,10 @@ def find_attachment_face(
                 "delta_ratio_max": float(ratio),
                 "ratio_sampled": float(ratio),
                 "expand_or_shrink": expand_or_shrink,
-                "face": passive_face,
-                "axis": int(passive_axis),
-                "axis_name": f"u{int(passive_axis)}",
-                "sign": int(passive_sign),
+                "face": face_name,
+                "axis": int(axis),
+                "axis_name": f"u{int(axis)}",
+                "sign": int(sign),
                 "delta_requested": float(delta_face),
                 "delta_applied": float(delta_face),
                 "old_extent": float(old_extent),
@@ -395,16 +330,18 @@ def find_attachment_face(
                 "before_obb": neighbor_before_obb,
                 "after_obb": neighbor_after_obb,
                 "diagnostics": {
-                    "selection_reason": "fallback_opposite_of_attachment",
+                    "selection_reason": "corresponding_face_attachment",
                     "target_edited_face": t_face,
-                    "neighbor_corresponding_face": passive_face,
-                    "axis_mapping": f"axis_{passive_axis}_sign_{passive_sign}",
+                    "neighbor_corresponding_face": face_name,
+                    "axis_mapping": f"axis_{axis}_sign_{sign}",
                     "neighbor_center_delta": vC.tolist(),
                     "neighbor_center_delta_norm": float(vC_norm),
                     "face_center_before": p0.tolist(),
                     "face_center_after": p1.tolist(),
                     "face_normal_world_before": n_hat.tolist(),
                     "extent_delta": float(extent_delta),
+                    "translation_magnitude": candidate['translation_magnitude'],
+                    "normal_alignment": candidate['alignment'],
                 },
                 "input_edit_debug": {
                     "target_edit_before_obb": t_before,
@@ -414,12 +351,10 @@ def find_attachment_face(
             },
         }
         results.append(result)
-        
-        print(f"\n[ATTACHMENT RESULT - FALLBACK]")
-        print(f"  No candidates found, using fallback")
-        print(f"  Attached face: {attached_face}")
-        print(f"  Passive face: {passive_face}")
-        print(f"  Delta: {delta_face:.6f}")
     
-    # Always return a list for consistency
+    print(f"\n[ATTACHMENT RESULT]")
+    print(f"  Found {len(results)} candidate face(s)")
+    for i, res in enumerate(results):
+        print(f"  [{i}] Face: {res['change']['face']}, Delta: {res['change']['delta_applied']:.6f}")
+    
     return results
