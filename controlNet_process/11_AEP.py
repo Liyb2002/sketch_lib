@@ -27,6 +27,7 @@ from AEP.accumulate_helper import (
     extract_obb_data,
     init_attachment_accumulator,
     collect_new_propagation_pairs,
+    filter_propagation_pairs,
 )
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
@@ -183,12 +184,25 @@ def main():
         find_affected_neighbors_fn=find_affected_neighbors,
     )
     
-    print(f"\nFound {len(new_pairs)} new propagation pair(s):\n")
-    for i, (tgt, edt, nbrs) in enumerate(new_pairs, 1):
-        print(f"  Pair {i}:")
-        print(f"    target_component: {tgt}")
-        print(f"    neighbors: {nbrs}")
-        print()
+    print(f"\nFound {len(new_pairs)} raw propagation pair(s)")
+    
+    # Filter the pairs
+    filtered_pairs = filter_propagation_pairs(
+        pairs=new_pairs,
+        edited_components=edited_components,
+    )
+    
+    print(f"After filtering: {len(filtered_pairs)} valid propagation pair(s)\n")
+    
+    if len(filtered_pairs) > 0:
+        print("Valid pairs:")
+        for i, (tgt, edt, nbrs) in enumerate(filtered_pairs, 1):
+            print(f"  Pair {i}:")
+            print(f"    target_component: {tgt}")
+            print(f"    neighbors: {nbrs}")
+            print()
+    else:
+        print("No valid pairs found (all filtered out)")
     
     print("="*60 + "\n")
 
