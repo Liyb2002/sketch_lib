@@ -52,6 +52,7 @@ def load_json(path: str):
 
 def process_neighbor_edit(
     constraints: dict,
+    target_component: str,
     target_edit: dict,
     neighbor: str,
     symcon_res_all: dict,
@@ -63,8 +64,11 @@ def process_neighbor_edit(
     extract OBB data, and save face edit change.
     
     Returns:
-        tuple: (before_obb, after_obb, connection_type, new_counter)
+        tuple: (before_obb, after_obb, connection_type, new_counter, was_saved)
+               was_saved is True if a face_edit_change file was actually created
     """
+    print(f"Processing: target='{target_component}' -> neighbor='{neighbor}'")
+    
     # Priority 1: Try symmetry + containment FIRST
     symcon_res_nb = apply_symmetry_and_containment(
         constraints=constraints,
@@ -100,7 +104,7 @@ def process_neighbor_edit(
 
     # Save per-neighbor face_edit_change.json (and debug-vis)
     if before_obb is not None and after_obb is not None:
-        find_next_face_edit_change_and_save_and_vis(
+        saved_paths = find_next_face_edit_change_and_save_and_vis(
             aep_dir=AEP_DATA_DIR,
             counter=face_edit_counter,
             edit=target_edit,
@@ -111,9 +115,18 @@ def process_neighbor_edit(
             overlay_ply_path=OVERLAY_PLY,
             do_vis=True,
         )
-        return before_obb, after_obb, connection_type, face_edit_counter + 1
+        
+        # Check if anything was saved
+        was_saved = len(saved_paths) > 0
+        
+        # Only increment counter and mark success if something was actually saved
+        if was_saved:
+            return before_obb, after_obb, connection_type, face_edit_counter + 1, True
+        else:
+            # OBB changed but no valid face edit was found/saved
+            return before_obb, after_obb, connection_type, face_edit_counter, False
     
-    return None, None, None, face_edit_counter
+    return None, None, None, face_edit_counter, False
 
 
 def main():
@@ -158,8 +171,9 @@ def main():
             continue
         
         # Process this neighbor
-        before_obb, after_obb, connection_type, face_edit_counter = process_neighbor_edit(
+        before_obb, after_obb, connection_type, face_edit_counter, was_saved = process_neighbor_edit(
             constraints=constraints,
+            target_component=target_component,
             target_edit=edit,
             neighbor=nb,
             symcon_res_all=symcon_res_all,
@@ -167,70 +181,79 @@ def main():
             face_edit_counter=face_edit_counter,
         )
         
-        # Mark as edited if successful
-        if before_obb is not None and after_obb is not None:
+        # Mark as edited ONLY if an edit was actually saved
+        if was_saved:
             edited_components.add(nb)
 
     # ------------------------------------------------------------
     # Collect new propagation pairs from saved face_edit_change files
     # ------------------------------------------------------------
-    print("\n" + "="*60)
-    print("DEBUG: Collecting new propagation pairs...")
-    print("="*60)
-    
     new_pairs = collect_new_propagation_pairs(
         aep_dir=AEP_DATA_DIR,
         constraints=constraints,
         find_affected_neighbors_fn=find_affected_neighbors,
     )
     
-    print(f"\nFound {len(new_pairs)} raw propagation pair(s)")
-    
     # Filter the pairs
     filtered_pairs = filter_propagation_pairs(
         pairs=new_pairs,
         edited_components=edited_components,
     )
-    
-    print(f"After filtering: {len(filtered_pairs)} valid propagation pair(s)\n")
-    
+
+    # ------------------------------------------------------------
+    # Process the filtered pairs (next round of propagation)
+    # ------------------------------------------------------------
     if len(filtered_pairs) > 0:
-        print("Valid pairs:")
-        for i, (tgt, edt, nbrs) in enumerate(filtered_pairs, 1):
-            print(f"  Pair {i}:")
-            print(f"    target_component: {tgt}")
-            print(f"    neighbors: {nbrs}")
-            print()
-    else:
-        print("No valid pairs found (all filtered out)")
-    
-    print("="*60 + "\n")
+        for pair_idx, (target_component, edit, neighbors) in enumerate(filtered_pairs, 1):
+            # Track which neighbors are still valid for this pair
+            valid_neighbors_for_pair = [nb for nb in neighbors if nb not in edited_components]
+            
+            # Process each valid neighbor
+            for nb in valid_neighbors_for_pair:
+                # Skip if already edited (could have been edited by a previous pair in this round)
+                if nb in edited_components:
+                    continue
+                
+                # Process this neighbor
+                before_obb, after_obb, connection_type, face_edit_counter, was_saved = process_neighbor_edit(
+                    constraints=constraints,
+                    target_component=target_component,
+                    target_edit=edit,
+                    neighbor=nb,
+                    symcon_res_all=symcon_res_all,
+                    attach_res_all=attach_res_all,
+                    face_edit_counter=face_edit_counter,
+                )
+                
+                # If an edit was saved, this neighbor is no longer valid for future propagation
+                if was_saved:
+                    edited_components.add(nb)
 
     # ------------------------------------------------------------
     # SAVE once: target edit + aggregated neighbor changes
     # ------------------------------------------------------------
-    # save_aep_changes(
-    #     aep_dir=AEP_DATA_DIR,
-    #     target_edit=initial_edit,
-    #     symcon_res=symcon_res_all,
-    #     attach_res=attach_res_all,
-    #     out_filename=os.path.basename(AEP_CHANGES_PATH),
-    #     constraints=constraints,
-    # )
+    save_aep_changes(
+        aep_dir=AEP_DATA_DIR,
+        target_edit=initial_edit,
+        symcon_res=symcon_res_all,
+        attach_res=attach_res_all,
+        out_filename=os.path.basename(AEP_CHANGES_PATH),
+        constraints=constraints,
+    )
 
     # ------------------------------------------------------------
     # VIS once (after everything)
     # ------------------------------------------------------------
-    # if DO_VIS:
-    #     vis_from_saved_changes(
-    #         overlay_ply_path=OVERLAY_PLY,
-    #         nodes=nodes,
-    #         neighbor_names=list(edited_components - {initial_target}),
-    #         aep_changes_json=AEP_CHANGES_PATH,
-    #         target=initial_target,
-    #         window_name=f"AEP: target+neighbors (blue) + changed (red) | target={initial_target}",
-    #         show_overlay=True,
-    #     )
+    if DO_VIS:
+        vis_from_saved_changes(
+            overlay_ply_path=OVERLAY_PLY,
+            nodes=nodes,
+            neighbor_names=list(edited_components - {initial_target}),
+            aep_changes_json=AEP_CHANGES_PATH,
+            target=initial_target,
+            window_name=f"AEP: target+neighbors (blue) + changed (red) | target={initial_target}",
+            show_overlay=True,
+        )
 
 
 if __name__ == "__main__":

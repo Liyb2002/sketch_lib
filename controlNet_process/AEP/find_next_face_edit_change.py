@@ -46,7 +46,7 @@ def find_next_face_edit_change_and_save_and_vis(
     
     Returns list of saved file paths (one per face).
     """
-    
+    fec_list = []
     if connection_type == "attachment":
         fec_list = find_attachment_face(
             edit=edit,
@@ -61,11 +61,10 @@ def find_next_face_edit_change_and_save_and_vis(
             neighbor_after_obb=neighbor_after_obb,
             connection_type=connection_type,
         )
-        
-    else:
-        print(f"Warning: Unknown connection_type '{connection_type}' for neighbor={neighbor_name}")
+    
+    if fec_list is None:
         return []
-
+        
     # Save each face with local counter
     out_paths = []
     for local_counter, fec in enumerate(fec_list):
