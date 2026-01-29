@@ -126,7 +126,7 @@ def find_attachment_face(
     extents_tol: float = 1e-6,
     axes_tol: float = 1e-6,
     min_translation: float = 1e-8,
-    normal_alignment_min: float = 0.95,
+    normal_alignment_min: float = 0.7,
     vis: bool = False,
 ) -> Optional[List[Dict[str, Any]]]:
     """

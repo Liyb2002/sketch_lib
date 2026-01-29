@@ -173,36 +173,3 @@ def collect_new_propagation_pairs(aep_dir: str, constraints: dict, find_affected
             continue
     
     return pairs
-
-
-def filter_propagation_pairs(pairs: list, edited_components: set):
-    """
-    Filter propagation pairs to only keep valid ones.
-    
-    Rules:
-    1. Ignore pairs where target_component starts with "unknown"
-    2. Filter out neighbors that have already been edited
-    3. Only keep pairs that have at least one valid neighbor
-    
-    Args:
-        pairs: List of (target_component, edit, neighbors) tuples
-        edited_components: Set of components that have already been edited
-    
-    Returns:
-        list: Filtered list of (target_component, edit, filtered_neighbors) tuples
-    """
-    filtered_pairs = []
-    
-    for target_component, edit, neighbors in pairs:
-        # Rule 1: Skip if target_component is unknown
-        if target_component.startswith("unknown"):
-            continue
-        
-        # Rule 2: Filter out neighbors that have already been edited
-        valid_neighbors = [nb for nb in neighbors if nb not in edited_components]
-        
-        # Rule 3: Only keep pairs with at least one valid neighbor
-        if len(valid_neighbors) > 0:
-            filtered_pairs.append((target_component, edit, valid_neighbors))
-    
-    return filtered_pairs

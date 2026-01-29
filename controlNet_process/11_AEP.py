@@ -27,7 +27,6 @@ from AEP.accumulate_helper import (
     extract_obb_data,
     init_attachment_accumulator,
     collect_new_propagation_pairs,
-    filter_propagation_pairs,
 )
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
@@ -67,8 +66,6 @@ def process_neighbor_edit(
         tuple: (before_obb, after_obb, connection_type, new_counter, was_saved)
                was_saved is True if a face_edit_change file was actually created
     """
-    print(f"Processing: target='{target_component}' -> neighbor='{neighbor}'")
-    
     # Priority 1: Try symmetry + containment FIRST
     symcon_res_nb = apply_symmetry_and_containment(
         constraints=constraints,
@@ -169,12 +166,22 @@ def main():
     propagation_queue = deque()
     propagation_queue.append((target_component, edit, neighbors))
     
+    iteration = 0
     while propagation_queue:
+        iteration += 1
         # Pop the next target to propagate from
         current_target, current_edit, current_neighbors = propagation_queue.popleft()
         
         # Process each neighbor of this target
         for nb in current_neighbors:
+            # Extract the target_edit_face for cleaner printing
+            target_edit_face = current_edit.get('change', {}).get('diagnostics', {}).get('input_edit_debug', {}).get('target_edit_face', 'unknown')
+            
+            # Print the actual pair being processed
+            print(f"\n{'='*70}")
+            print(f"PROCESSING PAIR: ('{current_target}', target_edit_face='{target_edit_face}', '{nb}')")
+            print(f"{'='*70}")
+            
             # Skip if already edited
             if nb in edited_components:
                 continue
@@ -209,19 +216,18 @@ def main():
                         valid_neighbors = [n for n in nbrs if n not in edited_components]
                         if len(valid_neighbors) > 0:
                             propagation_queue.append((tgt, edt, valid_neighbors))
-                        break
 
     # ------------------------------------------------------------
     # SAVE once: target edit + aggregated neighbor changes
     # ------------------------------------------------------------
-    # save_aep_changes(
-    #     aep_dir=AEP_DATA_DIR,
-    #     target_edit=initial_edit,
-    #     symcon_res=symcon_res_all,
-    #     attach_res=attach_res_all,
-    #     out_filename=os.path.basename(AEP_CHANGES_PATH),
-    #     constraints=constraints,
-    # )
+    save_aep_changes(
+        aep_dir=AEP_DATA_DIR,
+        target_edit=initial_edit,
+        symcon_res=symcon_res_all,
+        attach_res=attach_res_all,
+        out_filename=os.path.basename(AEP_CHANGES_PATH),
+        constraints=constraints,
+    )
 
     # ------------------------------------------------------------
     # VIS once (after everything)
