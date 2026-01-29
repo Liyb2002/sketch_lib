@@ -1,9 +1,9 @@
 {
   "view": "view_0",
   "image": "sketch/views/view_0.png",
-  "camera": "sketch/3d_reconstruction/view_0_cam.json",
   "H": 320,
   "W": 320,
+  "source_2d_projections": "sketch/back_project_masks/view_0/3d_project/obb_2d_projections.json",
   "labels": {
     "wheel_0": {
       "has_mask": true,
@@ -40,7 +40,7 @@
       "obb_before_after_overlay": "sketch/back_project_masks/view_0/3d_project/wheel_1_obb_before_after.png",
       "homography_before_to_after": null,
       "homography_status": null,
-      "valid_pairs": 0,
+      "valid_pairs": 8,
       "outputs": {}
     },
     "fender_0": {
@@ -78,7 +78,7 @@
       "obb_before_after_overlay": "sketch/back_project_masks/view_0/3d_project/unknown_0_obb_before_after.png",
       "homography_before_to_after": null,
       "homography_status": null,
-      "valid_pairs": 0,
+      "valid_pairs": 6,
       "outputs": {}
     },
     "handlebar_0": {
@@ -145,7 +145,7 @@
       "obb_before_after_overlay": "sketch/back_project_masks/view_0/3d_project/storage_0_obb_before_after.png",
       "homography_before_to_after": null,
       "homography_status": null,
-      "valid_pairs": 0,
+      "valid_pairs": 8,
       "outputs": {}
     },
     "unknown_1": {
@@ -154,7 +154,7 @@
       "obb_before_after_overlay": "sketch/back_project_masks/view_0/3d_project/unknown_1_obb_before_after.png",
       "homography_before_to_after": null,
       "homography_status": null,
-      "valid_pairs": 0,
+      "valid_pairs": 8,
       "outputs": {}
     },
     "seat_0": {
@@ -163,7 +163,7 @@
       "obb_before_after_overlay": "sketch/back_project_masks/view_0/3d_project/seat_0_obb_before_after.png",
       "homography_before_to_after": null,
       "homography_status": null,
-      "valid_pairs": 0,
+      "valid_pairs": 8,
       "outputs": {}
     }
   },

@@ -1,21 +1,14 @@
 #!/usr/bin/env python3
-# compute_new_masks_from_aep.py
+# 12_propagate_2d_bbx.py
 #
-# Compute "new masks" by warping each label's original 2D mask using
-# the 2D projective transform induced by the label's OBB before->after.
+# Part 1: Camera Projection System and OBB (Oriented Bounding Box) Geometry
+# - Projects 3D OBBs to 2D pixel coordinates
+# - Saves 2D bounding box overlays
+# - Outputs JSON with 2D bounding box movements for each label
 #
-# Extra outputs added:
-#   1) save 3D projected OBB overlay images per label:
-#        sketch/back_project_masks/view_{x}/3d_project/{label}_obb_before_after.png
-#   2) save per-view JSON containing warps:
-#        sketch/back_project_masks/view_{x}/mask_warps.json
-#
-# NOTE (ONLY CHANGE MADE IN THIS EDIT):
-# - In ALL mask visualizations:
-#     * original mask is BLUE
-#     * new mask is RED
-#   (This affects: {label}_origmask_overlay.png and {label}_newmask_overlay.png.
-#    Everything else remains unchanged.)
+# Outputs:
+#   sketch/back_project_masks/view_{x}/3d_project/{label}_obb_before_after.png
+#   sketch/back_project_masks/view_{x}/3d_project/obb_2d_projections.json
 
 import os
 import json
@@ -28,14 +21,9 @@ AEP_PATH   = os.path.join(ROOT, "sketch", "AEP", "aep_changes.json")
 CONSTRAINTS_PATH = os.path.join(ROOT, "sketch", "AEP", "filtered_relations.json")
 SCENE_DIR  = os.path.join(ROOT, "sketch", "3d_reconstruction")
 VIEWS_DIR  = os.path.join(ROOT, "sketch", "views")
-SEG_DIR    = os.path.join(ROOT, "sketch", "segmentation_original_image")
 OUT_ROOT   = os.path.join(ROOT, "sketch", "back_project_masks")
 
 NUM_VIEWS = 6
-
-# Overlay style
-ALPHA_FILL = 0.35
-CONTOUR_THICK = 2
 
 # OBB projection drawing style
 OBB_THICK_BLUE = 3
@@ -43,7 +31,7 @@ OBB_THICK_RED  = 2
 
 
 # ----------------------------
-# Camera helpers (same convention as your 2D->3D mapping script)
+# Camera helpers
 # ----------------------------
 def get_scaled_intrinsics(K_orig, src_w, src_h, target_w, target_h):
     scale_x = target_w / src_w
@@ -231,92 +219,17 @@ def load_aep_items(aep_path):
 
 
 # ----------------------------
-# Visual + warp utilities
-# ----------------------------
-def color_for_label(label: str):
-    h = (abs(hash(label)) % 180)
-    hsv = np.uint8([[[h, 220, 255]]])
-    bgr = cv2.cvtColor(hsv, cv2.COLOR_HSV2BGR)[0, 0]
-    return (int(bgr[0]), int(bgr[1]), int(bgr[2]))
-
-
-def overlay_mask_on_image(img_bgr, mask_u8, color_bgr, alpha=0.35, contour_thick=2):
-    out = img_bgr.copy()
-    if mask_u8 is None:
-        return out
-
-    binary = mask_u8 > 0
-    if not np.any(binary):
-        return out
-
-    fill = np.zeros_like(out)
-    fill[:] = color_bgr
-    out[binary] = cv2.addWeighted(out[binary], 1.0 - alpha, fill[binary], alpha, 0)
-
-    contours, _ = cv2.findContours(mask_u8, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    if contours:
-        cv2.drawContours(out, contours, -1, color_bgr, contour_thick)
-
-    return out
-
-
-def compute_homography_from_obb(before_obb, after_obb, w2c, K, H, W,
-                               apply_obj2world=False, origin=None, A_obj=None):
-    Pw0 = obb_corners_world(before_obb, apply_obj2world=apply_obj2world, origin=origin, A_obj=A_obj)
-    Pw1 = obb_corners_world(after_obb,  apply_obj2world=apply_obj2world, origin=origin, A_obj=A_obj)
-
-    p0, v0 = project_world_to_px(Pw0, w2c, K, H, W)
-    p1, v1 = project_world_to_px(Pw1, w2c, K, H, W)
-
-    valid = v0 & v1
-    idx = np.where(valid)[0]
-
-    if idx.size < 4:
-        return np.eye(3, dtype=np.float64), {
-            "status": "identity_fallback",
-            "valid_pairs": int(idx.size),
-        }
-
-    src = p0[idx].astype(np.float64)
-    dst = p1[idx].astype(np.float64)
-
-    Hmat, _ = cv2.findHomography(src, dst, method=0)
-    if Hmat is None:
-        return np.eye(3, dtype=np.float64), {
-            "status": "findHomography_failed_identity",
-            "valid_pairs": int(idx.size),
-        }
-
-    return Hmat.astype(np.float64), {
-        "status": "ok",
-        "valid_pairs": int(idx.size),
-    }
-
-
-def warp_mask(mask_u8, Hmat, out_h, out_w):
-    warped = cv2.warpPerspective(
-        mask_u8,
-        Hmat,
-        (out_w, out_h),
-        flags=cv2.INTER_NEAREST,
-        borderMode=cv2.BORDER_CONSTANT,
-        borderValue=0
-    )
-    warped = (warped > 0).astype(np.uint8) * 255
-    return warped
-
-
-# ----------------------------
 # Main
 # ----------------------------
 def main():
     if not os.path.exists(AEP_PATH):
         raise FileNotFoundError(f"Missing: {AEP_PATH}")
 
-    # ---- placement fix: decide whether we must apply object_space ----
+    # Load AEP data
     with open(AEP_PATH, "r") as f:
         aep_raw = json.load(f)
 
+    # Load constraints for placement fix
     if os.path.exists(CONSTRAINTS_PATH):
         with open(CONSTRAINTS_PATH, "r") as f:
             constraints = json.load(f)
@@ -328,24 +241,16 @@ def main():
     items = load_aep_items(AEP_PATH)
     os.makedirs(OUT_ROOT, exist_ok=True)
 
-    # Mask viz colors (BGR)
-    ORIG_MASK_COLOR = (255, 0, 0)  # BLUE
-    NEW_MASK_COLOR  = (0, 0, 255)  # RED
-
     for x in range(NUM_VIEWS):
         view_name = f"view_{x}"
         img_path = os.path.join(VIEWS_DIR, f"{view_name}.png")
         cam_path = os.path.join(SCENE_DIR, f"{view_name}_cam.json")
-        seg_folder = os.path.join(SEG_DIR, view_name)
 
         if not os.path.exists(img_path):
             print(f"[skip] missing image: {img_path}")
             continue
         if not os.path.exists(cam_path):
             print(f"[skip] missing cam: {cam_path}")
-            continue
-        if not os.path.exists(seg_folder):
-            print(f"[skip] missing seg folder: {seg_folder}")
             continue
 
         base = cv2.imread(img_path, cv2.IMREAD_COLOR)
@@ -365,115 +270,63 @@ def main():
         src_h = float(K_orig[1, 2] * 2.0)
         K = get_scaled_intrinsics(K_orig, src_w, src_h, W_img, H_img)
 
-        out_dir = os.path.join(OUT_ROOT, view_name)
-        os.makedirs(out_dir, exist_ok=True)
-
-        proj_dir = os.path.join(out_dir, "3d_project")
+        proj_dir = os.path.join(OUT_ROOT, view_name, "3d_project")
         os.makedirs(proj_dir, exist_ok=True)
 
-        all_new_overlay = base.copy()
-
-        warp_json = {
+        # JSON to store 2D projections
+        proj_json = {
             "view": view_name,
             "image": os.path.relpath(img_path, ROOT),
             "camera": os.path.relpath(cam_path, ROOT),
             "H": int(H_img),
             "W": int(W_img),
+            "apply_obj2world": bool(apply_obj2world),
             "labels": {}
         }
 
         for (label, obb_before, obb_after) in items:
-            # ---------- 3D projected overlay (always save) ----------
+            # Compute 3D corners in world space
             Pw0 = obb_corners_world(obb_before, apply_obj2world=apply_obj2world, origin=origin, A_obj=A_obj)
             Pw1 = obb_corners_world(obb_after,  apply_obj2world=apply_obj2world, origin=origin, A_obj=A_obj)
 
-            p0, _ = project_world_to_px(Pw0, w2c, K, H_img, W_img)
-            p1, _ = project_world_to_px(Pw1, w2c, K, H_img, W_img)
+            # Project to 2D
+            p0, v0 = project_world_to_px(Pw0, w2c, K, H_img, W_img)
+            p1, v1 = project_world_to_px(Pw1, w2c, K, H_img, W_img)
 
+            # Draw overlay (RED for after, BLUE for before - BLUE on top)
             obb_vis = base.copy()
-            # RED first, BLUE next so BLUE is on top
             obb_vis = draw_projected_obb(obb_vis, p1, (0, 0, 255), thickness=OBB_THICK_RED)    # BGR red (after)
             obb_vis = draw_projected_obb(obb_vis, p0, (255, 0, 0), thickness=OBB_THICK_BLUE)   # BGR blue (before)
 
+            # Save overlay image
             obb_vis_path = os.path.join(proj_dir, f"{label}_obb_before_after.png")
             cv2.imwrite(obb_vis_path, obb_vis)
 
-            # ---------- mask warp (only if mask exists) ----------
-            mask_path = os.path.join(seg_folder, f"{label}_mask.png")
-            has_mask = os.path.exists(mask_path)
-
-            label_entry = {
-                "has_mask": bool(has_mask),
-                "mask_path": os.path.relpath(mask_path, ROOT) if has_mask else None,
-                "obb_before_after_overlay": os.path.relpath(obb_vis_path, ROOT),
-                "homography_before_to_after": None,
-                "homography_status": None,
-                "valid_pairs": 0,
-                "outputs": {}
+            # Determine valid pairs for homography computation
+            valid = v0 & v1
+            valid_indices = np.where(valid)[0].tolist()
+            
+            # Store in JSON
+            proj_json["labels"][label] = {
+                "obb_before_2d": p0.tolist(),
+                "obb_after_2d": p1.tolist(),
+                "valid_before": v0.tolist(),
+                "valid_after": v1.tolist(),
+                "valid_pairs": valid.tolist(),
+                "valid_indices": valid_indices,
+                "num_valid_pairs": int(valid.sum()),
+                "overlay_image": os.path.relpath(obb_vis_path, ROOT)
             }
 
-            if not has_mask:
-                warp_json["labels"][label] = label_entry
-                continue
+            print(f"[ok] {view_name} {label}: projected OBB | valid_pairs={valid.sum()}")
 
-            mask0 = cv2.imread(mask_path, cv2.IMREAD_GRAYSCALE)
-            if mask0 is None:
-                warp_json["labels"][label] = label_entry
-                continue
-            if mask0.shape[:2] != (H_img, W_img):
-                mask0 = cv2.resize(mask0, (W_img, H_img), interpolation=cv2.INTER_NEAREST)
+        # Save JSON
+        proj_json_path = os.path.join(proj_dir, "obb_2d_projections.json")
+        with open(proj_json_path, "w") as f:
+            json.dump(proj_json, f, indent=2)
+        print(f"[ok] {view_name}: wrote {proj_json_path}")
 
-            Hmat, dbg = compute_homography_from_obb(
-                obb_before, obb_after, w2c, K, H_img, W_img,
-                apply_obj2world=apply_obj2world, origin=origin, A_obj=A_obj
-            )
-            mask1 = warp_mask(mask0, Hmat, H_img, W_img)
-
-            out_mask_path = os.path.join(out_dir, f"{label}_mask_new.png")
-            cv2.imwrite(out_mask_path, mask1)
-
-            # ---- CHANGED: original mask always BLUE, new mask always RED ----
-            orig_overlay = overlay_mask_on_image(
-                base, mask0, ORIG_MASK_COLOR, alpha=ALPHA_FILL, contour_thick=CONTOUR_THICK
-            )
-            new_overlay = overlay_mask_on_image(
-                base, mask1, NEW_MASK_COLOR, alpha=ALPHA_FILL, contour_thick=CONTOUR_THICK
-            )
-
-            out_orig_overlay = os.path.join(out_dir, f"{label}_origmask_overlay.png")
-            out_new_overlay  = os.path.join(out_dir, f"{label}_newmask_overlay.png")
-
-            cv2.imwrite(out_orig_overlay, orig_overlay)
-            cv2.imwrite(out_new_overlay, new_overlay)
-
-            # keep aggregate overlay behavior unchanged (still per-label color)
-            col = color_for_label(label)
-            all_new_overlay = overlay_mask_on_image(all_new_overlay, mask1, col, alpha=ALPHA_FILL, contour_thick=1)
-
-            label_entry["homography_before_to_after"] = Hmat.tolist()
-            label_entry["homography_status"] = dbg.get("status")
-            label_entry["valid_pairs"] = int(dbg.get("valid_pairs", 0))
-            label_entry["outputs"] = {
-                "mask_new": os.path.relpath(out_mask_path, ROOT),
-                "origmask_overlay": os.path.relpath(out_orig_overlay, ROOT),
-                "newmask_overlay": os.path.relpath(out_new_overlay, ROOT),
-            }
-
-            warp_json["labels"][label] = label_entry
-
-            print(f"[ok] {view_name} {label}: mask warped | H={dbg['status']} pairs={dbg.get('valid_pairs')}")
-
-        out_all = os.path.join(out_dir, "all_new_masks_overlay.png")
-        cv2.imwrite(out_all, all_new_overlay)
-        print(f"[ok] {view_name}: wrote {out_all}")
-
-        warp_json["all_new_masks_overlay"] = os.path.relpath(out_all, ROOT)
-        warp_json_path = os.path.join(out_dir, "mask_warps.json")
-        with open(warp_json_path, "w") as f:
-            json.dump(warp_json, f, indent=2)
-        print(f"[ok] {view_name}: wrote {warp_json_path}")
-
-    print("[done]")
+    print("[done] All 2D OBB projections saved.")
 
 
 if __name__ == "__main__":

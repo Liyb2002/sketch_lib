@@ -1,9 +1,9 @@
 {
   "view": "view_4",
   "image": "sketch/views/view_4.png",
-  "camera": "sketch/3d_reconstruction/view_4_cam.json",
   "H": 320,
   "W": 320,
+  "source_2d_projections": "sketch/back_project_masks/view_4/3d_project/obb_2d_projections.json",
   "labels": {
     "wheel_0": {
       "has_mask": true,
@@ -98,7 +98,7 @@
       "obb_before_after_overlay": "sketch/back_project_masks/view_4/3d_project/unknown_0_obb_before_after.png",
       "homography_before_to_after": null,
       "homography_status": null,
-      "valid_pairs": 0,
+      "valid_pairs": 7,
       "outputs": {}
     },
     "handlebar_0": {
@@ -136,7 +136,7 @@
       "obb_before_after_overlay": "sketch/back_project_masks/view_4/3d_project/headlight_0_obb_before_after.png",
       "homography_before_to_after": null,
       "homography_status": null,
-      "valid_pairs": 0,
+      "valid_pairs": 8,
       "outputs": {}
     },
     "storage_0": {
@@ -174,7 +174,7 @@
       "obb_before_after_overlay": "sketch/back_project_masks/view_4/3d_project/unknown_1_obb_before_after.png",
       "homography_before_to_after": null,
       "homography_status": null,
-      "valid_pairs": 0,
+      "valid_pairs": 5,
       "outputs": {}
     },
     "seat_0": {
