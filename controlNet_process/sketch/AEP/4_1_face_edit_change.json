@@ -2,16 +2,16 @@
   "connection_type": "attachment",
   "change": {
     "type": "move_single_face",
-    "delta_ratio_min": 1.494366643198103,
-    "delta_ratio_max": 1.494366643198103,
-    "ratio_sampled": 1.494366643198103,
+    "delta_ratio_min": 0.9563946516467855,
+    "delta_ratio_max": 0.9563946516467855,
+    "ratio_sampled": 0.9563946516467855,
     "expand_or_shrink": "translate",
     "face": "+u1",
     "axis": 1,
     "axis_name": "u1",
     "sign": 1,
-    "delta_requested": 0.044218021892574275,
-    "delta_applied": 0.044218021892574275,
+    "delta_requested": 0.02829953401124752,
+    "delta_applied": 0.02829953401124752,
     "old_extent": 0.029589807892086657,
     "new_extent": 0.029589807892086657,
     "min_extent": 0.0001,
@@ -46,9 +46,9 @@
     },
     "after_obb": {
       "center": [
-        0.015704818827894474,
-        -0.046073997529471444,
-        0.8442495557906569
+        0.01703364829373553,
+        -0.063156405696359,
+        0.8423514028885463
       ],
       "axes": [
         [
@@ -75,24 +75,24 @@
     },
     "diagnostics": {
       "selection_reason": "corresponding_face_attachment",
-      "target_edited_face": "+u1",
+      "target_edited_face": "-u1",
       "neighbor_corresponding_face": "+u1",
       "axis_mapping": "axis_1_sign_1",
       "neighbor_center_delta": [
-        -0.0036911929606696058,
-        0.04745113379690985,
-        0.005272646950307158
+        -0.002362363494828549,
+        0.030368725630022297,
+        0.0033744940481965635
       ],
-      "neighbor_center_delta_norm": 0.047885653487738065,
+      "neighbor_center_delta_norm": 0.030646818232152352,
       "face_center_before": [
         0.01958523924014734,
         -0.06750141735355208,
         0.8530583588765688
       ],
       "face_center_after": [
-        0.015894046279477735,
-        -0.020050283556642238,
-        0.8583310058268759
+        0.01722287574531879,
+        -0.03713269172352979,
+        0.8564328529247653
       ],
       "face_normal_world_before": [
         0.006395021294946213,
@@ -100,8 +100,8 @@
         0.4758885251156015
       ],
       "extent_delta": 0.0,
-      "translation_magnitude": 0.047885653487738065,
-      "normal_alignment": 0.9234085508282152
+      "translation_magnitude": 0.030646818232152352,
+      "normal_alignment": 0.923408550828215
     },
     "input_edit_debug": {
       "target_edit_before_obb": {
@@ -135,9 +135,9 @@
       },
       "target_edit_after_obb": {
         "center": [
-          0.012406474412461357,
-          0.07446630722306297,
-          0.8364548924981422
+          0.013144713004595278,
+          0.06497608046368099,
+          0.8354003631080807
         ],
         "axes": [
           [
@@ -162,7 +162,7 @@
           0.063679921953014
         ]
       },
-      "target_edit_face": "+u1"
+      "target_edit_face": "-u1"
     }
   },
   "target": "handlebar_0"

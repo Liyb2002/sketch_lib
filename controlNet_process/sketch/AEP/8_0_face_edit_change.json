@@ -2,16 +2,16 @@
   "connection_type": "attachment",
   "change": {
     "type": "move_single_face",
-    "delta_ratio_min": 3.852395655250606,
-    "delta_ratio_max": 3.852395655250606,
-    "ratio_sampled": 3.852395655250606,
+    "delta_ratio_min": 1.9724265754883148,
+    "delta_ratio_max": 1.9724265754883148,
+    "ratio_sampled": 1.9724265754883148,
     "expand_or_shrink": "translate",
     "face": "-u0",
     "axis": 0,
     "axis_name": "u0",
     "sign": -1,
-    "delta_requested": -0.04624300582041703,
-    "delta_applied": -0.04624300582041703,
+    "delta_requested": -0.023676418980053574,
+    "delta_applied": -0.023676418980053574,
     "old_extent": 0.012003701062581754,
     "new_extent": 0.012003701062581754,
     "min_extent": 0.0001,
@@ -46,9 +46,9 @@
     },
     "after_obb": {
       "center": [
-        -0.010786279002829264,
-        -0.056171108414620266,
-        1.0513411280340663
+        -0.008984976838022497,
+        -0.07932726170751227,
+        1.0487680763223166
       ],
       "axes": [
         [
@@ -79,20 +79,20 @@
       "neighbor_corresponding_face": "-u0",
       "axis_mapping": "axis_0_sign_-1",
       "neighbor_center_delta": [
-        -0.0036911929606695997,
-        0.04745113379690985,
-        0.005272646950307047
+        -0.001889890795862833,
+        0.02429498050401785,
+        0.0026995952385573396
       ],
-      "neighbor_center_delta_norm": 0.047885653487738045,
+      "neighbor_center_delta_norm": 0.024517454585721903,
       "face_center_before": [
         -0.007281705466139754,
         -0.11486921059385664,
         1.0418780497697575
       ],
       "face_center_after": [
-        -0.010972898426809354,
-        -0.0674180767969468,
-        1.0471506967200646
+        -0.009171596262002587,
+        -0.0905742300898388,
+        1.0445776450083148
       ],
       "face_normal_world_before": [
         -0.015546823684390532,
@@ -100,8 +100,8 @@
         -0.3490949409815231
       ],
       "extent_delta": 0.0,
-      "translation_magnitude": 0.047885653487738045,
-      "normal_alignment": -0.9656964550407224
+      "translation_magnitude": 0.024517454585721903,
+      "normal_alignment": -0.9656964550407237
     },
     "input_edit_debug": {
       "target_edit_before_obb": {
@@ -135,9 +135,9 @@
       },
       "target_edit_after_obb": {
         "center": [
-          -0.010086235490199429,
-          0.0467141857295858,
-          1.0637567497065394
+          -0.008757406024358372,
+          0.02963177756269826,
+          1.061858596804429
         ],
         "axes": [
           [

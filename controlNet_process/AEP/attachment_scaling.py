@@ -287,7 +287,7 @@ def apply_anchored_scale_on_neighbor(
     All in OBJECT SPACE.
 
     If s is sign of the MOVING face (+1 for +ui, -1 for -ui):
-      extent: e -> e' = e*r
+      extent: e -> e' = e*r (with 0.8 inertia applied)
       center shift along u:  C' = C + s*(e' - e)*u
     """
     C = _as_np(neighbor_before_obb["center"])
@@ -299,7 +299,13 @@ def apply_anchored_scale_on_neighbor(
     u = _normalize(R[:, ax])
 
     e0 = float(E[ax])
-    e1 = float(max(float(min_extent), e0 * float(r)))
+    
+    # Apply 0.8 inertia to scaling ratio
+    # If r=1.6 (60% growth), effective becomes 1.48 (48% growth)
+    inertia = 0.8
+    effective_r = 1.0 + inertia * (r - 1.0)
+    
+    e1 = float(max(float(min_extent), e0 * effective_r))
     E[ax] = e1
 
     dproj = float(s) * (e1 - e0)
@@ -310,6 +316,8 @@ def apply_anchored_scale_on_neighbor(
         "neighbor_axis": ax,
         "neighbor_sign_move": int(s),
         "r": float(r),
+        "r_effective": float(effective_r),
+        "inertia": float(inertia),
         "extent_before": float(e0),
         "extent_after": float(e1),
         "center_shift_obj": (C2 - C).tolist(),
@@ -318,7 +326,7 @@ def apply_anchored_scale_on_neighbor(
     }
     return out, dbg
 
-
+    
 # ----------------------------
 # Open3D visualization (WORLD SPACE) with object_space
 # ----------------------------

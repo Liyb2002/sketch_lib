@@ -212,13 +212,16 @@ def _compute_edit_decomp(change: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
-def _apply_translation(obb: Dict[str, Any], d_world: np.ndarray) -> Dict[str, Any]:
+def _apply_translation(obb: Dict[str, Any], d_world: np.ndarray, scale: float = 0.8) -> Dict[str, Any]:
+    """
+    Apply translation to OBB with optional scaling factor.
+    scale: inertia factor (default 1.0 = full movement, 0.8 = 80% movement)
+    """
     C = _as_np(obb["center"])
     U = _axes_matrix(obb["axes"])
     E = _as_np(obb["extents"])
-    C2 = C + d_world
+    C2 = C + (d_world * scale)  # <-- Apply scale here
     return {"center": C2.tolist(), "axes": U.tolist(), "extents": E.tolist()}
-
 
 # ----------------------------
 # Pretty-print helpers
@@ -575,7 +578,6 @@ def _solve_volume_edge(
     edited_face_str = _face_to_str(k, s_edit)
 
     rel, info = _classify_volume_attachment_face_vs_edit(e, edit_decomp)
-    print("rel", rel)
 
     if rel == "same":
         solving = "V1(same)->translate"

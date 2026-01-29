@@ -2,16 +2,16 @@
   "connection_type": "attachment",
   "change": {
     "type": "move_single_face",
-    "delta_ratio_min": 0.4687916883987542,
-    "delta_ratio_max": 0.4687916883987542,
-    "ratio_sampled": 0.4687916883987542,
+    "delta_ratio_min": 0.30002668057520304,
+    "delta_ratio_max": 0.30002668057520304,
+    "ratio_sampled": 0.30002668057520304,
     "expand_or_shrink": "translate",
     "face": "+u0",
     "axis": 0,
     "axis_name": "u0",
     "sign": 1,
-    "delta_requested": 0.04624300582041702,
-    "delta_applied": 0.04624300582041702,
+    "delta_requested": 0.029595523725066932,
+    "delta_applied": 0.029595523725066932,
     "old_extent": 0.0986429729126996,
     "new_extent": 0.0986429729126996,
     "min_extent": 0.0001,
@@ -46,9 +46,9 @@
     },
     "after_obb": {
       "center": [
-        -0.010086235490199429,
-        0.0467141857295858,
-        1.0637567497065394
+        -0.008757406024358372,
+        0.02963177756269826,
+        1.061858596804429
       ],
       "axes": [
         [
@@ -79,20 +79,20 @@
       "neighbor_corresponding_face": "+u0",
       "axis_mapping": "axis_0_sign_1",
       "neighbor_center_delta": [
-        -0.003691192960669599,
-        0.04745113379690985,
-        0.005272646950307047
+        -0.002362363494828542,
+        0.03036872563002231,
+        0.0033744940481965635
       ],
-      "neighbor_center_delta_norm": 0.047885653487738045,
+      "neighbor_center_delta_norm": 0.030646818232152366,
       "face_center_before": [
         -0.004861457621952,
         0.0916874126947231,
         1.0929198655634333
       ],
       "face_center_after": [
-        -0.008552650582621599,
-        0.13913854649163293,
-        1.0981925125137404
+        -0.007223821116780542,
+        0.1220561383247454,
+        1.09629435961163
       ],
       "face_normal_world_before": [
         0.01554682368439031,
@@ -100,8 +100,8 @@
         0.34909494098152316
       ],
       "extent_delta": 0.0,
-      "translation_magnitude": 0.04788565348773803,
-      "normal_alignment": 0.9656964550407224
+      "translation_magnitude": 0.030646818232152366,
+      "normal_alignment": 0.9656964550407228
     },
     "input_edit_debug": {
       "target_edit_before_obb": {
@@ -135,9 +135,9 @@
       },
       "target_edit_after_obb": {
         "center": [
-          0.007413447389356603,
-          0.18224428272171544,
-          1.0370668051636858
+          0.008151685981490523,
+          0.17275405596233348,
+          1.0360122757736245
         ],
         "axes": [
           [
