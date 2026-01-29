@@ -177,11 +177,6 @@ def main():
             # Extract the target_edit_face for cleaner printing
             target_edit_face = current_edit.get('change', {}).get('diagnostics', {}).get('input_edit_debug', {}).get('target_edit_face', 'unknown')
             
-            # Print the actual pair being processed
-            print(f"\n{'='*70}")
-            print(f"PROCESSING PAIR: ('{current_target}', target_edit_face='{target_edit_face}', '{nb}')")
-            print(f"{'='*70}")
-            
             # Skip if already edited
             if nb in edited_components:
                 continue
@@ -232,16 +227,16 @@ def main():
     # ------------------------------------------------------------
     # VIS once (after everything)
     # ------------------------------------------------------------
-    # if DO_VIS:
-    #     vis_from_saved_changes(
-    #         overlay_ply_path=OVERLAY_PLY,
-    #         nodes=nodes,
-    #         neighbor_names=list(edited_components - {initial_target}),
-    #         aep_changes_json=AEP_CHANGES_PATH,
-    #         target=initial_target,
-    #         window_name=f"AEP: target+neighbors (blue) + changed (red) | target={initial_target}",
-    #         show_overlay=True,
-    #     )
+    if DO_VIS:
+        vis_from_saved_changes(
+            overlay_ply_path=OVERLAY_PLY,
+            nodes=nodes,
+            neighbor_names=list(edited_components - {initial_target}),
+            aep_changes_json=AEP_CHANGES_PATH,
+            target=initial_target,
+            window_name=f"AEP: target+neighbors (blue) + changed (red) | target={initial_target}",
+            show_overlay=True,
+        )
 
 
 if __name__ == "__main__":

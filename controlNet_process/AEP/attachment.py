@@ -454,31 +454,48 @@ def _interval_to_plane_distance(lo: float, hi: float, p: float) -> float:
 def _closest_target_face_to_volume_box(
     bmin: np.ndarray,
     bmax: np.ndarray,
-    E0: np.ndarray
+    E0: np.ndarray,
+    axis: int = None,   # optional: if provided, only decide on this axis
 ) -> Tuple[int, int, float, Dict[str, Any]]:
-    best_axis, best_sign, best_dist = 0, +1, 1e30
     debug_faces: List[Dict[str, Any]] = []
 
-    for i in range(3):
+    if axis is not None:
+        i = int(axis)
         lo = float(bmin[i])
         hi = float(bmax[i])
+        ei = float(E0[i])
 
-        p_plus = float(+E0[i])
-        d_plus = _interval_to_plane_distance(lo, hi, p_plus)
-        debug_faces.append({"axis": i, "sign": +1, "plane": p_plus, "interval": [min(lo, hi), max(lo, hi)], "dist": float(d_plus)})
+        # True distances to the two faces on THIS axis
+        d_minus = abs(ei - lo)   # face at bmin => sign -1
+        d_plus  = abs(ei - hi)   # face at bmax => sign +1
+
+        debug_faces.append({"axis": i, "sign": -1, "plane": lo, "dist": float(d_minus)})
+        debug_faces.append({"axis": i, "sign": +1, "plane": hi, "dist": float(d_plus)})
+
+        if d_plus < d_minus:
+            best_axis, best_sign, best_dist = i, +1, float(d_plus)
+        else:
+            best_axis, best_sign, best_dist = i, -1, float(d_minus)
+
+        debug = {"faces_checked": debug_faces,
+                 "chosen": {"axis": int(best_axis), "sign": int(best_sign), "dist": float(best_dist)}}
+        return int(best_axis), int(best_sign), float(best_dist), debug
+
+    # fallback: previous behavior (if you ever want it)
+    best_axis, best_sign, best_dist = 0, +1, 1e30
+    for i in range(3):
+        lo = float(bmin[i]); hi = float(bmax[i]); ei = float(E0[i])
+        d_minus = abs(ei - lo)
+        d_plus  = abs(ei - hi)
+        debug_faces.append({"axis": i, "sign": -1, "plane": lo, "dist": float(d_minus)})
+        debug_faces.append({"axis": i, "sign": +1, "plane": hi, "dist": float(d_plus)})
         if d_plus < best_dist:
             best_axis, best_sign, best_dist = i, +1, float(d_plus)
-
-        p_minus = float(-E0[i])
-        d_minus = _interval_to_plane_distance(lo, hi, p_minus)
-        debug_faces.append({"axis": i, "sign": -1, "plane": p_minus, "interval": [min(lo, hi), max(lo, hi)], "dist": float(d_minus)})
         if d_minus < best_dist:
             best_axis, best_sign, best_dist = i, -1, float(d_minus)
 
-    debug = {
-        "faces_checked": debug_faces,
-        "chosen": {"axis": int(best_axis), "sign": int(best_sign), "dist": float(best_dist)},
-    }
+    debug = {"faces_checked": debug_faces,
+             "chosen": {"axis": int(best_axis), "sign": int(best_sign), "dist": float(best_dist)}}
     return int(best_axis), int(best_sign), float(best_dist), debug
 
 
@@ -508,6 +525,7 @@ def _classify_volume_attachment_face_vs_edit(
     s_edit = int(edit_decomp["s_edit"])
     E0 = edit_decomp["E0"]
 
+    # THIS CODE IS ERRORSOME, NEED DEBUG
     bmin, bmax, method, extra = _get_volume_box_local_from_edge(e, edit_decomp)
     if bmin is None or bmax is None:
         return "unknown", {
@@ -516,14 +534,12 @@ def _classify_volume_attachment_face_vs_edit(
             "edited_face": _face_to_str(k, s_edit),
         }
 
-    axis_star, sign_star, dist_star, dbg = _closest_target_face_to_volume_box(bmin, bmax, E0)
+    axis_star, sign_star, dist_star, dbg = _closest_target_face_to_volume_box(bmin, bmax, E0, axis=k)
 
     if axis_star == k and sign_star == s_edit:
         rel = "same"
-    elif axis_star == k and sign_star == -s_edit:
-        rel = "opposite"
     else:
-        rel = "perpendicular"
+        rel = "opposite"
 
     info = {
         "method": method,
@@ -559,6 +575,7 @@ def _solve_volume_edge(
     edited_face_str = _face_to_str(k, s_edit)
 
     rel, info = _classify_volume_attachment_face_vs_edit(e, edit_decomp)
+    print("rel", rel)
 
     if rel == "same":
         solving = "V1(same)->translate"
@@ -737,6 +754,7 @@ def apply_attachments(
             _print_edge_header(kind=kind, target=target, other=other, idx=idx)
 
         rec = None
+        print("neighbor", neighbor)
         if kind == "face":
             rec = _solve_face_edge(target, other, e, ed, other_obb, min_extent=min_extent, verbose=verbose)
         elif kind == "volume":
