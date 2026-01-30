@@ -1,23 +1,420 @@
 {
   "view": "view_4",
-  "tolerance_pixels": 5,
-  "total_close_boundary_pixels": 208,
-  "num_pairs_with_close_boundaries": 3,
+  "tolerance_pixels": 10,
+  "anchors_per_side_per_pair": 200,
+  "total_close_boundary_pixels": 665,
+  "num_pairs_with_close_boundaries": 4,
   "close_pairs": [
     {
       "label1": "fender_0",
       "label2": "wheel_0",
-      "num_close_pixels": 26
+      "num_close_pixels": 94,
+      "anchors_label1_xy": [
+        [
+          258,
+          160
+        ],
+        [
+          270,
+          172
+        ]
+      ],
+      "anchors_label2_xy": [
+        [
+          257,
+          172
+        ],
+        [
+          267,
+          178
+        ]
+      ],
+      "pair_anchor_vis": "anchor_pairs/fender_0__wheel_0.png"
     },
     {
       "label1": "seat_0",
       "label2": "storage_0",
-      "num_close_pixels": 128
+      "num_close_pixels": 302,
+      "anchors_label1_xy": [
+        [
+          82,
+          156
+        ],
+        [
+          124,
+          149
+        ],
+        [
+          147,
+          144
+        ],
+        [
+          105,
+          152
+        ],
+        [
+          62,
+          156
+        ],
+        [
+          164,
+          138
+        ],
+        [
+          50,
+          153
+        ],
+        [
+          94,
+          153
+        ],
+        [
+          176,
+          133
+        ],
+        [
+          135,
+          147
+        ],
+        [
+          72,
+          157
+        ]
+      ],
+      "anchors_label2_xy": [
+        [
+          112,
+          145
+        ],
+        [
+          59,
+          157
+        ],
+        [
+          164,
+          143
+        ],
+        [
+          100,
+          147
+        ],
+        [
+          137,
+          144
+        ],
+        [
+          75,
+          152
+        ],
+        [
+          176,
+          144
+        ],
+        [
+          153,
+          143
+        ],
+        [
+          127,
+          145
+        ],
+        [
+          87,
+          151
+        ],
+        [
+          53,
+          165
+        ]
+      ],
+      "pair_anchor_vis": "anchor_pairs/seat_0__storage_0.png"
+    },
+    {
+      "label1": "storage_0",
+      "label2": "wheel_0",
+      "num_close_pixels": 8,
+      "anchors_label1_xy": [
+        [
+          201,
+          209
+        ]
+      ],
+      "anchors_label2_xy": [
+        [
+          211,
+          209
+        ]
+      ],
+      "pair_anchor_vis": "anchor_pairs/storage_0__wheel_0.png"
     },
     {
       "label1": "storage_0",
       "label2": "wheel_1",
-      "num_close_pixels": 54
+      "num_close_pixels": 261,
+      "anchors_label1_xy": [
+        [
+          127,
+          229
+        ],
+        [
+          142,
+          225
+        ],
+        [
+          54,
+          237
+        ],
+        [
+          84,
+          235
+        ],
+        [
+          111,
+          232
+        ],
+        [
+          71,
+          235
+        ],
+        [
+          39,
+          239
+        ],
+        [
+          99,
+          234
+        ]
+      ],
+      "anchors_label2_xy": [
+        [
+          75,
+          244
+        ],
+        [
+          99,
+          239
+        ],
+        [
+          58,
+          246
+        ],
+        [
+          45,
+          245
+        ],
+        [
+          117,
+          236
+        ],
+        [
+          138,
+          231
+        ],
+        [
+          85,
+          242
+        ],
+        [
+          127,
+          233
+        ]
+      ],
+      "pair_anchor_vis": "anchor_pairs/storage_0__wheel_1.png"
     }
-  ]
+  ],
+  "label_anchor_points_xy": {
+    "fender_0": [
+      [
+        258,
+        160
+      ],
+      [
+        270,
+        172
+      ]
+    ],
+    "handlebar_0": [],
+    "seat_0": [
+      [
+        50,
+        153
+      ],
+      [
+        62,
+        156
+      ],
+      [
+        72,
+        157
+      ],
+      [
+        82,
+        156
+      ],
+      [
+        94,
+        153
+      ],
+      [
+        105,
+        152
+      ],
+      [
+        124,
+        149
+      ],
+      [
+        135,
+        147
+      ],
+      [
+        147,
+        144
+      ],
+      [
+        164,
+        138
+      ],
+      [
+        176,
+        133
+      ]
+    ],
+    "storage_0": [
+      [
+        39,
+        239
+      ],
+      [
+        53,
+        165
+      ],
+      [
+        54,
+        237
+      ],
+      [
+        59,
+        157
+      ],
+      [
+        71,
+        235
+      ],
+      [
+        75,
+        152
+      ],
+      [
+        84,
+        235
+      ],
+      [
+        87,
+        151
+      ],
+      [
+        99,
+        234
+      ],
+      [
+        100,
+        147
+      ],
+      [
+        111,
+        232
+      ],
+      [
+        112,
+        145
+      ],
+      [
+        127,
+        145
+      ],
+      [
+        127,
+        229
+      ],
+      [
+        137,
+        144
+      ],
+      [
+        142,
+        225
+      ],
+      [
+        153,
+        143
+      ],
+      [
+        164,
+        143
+      ],
+      [
+        176,
+        144
+      ],
+      [
+        201,
+        209
+      ]
+    ],
+    "wheel_0": [
+      [
+        211,
+        209
+      ],
+      [
+        257,
+        172
+      ],
+      [
+        267,
+        178
+      ]
+    ],
+    "wheel_1": [
+      [
+        45,
+        245
+      ],
+      [
+        58,
+        246
+      ],
+      [
+        75,
+        244
+      ],
+      [
+        85,
+        242
+      ],
+      [
+        99,
+        239
+      ],
+      [
+        117,
+        236
+      ],
+      [
+        127,
+        233
+      ],
+      [
+        138,
+        231
+      ]
+    ]
+  },
+  "outputs": {
+    "boundaries_with_close_highlighted": "boundaries_with_close_highlighted.png",
+    "close_boundaries_only": "close_boundaries_only.png",
+    "anchor_points_all": "anchor_points_all.png",
+    "anchor_pairs_dir": "anchor_pairs/"
+  }
 }

@@ -1,13 +1,201 @@
 {
   "view": "view_0",
-  "tolerance_pixels": 5,
-  "total_close_boundary_pixels": 13,
-  "num_pairs_with_close_boundaries": 1,
+  "tolerance_pixels": 10,
+  "anchors_per_side_per_pair": 200,
+  "total_close_boundary_pixels": 176,
+  "num_pairs_with_close_boundaries": 4,
   "close_pairs": [
     {
       "label1": "fender_0",
+      "label2": "handlebar_0",
+      "num_close_pixels": 27,
+      "anchors_label1_xy": [
+        [
+          198,
+          110
+        ]
+      ],
+      "anchors_label2_xy": [
+        [
+          200,
+          99
+        ]
+      ],
+      "pair_anchor_vis": "anchor_pairs/fender_0__handlebar_0.png"
+    },
+    {
+      "label1": "fender_0",
       "label2": "headlight_0",
-      "num_close_pixels": 13
+      "num_close_pixels": 116,
+      "anchors_label1_xy": [
+        [
+          192,
+          117
+        ],
+        [
+          198,
+          109
+        ],
+        [
+          165,
+          127
+        ],
+        [
+          155,
+          122
+        ],
+        [
+          178,
+          129
+        ]
+      ],
+      "anchors_label2_xy": [
+        [
+          184,
+          117
+        ],
+        [
+          192,
+          102
+        ],
+        [
+          171,
+          119
+        ],
+        [
+          161,
+          114
+        ]
+      ],
+      "pair_anchor_vis": "anchor_pairs/fender_0__headlight_0.png"
+    },
+    {
+      "label1": "fender_0",
+      "label2": "wheel_0",
+      "num_close_pixels": 32,
+      "anchors_label1_xy": [
+        [
+          193,
+          239
+        ]
+      ],
+      "anchors_label2_xy": [
+        [
+          183,
+          238
+        ],
+        [
+          185,
+          249
+        ]
+      ],
+      "pair_anchor_vis": "anchor_pairs/fender_0__wheel_0.png"
+    },
+    {
+      "label1": "handlebar_0",
+      "label2": "headlight_0",
+      "num_close_pixels": 26,
+      "anchors_label1_xy": [
+        [
+          200,
+          100
+        ]
+      ],
+      "anchors_label2_xy": [
+        [
+          190,
+          96
+        ],
+        [
+          192,
+          106
+        ]
+      ],
+      "pair_anchor_vis": "anchor_pairs/handlebar_0__headlight_0.png"
     }
-  ]
+  ],
+  "label_anchor_points_xy": {
+    "fender_0": [
+      [
+        155,
+        122
+      ],
+      [
+        165,
+        127
+      ],
+      [
+        178,
+        129
+      ],
+      [
+        192,
+        117
+      ],
+      [
+        193,
+        239
+      ],
+      [
+        198,
+        109
+      ],
+      [
+        198,
+        110
+      ]
+    ],
+    "handlebar_0": [
+      [
+        200,
+        99
+      ],
+      [
+        200,
+        100
+      ]
+    ],
+    "headlight_0": [
+      [
+        161,
+        114
+      ],
+      [
+        171,
+        119
+      ],
+      [
+        184,
+        117
+      ],
+      [
+        190,
+        96
+      ],
+      [
+        192,
+        102
+      ],
+      [
+        192,
+        106
+      ]
+    ],
+    "wheel_0": [
+      [
+        183,
+        238
+      ],
+      [
+        185,
+        249
+      ]
+    ]
+  },
+  "outputs": {
+    "boundaries_with_close_highlighted": "boundaries_with_close_highlighted.png",
+    "close_boundaries_only": "close_boundaries_only.png",
+    "anchor_points_all": "anchor_points_all.png",
+    "anchor_pairs_dir": "anchor_pairs/"
+  }
 }
