@@ -1,7 +1,8 @@
 {
   "view": "view_0",
   "tolerance_pixels": 10,
-  "anchors_per_side_per_pair": 200,
+  "min_anchor_spacing_px": 10,
+  "max_anchors_per_side_per_pair": 50,
   "total_close_boundary_pixels": 176,
   "num_pairs_with_close_boundaries": 4,
   "close_pairs": [
@@ -11,14 +12,14 @@
       "num_close_pixels": 27,
       "anchors_label1_xy": [
         [
-          198,
-          110
+          201,
+          108
         ]
       ],
       "anchors_label2_xy": [
         [
-          200,
-          99
+          206,
+          101
         ]
       ],
       "pair_anchor_vis": "anchor_pairs/fender_0__handlebar_0.png"
@@ -29,42 +30,42 @@
       "num_close_pixels": 116,
       "anchors_label1_xy": [
         [
-          192,
-          117
-        ],
-        [
-          198,
-          109
-        ],
-        [
           165,
           127
         ],
         [
-          155,
-          122
+          179,
+          129
         ],
         [
-          178,
-          129
+          191,
+          116
+        ],
+        [
+          201,
+          108
+        ],
+        [
+          155,
+          122
         ]
       ],
       "anchors_label2_xy": [
         [
-          184,
-          117
-        ],
-        [
-          192,
-          102
-        ],
-        [
-          171,
+          170,
           119
         ],
         [
-          161,
-          114
+          185,
+          115
+        ],
+        [
+          192,
+          101
+        ],
+        [
+          160,
+          113
         ]
       ],
       "pair_anchor_vis": "anchor_pairs/fender_0__headlight_0.png"
@@ -75,14 +76,18 @@
       "num_close_pixels": 32,
       "anchors_label1_xy": [
         [
-          193,
-          239
+          194,
+          235
+        ],
+        [
+          194,
+          245
         ]
       ],
       "anchors_label2_xy": [
         [
           183,
-          238
+          234
         ],
         [
           185,
@@ -98,17 +103,13 @@
       "anchors_label1_xy": [
         [
           200,
-          100
+          97
         ]
       ],
       "anchors_label2_xy": [
         [
-          190,
-          96
-        ],
-        [
           192,
-          106
+          102
         ]
       ],
       "pair_anchor_vis": "anchor_pairs/handlebar_0__headlight_0.png"
@@ -125,66 +126,62 @@
         127
       ],
       [
-        178,
+        179,
         129
       ],
       [
-        192,
-        117
+        191,
+        116
       ],
       [
-        193,
-        239
+        194,
+        235
       ],
       [
-        198,
-        109
+        194,
+        245
       ],
       [
-        198,
-        110
+        201,
+        108
       ]
     ],
     "handlebar_0": [
       [
         200,
-        99
+        97
       ],
       [
-        200,
-        100
+        206,
+        101
       ]
     ],
     "headlight_0": [
       [
-        161,
-        114
+        160,
+        113
       ],
       [
-        171,
+        170,
         119
       ],
       [
-        184,
-        117
+        185,
+        115
       ],
       [
-        190,
-        96
+        192,
+        101
       ],
       [
         192,
         102
-      ],
-      [
-        192,
-        106
       ]
     ],
     "wheel_0": [
       [
         183,
-        238
+        234
       ],
       [
         185,

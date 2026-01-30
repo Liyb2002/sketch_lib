@@ -223,14 +223,12 @@ def main():
 
             if not has_mask:
                 results_json["labels"][label] = label_entry
-                print(f"[skip] {view_name} {label}: no mask found")
                 continue
 
             # Load mask
             mask0 = cv2.imread(mask_path, cv2.IMREAD_GRAYSCALE)
             if mask0 is None:
                 results_json["labels"][label] = label_entry
-                print(f"[skip] {view_name} {label}: failed to read mask")
                 continue
             
             # Resize mask if needed
@@ -287,19 +285,15 @@ def main():
 
             results_json["labels"][label] = label_entry
 
-            print(f"[ok] {view_name} {label}: mask warped | H={dbg['status']} pairs={dbg.get('valid_pairs')}")
-
         # Save aggregate overlay
         out_all = os.path.join(out_dir, "all_warped_masks_overlay.png")
         cv2.imwrite(out_all, all_warped_overlay)
-        print(f"[ok] {view_name}: wrote {out_all}")
 
         # Save results JSON
         results_json["all_warped_masks_overlay"] = os.path.relpath(out_all, ROOT)
         results_json_path = os.path.join(out_dir, "homography_results.json")
         with open(results_json_path, "w") as f:
             json.dump(results_json, f, indent=2)
-        print(f"[ok] {view_name}: wrote {results_json_path}")
 
     print("[done] Homography computation complete.")
 
