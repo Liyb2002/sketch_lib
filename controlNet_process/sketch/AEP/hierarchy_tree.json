@@ -1,0 +1,51 @@
+{
+  "wheel_0": {
+    "parent": null,
+    "children": [
+      "fender_0",
+      "unknown_0",
+      "wheel_1"
+    ]
+  },
+  "fender_0": {
+    "parent": "wheel_0",
+    "children": [
+      "handlebar_0",
+      "headlight_0"
+    ]
+  },
+  "unknown_0": {
+    "parent": "wheel_0",
+    "children": [
+      "storage_0"
+    ]
+  },
+  "wheel_1": {
+    "parent": "wheel_0",
+    "children": [
+      "unknown_1"
+    ]
+  },
+  "handlebar_0": {
+    "parent": "fender_0",
+    "children": []
+  },
+  "headlight_0": {
+    "parent": "fender_0",
+    "children": []
+  },
+  "storage_0": {
+    "parent": "unknown_0",
+    "children": [
+      "seat_0"
+    ]
+  },
+  "unknown_1": {
+    "parent": "wheel_1",
+    "children": []
+  },
+  "seat_0": {
+    "parent": "storage_0",
+    "children": []
+  }
+}

@@ -35,6 +35,7 @@ AEP_DATA_DIR = os.path.join(ROOT, "sketch", "AEP")
 CONSTRAINTS_PATH = os.path.join(AEP_DATA_DIR, "filtered_relations.json")
 EDIT_PATH = os.path.join(AEP_DATA_DIR, "target_face_edit_change.json")
 AEP_CHANGES_PATH = os.path.join(AEP_DATA_DIR, "aep_changes.json")
+HIERARCHY_TREE_PATH = os.path.join(AEP_DATA_DIR, "hierarchy_tree.json")
 
 OVERLAY_PLY = os.path.join(
     ROOT, "sketch", "partfield_overlay", "label_assignment_k20", "assignment_colored.ply"
@@ -47,6 +48,13 @@ VIS_SEPARATE = True
 def load_json(path: str):
     with open(path, "r") as f:
         return json.load(f)
+
+
+def save_hierarchy_tree(hierarchy_tree: dict, path: str):
+    """Save the hierarchy tree to a JSON file."""
+    with open(path, "w") as f:
+        json.dump(hierarchy_tree, f, indent=2)
+    print(f"Saved hierarchy tree to: {path}")
 
 
 def process_neighbor_edit(
@@ -152,6 +160,15 @@ def main():
     all_component_names = set(nodes.keys())
     edited_components = {target_component}
     
+    # Initialize hierarchy tree
+    # Structure: {component_name: {"parent": parent_name or null, "children": [child_names]}}
+    hierarchy_tree = {
+        initial_target: {
+            "parent": None,
+            "children": []
+        }
+    }
+    
     # Initialize accumulators
     symcon_res_all = {"symmetry": {}, "containment": {}}
     attach_res_all = init_attachment_accumulator(target_component)
@@ -192,9 +209,26 @@ def main():
                 face_edit_counter=face_edit_counter,
             )
             
-            # If an edit was saved, mark as edited and add to propagation queue
+            # If an edit was saved, mark as edited and add to hierarchy tree
             if was_saved:
                 edited_components.add(nb)
+                
+                # Update hierarchy tree
+                # Add child to parent's children list
+                if current_target in hierarchy_tree:
+                    hierarchy_tree[current_target]["children"].append(nb)
+                else:
+                    # This shouldn't happen, but handle it gracefully
+                    hierarchy_tree[current_target] = {
+                        "parent": None,
+                        "children": [nb]
+                    }
+                
+                # Create entry for the child
+                hierarchy_tree[nb] = {
+                    "parent": current_target,
+                    "children": []
+                }
                 
                 # This neighbor is now a potential target for further propagation
                 # Collect its edit and neighbors, then add to queue
@@ -211,6 +245,11 @@ def main():
                         valid_neighbors = [n for n in nbrs if n not in edited_components]
                         if len(valid_neighbors) > 0:
                             propagation_queue.append((tgt, edt, valid_neighbors))
+
+    # ------------------------------------------------------------
+    # SAVE hierarchy tree
+    # ------------------------------------------------------------
+    save_hierarchy_tree(hierarchy_tree, HIERARCHY_TREE_PATH)
 
     # ------------------------------------------------------------
     # SAVE once: target edit + aggregated neighbor changes

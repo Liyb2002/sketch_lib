@@ -1,0 +1,28 @@
+{
+  "view": "view_5",
+  "tolerance_pixels": 5,
+  "total_close_boundary_pixels": 341,
+  "num_pairs_with_close_boundaries": 4,
+  "close_pairs": [
+    {
+      "label1": "fender_0",
+      "label2": "headlight_0",
+      "num_close_pixels": 47
+    },
+    {
+      "label1": "fender_0",
+      "label2": "wheel_0",
+      "num_close_pixels": 102
+    },
+    {
+      "label1": "seat_0",
+      "label2": "storage_0",
+      "num_close_pixels": 136
+    },
+    {
+      "label1": "storage_0",
+      "label2": "wheel_1",
+      "num_close_pixels": 56
+    }
+  ]
+}
