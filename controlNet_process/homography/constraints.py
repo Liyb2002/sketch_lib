@@ -4,17 +4,7 @@
 # Compute close-boundary relations (within tolerance) between segmentation masks,
 # sample sparse anchor points along those close boundaries, and save visualizations + JSON.
 #
-# Inputs:
-#   sketch/segmentation_original_image/view_{x}/{label}_mask.png
-#   sketch/views/view_{x}.png
-#
-# Outputs:
-#   sketch/back_project_masks/view_{x}/constraints/...
-#     - boundaries_with_close_highlighted.png
-#     - close_boundaries_only.png
-#     - anchor_points_all.png
-#     - anchor_pairs/{label1}__{label2}.png
-#     - close_boundaries_summary.json
+# NOW ALSO SAVES PAIRED ANCHORS (CORRESPONDENCES) SO paste_back DOES NOT GUESS PAIRING.
 
 import os
 import json
@@ -49,10 +39,6 @@ def _sample_points_with_min_spacing(
     min_spacing_px: int,
     max_points: int,
 ) -> np.ndarray:
-    """
-    Sample (x,y) points from nonzero pixels of bin_mask, enforcing a minimum spacing.
-    Returns up to max_points points.
-    """
     ys, xs = np.nonzero(bin_mask)
     if xs.size == 0:
         return np.zeros((0, 2), dtype=np.int32)
@@ -79,7 +65,6 @@ def _sample_points_with_min_spacing(
 
 
 def _merge_unique_points(points_list, max_points=None) -> np.ndarray:
-    """Combine multiple (K,2) arrays into a unique set; optionally subsample."""
     if not points_list:
         return np.zeros((0, 2), dtype=np.int32)
 
@@ -97,29 +82,64 @@ def _merge_unique_points(points_list, max_points=None) -> np.ndarray:
 
 
 def _draw_points(img_bgr: np.ndarray, pts_xy: np.ndarray, color_bgr, radius: int = 2):
-    """Draw small filled circles for each (x,y)."""
     for x, y in pts_xy:
         cv2.circle(img_bgr, (int(x), int(y)), radius, color_bgr, thickness=-1)
+
+
+def _nearest_boundary_pixel_in_window(
+    boundary_u8: np.ndarray,
+    x: int,
+    y: int,
+    tol: int,
+) -> np.ndarray:
+    """
+    Find nearest boundary pixel in boundary_u8 within a (2*tol+1)x(2*tol+1) window around (x,y).
+    Returns [xn, yn] int32 or None if no boundary pixels in window.
+    """
+    H, W = boundary_u8.shape[:2]
+    x0 = max(0, x - tol)
+    x1 = min(W - 1, x + tol)
+    y0 = max(0, y - tol)
+    y1 = min(H - 1, y + tol)
+
+    patch = boundary_u8[y0:y1 + 1, x0:x1 + 1]
+    ys, xs = np.nonzero(patch > 0)
+    if xs.size == 0:
+        return None
+
+    # convert to absolute coords
+    xs_abs = xs + x0
+    ys_abs = ys + y0
+
+    dx = xs_abs.astype(np.float64) - float(x)
+    dy = ys_abs.astype(np.float64) - float(y)
+    d2 = dx * dx + dy * dy
+    k = int(np.argmin(d2))
+    return np.array([int(xs_abs[k]), int(ys_abs[k])], dtype=np.int32)
+
+
+def _pair_anchors_by_local_nearest(
+    anchors_src_xy: np.ndarray,
+    boundary_tgt_u8: np.ndarray,
+    tol: int,
+) -> np.ndarray:
+    """
+    For each anchor in anchors_src_xy (on src boundary), find nearest pixel on target boundary
+    within tolerance window. Returns (K,2,2): [[[x_src,y_src],[x_tgt,y_tgt]], ...]
+    """
+    pairs = []
+    for (x, y) in anchors_src_xy:
+        nn = _nearest_boundary_pixel_in_window(boundary_tgt_u8, int(x), int(y), tol)
+        if nn is None:
+            continue
+        pairs.append([[int(x), int(y)], [int(nn[0]), int(nn[1])]])
+    return np.array(pairs, dtype=np.int32) if len(pairs) > 0 else np.zeros((0, 2, 2), dtype=np.int32)
 
 
 # ----------------------------
 # Find close boundaries (+ anchors)
 # ----------------------------
 def find_close_boundary_pixels_and_anchors(boundaries_dict, tolerance_pixels=10):
-    """
-    Find boundary pixels from different masks that are close to each other,
-    AND extract sparse anchor points on each side of each close pair.
-
-    Returns:
-        close_pixels: binary mask (H,W) union of all close boundary pixels
-        pair_info: list of dicts:
-            {
-              label1, label2,
-              num_close_pixels,
-              anchors_label1_xy: (K1,2) [x,y] on label1 boundary close to label2,
-              anchors_label2_xy: (K2,2) [x,y] on label2 boundary close to label1
-            }
-    """
     labels = list(boundaries_dict.keys())
     H, W = next(iter(boundaries_dict.values())).shape
 
@@ -135,35 +155,45 @@ def find_close_boundary_pixels_and_anchors(boundaries_dict, tolerance_pixels=10)
             boundary2 = boundaries_dict[label2].astype(np.uint8)
 
             dilated1 = cv2.dilate(boundary1, kernel, iterations=1)
-            close_on_2 = (dilated1 > 0) & (boundary2 > 0)
+            close_on_2 = (dilated1 > 0) & (boundary2 > 0)   # pixels on boundary2 close to boundary1
 
             dilated2 = cv2.dilate(boundary2, kernel, iterations=1)
-            close_on_1 = (dilated2 > 0) & (boundary1 > 0)
+            close_on_1 = (dilated2 > 0) & (boundary1 > 0)   # pixels on boundary1 close to boundary2
 
             close_region_union = close_on_1 | close_on_2
             num_close = int(np.sum(close_region_union))
 
-            if num_close > 0:
-                close_pixels[close_region_union] = 255
+            if num_close <= 0:
+                continue
 
-                anchors1 = _sample_points_with_min_spacing(
-                    close_on_1.astype(np.uint8),
-                    min_spacing_px=MIN_ANCHOR_SPACING_PX,
-                    max_points=MAX_ANCHORS_PER_SIDE_PER_PAIR,
-                )
-                anchors2 = _sample_points_with_min_spacing(
-                    close_on_2.astype(np.uint8),
-                    min_spacing_px=MIN_ANCHOR_SPACING_PX,
-                    max_points=MAX_ANCHORS_PER_SIDE_PER_PAIR,
-                )
+            close_pixels[close_region_union] = 255
 
-                pair_info.append({
-                    "label1": label1,
-                    "label2": label2,
-                    "num_close_pixels": num_close,
-                    "anchors_label1_xy": anchors1,
-                    "anchors_label2_xy": anchors2,
-                })
+            # Sample anchors on each side (still useful for visualization + per-label unions)
+            anchors1 = _sample_points_with_min_spacing(
+                close_on_1.astype(np.uint8),
+                min_spacing_px=MIN_ANCHOR_SPACING_PX,
+                max_points=MAX_ANCHORS_PER_SIDE_PER_PAIR,
+            )
+            anchors2 = _sample_points_with_min_spacing(
+                close_on_2.astype(np.uint8),
+                min_spacing_px=MIN_ANCHOR_SPACING_PX,
+                max_points=MAX_ANCHORS_PER_SIDE_PER_PAIR,
+            )
+
+            # NEW: build *paired* anchors using local nearest mapping (no guessing later)
+            # Pairing direction is explicitly label1 -> label2 and label2 -> label1
+            paired_12 = _pair_anchors_by_local_nearest(anchors1, boundary2, tolerance_pixels)  # [ [l1],[l2] ]
+            paired_21 = _pair_anchors_by_local_nearest(anchors2, boundary1, tolerance_pixels)  # [ [l2],[l1] ]
+
+            pair_info.append({
+                "label1": label1,
+                "label2": label2,
+                "num_close_pixels": num_close,
+                "anchors_label1_xy": anchors1,
+                "anchors_label2_xy": anchors2,
+                "paired_anchors_l1_l2_xy": paired_12,  # shape (K,2,2): [[[x1,y1],[x2,y2]],...]
+                "paired_anchors_l2_l1_xy": paired_21,  # shape (K,2,2): [[[x2,y2],[x1,y1]],...]
+            })
 
     return close_pixels, pair_info
 
@@ -198,16 +228,13 @@ def main():
         for mask_file in sorted(os.listdir(seg_folder)):
             if not mask_file.endswith("_mask.png"):
                 continue
-
             label = mask_file.replace("_mask.png", "")
             mask_path = os.path.join(seg_folder, mask_file)
             mask = cv2.imread(mask_path, cv2.IMREAD_GRAYSCALE)
             if mask is None:
                 continue
-
             if mask.shape[:2] != (H_img, W_img):
                 mask = cv2.resize(mask, (W_img, H_img), interpolation=cv2.INTER_NEAREST)
-
             original_masks[label] = mask
 
         # Boundaries
@@ -218,7 +245,7 @@ def main():
             eroded = cv2.erode(binary, kernel, iterations=1)
             boundaries[label] = binary - eroded
 
-        # Close pixels + anchors
+        # Close pixels + anchors (+ paired anchors)
         close_pixels, pair_info = find_close_boundary_pixels_and_anchors(
             boundaries,
             tolerance_pixels=TOLERANCE_PIXELS,
@@ -228,7 +255,6 @@ def main():
 
         # Vis 1: masks white, boundaries red, close boundaries green
         vis1 = np.zeros((H_img, W_img, 3), dtype=np.uint8)
-
         all_masks = np.zeros((H_img, W_img), dtype=np.uint8)
         for mask in original_masks.values():
             all_masks[mask > 0] = 255
@@ -240,7 +266,6 @@ def main():
         vis1[all_boundaries > 0] = (0, 0, 255)
 
         vis1[close_pixels > 0] = (0, 255, 0)
-
         cv2.imwrite(os.path.join(out_dir, "boundaries_with_close_highlighted.png"), vis1)
 
         # Vis 2: only close pixels
@@ -261,7 +286,7 @@ def main():
             label_to_anchor_points[l1].append(anchors1)
             label_to_anchor_points[l2].append(anchors2)
 
-            # Pair visualization
+            # Pair visualization (+ show pairing lines for l1->l2 correspondences)
             pair_vis = np.zeros((H_img, W_img, 3), dtype=np.uint8)
 
             pair_vis[boundaries[l1] > 0] = (255, 0, 0)  # blue boundary
@@ -278,6 +303,14 @@ def main():
             _draw_points(pair_vis, anchors1, ANCHOR_COLOR_L1, radius=ANCHOR_DRAW_RADIUS)
             _draw_points(pair_vis, anchors2, ANCHOR_COLOR_L2, radius=ANCHOR_DRAW_RADIUS)
 
+            # draw lines for paired_anchors_l1_l2_xy (cyan)
+            paired_12 = p["paired_anchors_l1_l2_xy"]
+            if paired_12.shape[0] > 0:
+                for a, b in paired_12:
+                    ax, ay = int(a[0]), int(a[1])
+                    bx, by = int(b[0]), int(b[1])
+                    cv2.line(pair_vis, (ax, ay), (bx, by), (255, 255, 0), 1)
+
             pair_path = os.path.join(anchor_pairs_dir, f"{l1}__{l2}.png")
             cv2.imwrite(pair_path, pair_vis)
 
@@ -287,6 +320,8 @@ def main():
                 "num_close_pixels": int(p["num_close_pixels"]),
                 "anchors_label1_xy": anchors1.astype(int).tolist(),
                 "anchors_label2_xy": anchors2.astype(int).tolist(),
+                "paired_anchors_l1_l2_xy": p["paired_anchors_l1_l2_xy"].astype(int).tolist(),
+                "paired_anchors_l2_l1_xy": p["paired_anchors_l2_l1_xy"].astype(int).tolist(),
                 "pair_anchor_vis": os.path.relpath(pair_path, out_dir),
             })
 

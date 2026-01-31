@@ -1,0 +1,60 @@
+{
+  "view": "view_2",
+  "root": "wheel_0",
+  "edges_processed": [
+    {
+      "parent": "wheel_0",
+      "child": "fender_0",
+      "translation_dx_dy": [
+        -1.7142857142857142,
+        1.4285714285714286
+      ],
+      "num_pairs_used": 7,
+      "mean_pair_dist_before": 3.4285714285714284,
+      "mean_pair_dist_after": 3.62273699255148,
+      "outputs": {
+        "correspondence_before": "edges/wheel_0__fender_0/correspondence_before.png",
+        "correspondence_after": "edges/wheel_0__fender_0/correspondence_after.png",
+        "masks_filled_before": "edges/wheel_0__fender_0/masks_filled_before.png",
+        "masks_filled_after": "edges/wheel_0__fender_0/masks_filled_after.png"
+      }
+    },
+    {
+      "parent": "fender_0",
+      "child": "handlebar_0",
+      "translation_dx_dy": [
+        1.1666666666666667,
+        5.666666666666667
+      ],
+      "num_pairs_used": 6,
+      "mean_pair_dist_before": 7.093941736875467,
+      "mean_pair_dist_after": 4.7954789280766965,
+      "outputs": {
+        "correspondence_before": "edges/fender_0__handlebar_0/correspondence_before.png",
+        "correspondence_after": "edges/fender_0__handlebar_0/correspondence_after.png",
+        "masks_filled_before": "edges/fender_0__handlebar_0/masks_filled_before.png",
+        "masks_filled_after": "edges/fender_0__handlebar_0/masks_filled_after.png"
+      }
+    },
+    {
+      "parent": "storage_0",
+      "child": "seat_0",
+      "translation_dx_dy": [
+        0.36363636363636365,
+        0.7272727272727273
+      ],
+      "num_pairs_used": 11,
+      "mean_pair_dist_before": 4.134176646166487,
+      "mean_pair_dist_after": 4.081362839895551,
+      "outputs": {
+        "correspondence_before": "edges/storage_0__seat_0/correspondence_before.png",
+        "correspondence_after": "edges/storage_0__seat_0/correspondence_after.png",
+        "masks_filled_before": "edges/storage_0__seat_0/masks_filled_before.png",
+        "masks_filled_after": "edges/storage_0__seat_0/masks_filled_after.png"
+      }
+    }
+  ],
+  "outputs": {
+    "all_masks_after_overlay": "all_masks_after_overlay.png"
+  }
+}

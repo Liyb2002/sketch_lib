@@ -1,0 +1,77 @@
+{
+  "view": "view_1",
+  "root": "wheel_0",
+  "edges_processed": [
+    {
+      "parent": "wheel_0",
+      "child": "fender_0",
+      "translation_dx_dy": [
+        -2.142857142857143,
+        4.142857142857143
+      ],
+      "num_pairs_used": 7,
+      "mean_pair_dist_before": 5.911539297186921,
+      "mean_pair_dist_after": 4.082972074836407,
+      "outputs": {
+        "correspondence_before": "edges/wheel_0__fender_0/correspondence_before.png",
+        "correspondence_after": "edges/wheel_0__fender_0/correspondence_after.png",
+        "masks_filled_before": "edges/wheel_0__fender_0/masks_filled_before.png",
+        "masks_filled_after": "edges/wheel_0__fender_0/masks_filled_after.png"
+      }
+    },
+    {
+      "parent": "fender_0",
+      "child": "handlebar_0",
+      "translation_dx_dy": [
+        2.0,
+        9.0
+      ],
+      "num_pairs_used": 1,
+      "mean_pair_dist_before": 9.219544457292887,
+      "mean_pair_dist_after": 0.0,
+      "outputs": {
+        "correspondence_before": "edges/fender_0__handlebar_0/correspondence_before.png",
+        "correspondence_after": "edges/fender_0__handlebar_0/correspondence_after.png",
+        "masks_filled_before": "edges/fender_0__handlebar_0/masks_filled_before.png",
+        "masks_filled_after": "edges/fender_0__handlebar_0/masks_filled_after.png"
+      }
+    },
+    {
+      "parent": "fender_0",
+      "child": "headlight_0",
+      "translation_dx_dy": [
+        -1.25,
+        5.5
+      ],
+      "num_pairs_used": 4,
+      "mean_pair_dist_before": 6.160779822805608,
+      "mean_pair_dist_after": 2.6952576835339768,
+      "outputs": {
+        "correspondence_before": "edges/fender_0__headlight_0/correspondence_before.png",
+        "correspondence_after": "edges/fender_0__headlight_0/correspondence_after.png",
+        "masks_filled_before": "edges/fender_0__headlight_0/masks_filled_before.png",
+        "masks_filled_after": "edges/fender_0__headlight_0/masks_filled_after.png"
+      }
+    },
+    {
+      "parent": "storage_0",
+      "child": "seat_0",
+      "translation_dx_dy": [
+        -0.4,
+        1.2
+      ],
+      "num_pairs_used": 10,
+      "mean_pair_dist_before": 2.3200058016357437,
+      "mean_pair_dist_after": 2.314708091358303,
+      "outputs": {
+        "correspondence_before": "edges/storage_0__seat_0/correspondence_before.png",
+        "correspondence_after": "edges/storage_0__seat_0/correspondence_after.png",
+        "masks_filled_before": "edges/storage_0__seat_0/masks_filled_before.png",
+        "masks_filled_after": "edges/storage_0__seat_0/masks_filled_after.png"
+      }
+    }
+  ],
+  "outputs": {
+    "all_masks_after_overlay": "all_masks_after_overlay.png"
+  }
+}

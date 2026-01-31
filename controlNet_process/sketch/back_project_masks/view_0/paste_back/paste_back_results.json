@@ -1,0 +1,60 @@
+{
+  "view": "view_0",
+  "root": "wheel_0",
+  "edges_processed": [
+    {
+      "parent": "wheel_0",
+      "child": "fender_0",
+      "translation_dx_dy": [
+        -9.0,
+        0.0
+      ],
+      "num_pairs_used": 1,
+      "mean_pair_dist_before": 9.0,
+      "mean_pair_dist_after": 0.0,
+      "outputs": {
+        "correspondence_before": "edges/wheel_0__fender_0/correspondence_before.png",
+        "correspondence_after": "edges/wheel_0__fender_0/correspondence_after.png",
+        "masks_filled_before": "edges/wheel_0__fender_0/masks_filled_before.png",
+        "masks_filled_after": "edges/wheel_0__fender_0/masks_filled_after.png"
+      }
+    },
+    {
+      "parent": "fender_0",
+      "child": "handlebar_0",
+      "translation_dx_dy": [
+        -3.0,
+        8.0
+      ],
+      "num_pairs_used": 1,
+      "mean_pair_dist_before": 8.54400374531753,
+      "mean_pair_dist_after": 0.0,
+      "outputs": {
+        "correspondence_before": "edges/fender_0__handlebar_0/correspondence_before.png",
+        "correspondence_after": "edges/fender_0__handlebar_0/correspondence_after.png",
+        "masks_filled_before": "edges/fender_0__handlebar_0/masks_filled_before.png",
+        "masks_filled_after": "edges/fender_0__handlebar_0/masks_filled_after.png"
+      }
+    },
+    {
+      "parent": "fender_0",
+      "child": "headlight_0",
+      "translation_dx_dy": [
+        0.0,
+        6.0
+      ],
+      "num_pairs_used": 5,
+      "mean_pair_dist_before": 8.33377251587354,
+      "mean_pair_dist_after": 5.79952256882503,
+      "outputs": {
+        "correspondence_before": "edges/fender_0__headlight_0/correspondence_before.png",
+        "correspondence_after": "edges/fender_0__headlight_0/correspondence_after.png",
+        "masks_filled_before": "edges/fender_0__headlight_0/masks_filled_before.png",
+        "masks_filled_after": "edges/fender_0__headlight_0/masks_filled_after.png"
+      }
+    }
+  ],
+  "outputs": {
+    "all_masks_after_overlay": "all_masks_after_overlay.png"
+  }
+}
