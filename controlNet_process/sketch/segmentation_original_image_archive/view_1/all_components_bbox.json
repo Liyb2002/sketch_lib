@@ -1,0 +1,125 @@
+{
+  "view": "view_1",
+  "image": "sketch/views/view_1.png",
+  "image_size": {
+    "width": 320,
+    "height": 320
+  },
+  "mask_source_dir": "sketch/segmentation/0/view_1",
+  "detections": [
+    {
+      "label": "fender_0",
+      "box_xyxy": [
+        42.0,
+        153.0,
+        82.0,
+        220.0
+      ],
+      "box_xywh": [
+        42.0,
+        153.0,
+        40.0,
+        67.0
+      ],
+      "mask_path": "fender_0_mask.png",
+      "overlay_path": "fender_0_overlay.png",
+      "image_path": "fender_0.png",
+      "is_empty": false
+    },
+    {
+      "label": "handlebar_0",
+      "box_xyxy": [
+        100.0,
+        41.0,
+        169.0,
+        63.0
+      ],
+      "box_xywh": [
+        100.0,
+        41.0,
+        69.0,
+        22.0
+      ],
+      "mask_path": "handlebar_0_mask.png",
+      "overlay_path": "handlebar_0_overlay.png",
+      "image_path": "handlebar_0.png",
+      "is_empty": false
+    },
+    {
+      "label": "headlight_0",
+      "box_xyxy": [
+        70.0,
+        45.0,
+        108.0,
+        72.0
+      ],
+      "box_xywh": [
+        70.0,
+        45.0,
+        38.0,
+        27.0
+      ],
+      "mask_path": "headlight_0_mask.png",
+      "overlay_path": "headlight_0_overlay.png",
+      "image_path": "headlight_0.png",
+      "is_empty": false
+    },
+    {
+      "label": "seat_0",
+      "box_xyxy": [
+        148.0,
+        108.0,
+        259.0,
+        139.0
+      ],
+      "box_xywh": [
+        148.0,
+        108.0,
+        111.0,
+        31.0
+      ],
+      "mask_path": "seat_0_mask.png",
+      "overlay_path": "seat_0_overlay.png",
+      "image_path": "seat_0.png",
+      "is_empty": false
+    },
+    {
+      "label": "wheel_0",
+      "box_xyxy": [
+        16.0,
+        161.0,
+        111.0,
+        253.0
+      ],
+      "box_xywh": [
+        16.0,
+        161.0,
+        95.0,
+        92.0
+      ],
+      "mask_path": "wheel_0_mask.png",
+      "overlay_path": "wheel_0_overlay.png",
+      "image_path": "wheel_0.png",
+      "is_empty": false
+    },
+    {
+      "label": "wheel_1",
+      "box_xyxy": [
+        189.0,
+        215.0,
+        269.0,
+        254.0
+      ],
+      "box_xywh": [
+        189.0,
+        215.0,
+        80.0,
+        39.0
+      ],
+      "mask_path": "wheel_1_mask.png",
+      "overlay_path": "wheel_1_overlay.png",
+      "image_path": "wheel_1.png",
+      "is_empty": false
+    }
+  ]
+}

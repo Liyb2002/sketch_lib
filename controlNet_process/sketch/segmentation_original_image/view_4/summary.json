@@ -1,0 +1,23 @@
+{
+  "view": "view_4",
+  "low_priority_labels": [
+    "storage_0"
+  ],
+  "boundary_adjust_px": 0,
+  "do_assign_unlabeled": false,
+  "assign_dist_px": 5.0,
+  "unlabeled_before": 0,
+  "assigned_pixels": 0,
+  "labels": [
+    "fender_0",
+    "handlebar_0",
+    "seat_0",
+    "storage_0",
+    "wheel_0",
+    "wheel_1"
+  ],
+  "notes": {
+    "shape_clip": "DISABLED (no view-derived shape is used)",
+    "mask_fill": "holes filled via flood-fill => pure white inside boundary"
+  }
+}

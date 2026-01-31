@@ -1,0 +1,50 @@
+{
+  "view": "view_0",
+  "tolerance_pixels": 10,
+  "labels": [
+    "fender_0",
+    "handlebar_0",
+    "headlight_0",
+    "wheel_0"
+  ],
+  "neighbors": {
+    "fender_0": [
+      "handlebar_0",
+      "headlight_0",
+      "wheel_0"
+    ],
+    "handlebar_0": [
+      "fender_0",
+      "headlight_0"
+    ],
+    "headlight_0": [
+      "fender_0",
+      "handlebar_0"
+    ],
+    "wheel_0": [
+      "fender_0"
+    ]
+  },
+  "pair_stats": [
+    {
+      "label1": "fender_0",
+      "label2": "headlight_0",
+      "num_close_pixels": 116
+    },
+    {
+      "label1": "fender_0",
+      "label2": "wheel_0",
+      "num_close_pixels": 32
+    },
+    {
+      "label1": "fender_0",
+      "label2": "handlebar_0",
+      "num_close_pixels": 27
+    },
+    {
+      "label1": "handlebar_0",
+      "label2": "headlight_0",
+      "num_close_pixels": 26
+    }
+  ]
+}

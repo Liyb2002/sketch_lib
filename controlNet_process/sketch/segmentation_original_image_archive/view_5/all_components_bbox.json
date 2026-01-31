@@ -1,0 +1,106 @@
+{
+  "view": "view_5",
+  "image": "sketch/views/view_5.png",
+  "image_size": {
+    "width": 320,
+    "height": 320
+  },
+  "mask_source_dir": "sketch/segmentation/0/view_5",
+  "detections": [
+    {
+      "label": "handlebar_0",
+      "box_xyxy": [
+        164.0,
+        55.0,
+        192.0,
+        68.0
+      ],
+      "box_xywh": [
+        164.0,
+        55.0,
+        28.0,
+        13.0
+      ],
+      "mask_path": "handlebar_0_mask.png",
+      "overlay_path": "handlebar_0_overlay.png",
+      "image_path": "handlebar_0.png",
+      "is_empty": false
+    },
+    {
+      "label": "headlight_0",
+      "box_xyxy": [
+        227.0,
+        53.0,
+        260.0,
+        79.0
+      ],
+      "box_xywh": [
+        227.0,
+        53.0,
+        33.0,
+        26.0
+      ],
+      "mask_path": "headlight_0_mask.png",
+      "overlay_path": "headlight_0_overlay.png",
+      "image_path": "headlight_0.png",
+      "is_empty": false
+    },
+    {
+      "label": "seat_0",
+      "box_xyxy": [
+        59.0,
+        110.0,
+        173.0,
+        137.0
+      ],
+      "box_xywh": [
+        59.0,
+        110.0,
+        114.0,
+        27.0
+      ],
+      "mask_path": "seat_0_mask.png",
+      "overlay_path": "seat_0_overlay.png",
+      "image_path": "seat_0.png",
+      "is_empty": false
+    },
+    {
+      "label": "wheel_0",
+      "box_xyxy": [
+        218.0,
+        159.0,
+        308.0,
+        251.0
+      ],
+      "box_xywh": [
+        218.0,
+        159.0,
+        90.0,
+        92.0
+      ],
+      "mask_path": "wheel_0_mask.png",
+      "overlay_path": "wheel_0_overlay.png",
+      "image_path": "wheel_0.png",
+      "is_empty": false
+    },
+    {
+      "label": "wheel_1",
+      "box_xyxy": [
+        46.0,
+        212.0,
+        127.0,
+        256.0
+      ],
+      "box_xywh": [
+        46.0,
+        212.0,
+        81.0,
+        44.0
+      ],
+      "mask_path": "wheel_1_mask.png",
+      "overlay_path": "wheel_1_overlay.png",
+      "image_path": "wheel_1.png",
+      "is_empty": false
+    }
+  ]
+}

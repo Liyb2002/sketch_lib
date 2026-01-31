@@ -1,0 +1,87 @@
+{
+  "view": "view_2",
+  "image": "sketch/views/view_2.png",
+  "image_size": {
+    "width": 320,
+    "height": 320
+  },
+  "mask_source_dir": "sketch/segmentation/0/view_2",
+  "detections": [
+    {
+      "label": "handlebar_0",
+      "box_xyxy": [
+        42.0,
+        57.0,
+        156.0,
+        94.0
+      ],
+      "box_xywh": [
+        42.0,
+        57.0,
+        114.0,
+        37.0
+      ],
+      "mask_path": "handlebar_0_mask.png",
+      "overlay_path": "handlebar_0_overlay.png",
+      "image_path": "handlebar_0.png",
+      "is_empty": false
+    },
+    {
+      "label": "seat_0",
+      "box_xyxy": [
+        145.0,
+        111.0,
+        270.0,
+        152.0
+      ],
+      "box_xywh": [
+        145.0,
+        111.0,
+        125.0,
+        41.0
+      ],
+      "mask_path": "seat_0_mask.png",
+      "overlay_path": "seat_0_overlay.png",
+      "image_path": "seat_0.png",
+      "is_empty": false
+    },
+    {
+      "label": "wheel_0",
+      "box_xyxy": [
+        41.0,
+        159.0,
+        103.0,
+        229.0
+      ],
+      "box_xywh": [
+        41.0,
+        159.0,
+        62.0,
+        70.0
+      ],
+      "mask_path": "wheel_0_mask.png",
+      "overlay_path": "wheel_0_overlay.png",
+      "image_path": "wheel_0.png",
+      "is_empty": false
+    },
+    {
+      "label": "wheel_1",
+      "box_xyxy": [
+        195.0,
+        233.0,
+        284.0,
+        269.0
+      ],
+      "box_xywh": [
+        195.0,
+        233.0,
+        89.0,
+        36.0
+      ],
+      "mask_path": "wheel_1_mask.png",
+      "overlay_path": "wheel_1_overlay.png",
+      "image_path": "wheel_1.png",
+      "is_empty": false
+    }
+  ]
+}
