@@ -6,12 +6,12 @@
       "parent": "wheel_0",
       "child": "fender_0",
       "translation_dx_dy": [
-        -9.0,
-        0.0
+        -9.5,
+        1.0
       ],
-      "num_pairs_used": 1,
-      "mean_pair_dist_before": 9.0,
-      "mean_pair_dist_after": 0.0,
+      "num_pairs_used": 2,
+      "mean_pair_dist_before": 10.367968324948777,
+      "mean_pair_dist_after": 4.031128874149275,
       "outputs": {
         "correspondence_before": "edges/wheel_0__fender_0/correspondence_before.png",
         "correspondence_after": "edges/wheel_0__fender_0/correspondence_after.png",
@@ -23,11 +23,11 @@
       "parent": "fender_0",
       "child": "handlebar_0",
       "translation_dx_dy": [
-        -3.0,
-        8.0
+        0.0,
+        9.0
       ],
       "num_pairs_used": 1,
-      "mean_pair_dist_before": 8.54400374531753,
+      "mean_pair_dist_before": 9.0,
       "mean_pair_dist_after": 0.0,
       "outputs": {
         "correspondence_before": "edges/fender_0__handlebar_0/correspondence_before.png",
@@ -40,12 +40,12 @@
       "parent": "fender_0",
       "child": "headlight_0",
       "translation_dx_dy": [
-        0.0,
-        6.0
+        2.5,
+        5.0
       ],
-      "num_pairs_used": 5,
-      "mean_pair_dist_before": 8.33377251587354,
-      "mean_pair_dist_after": 5.79952256882503,
+      "num_pairs_used": 4,
+      "mean_pair_dist_before": 8.096205463817771,
+      "mean_pair_dist_after": 5.8532986742141695,
       "outputs": {
         "correspondence_before": "edges/fender_0__headlight_0/correspondence_before.png",
         "correspondence_after": "edges/fender_0__headlight_0/correspondence_after.png",

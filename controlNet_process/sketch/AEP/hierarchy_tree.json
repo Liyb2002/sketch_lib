@@ -3,7 +3,6 @@
     "parent": null,
     "children": [
       "fender_0",
-      "unknown_0",
       "wheel_1"
     ]
   },
@@ -11,19 +10,14 @@
     "parent": "wheel_0",
     "children": [
       "handlebar_0",
-      "headlight_0"
-    ]
-  },
-  "unknown_0": {
-    "parent": "wheel_0",
-    "children": [
+      "headlight_0",
       "storage_0"
     ]
   },
   "wheel_1": {
     "parent": "wheel_0",
     "children": [
-      "unknown_1"
+      "unknown_0"
     ]
   },
   "handlebar_0": {
@@ -35,12 +29,12 @@
     "children": []
   },
   "storage_0": {
-    "parent": "unknown_0",
+    "parent": "fender_0",
     "children": [
       "seat_0"
     ]
   },
-  "unknown_1": {
+  "unknown_0": {
     "parent": "wheel_1",
     "children": []
   },

@@ -43,6 +43,7 @@ TOL_RATIO = 0.10
 VIEWS = range(6)
 FNAME_RE = re.compile(r"^(?P<label>.+)_(?P<idx>\d+)_mask\.png$", re.IGNORECASE)
 
+VIS = False   # set to False to disable ALL visualization
 
 # ----------------------------
 # Utilities
@@ -398,7 +399,7 @@ def main():
     containment = data.get("containment", [])
 
     # 8.1 VIS deleted relations
-    if len(deleted_attachments) > 0:
+    if len(deleted_attachments) > 0 and VIS:
         print(f"[VIS] Deleted attachments entries: {len(deleted_attachments)} (showing first)")
         verify_relations_vis_deleted(
             pts=pts,
@@ -417,18 +418,19 @@ def main():
 
     # 8.2 VIS kept relations
     print(f"[VIS] Kept attachments entries: {len(filtered_attachments)} (showing after deleted)")
-    verify_relations_vis(
-        pts=pts,
-        assigned_ids=assigned_ids,
-        bboxes_by_name=bboxes_by_name,
-        symmetry=symmetry,
-        attachments=filtered_attachments,
-        object_space=obj_space,
-        containment=containment,
-        vis_anchor_points=True,
-        anchor_radius=0.002,
-        ignore_unknown=False,
-    )
+    if VIS:
+        verify_relations_vis(
+            pts=pts,
+            assigned_ids=assigned_ids,
+            bboxes_by_name=bboxes_by_name,
+            symmetry=symmetry,
+            attachments=filtered_attachments,
+            object_space=obj_space,
+            containment=containment,
+            vis_anchor_points=True,
+            anchor_radius=0.002,
+            ignore_unknown=False,
+        )
 
 
 if __name__ == "__main__":
