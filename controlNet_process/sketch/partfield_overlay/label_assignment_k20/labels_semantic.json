@@ -16,8 +16,7 @@
     "storage_0",
     "wheel_0",
     "wheel_1",
-    "unknown_0",
-    "unknown_1"
+    "unknown_0"
   ],
   "label_name_to_id": {
     "fender_0": 0,
@@ -27,8 +26,7 @@
     "storage_0": 4,
     "wheel_0": 5,
     "wheel_1": 6,
-    "unknown_0": 7,
-    "unknown_1": 8
+    "unknown_0": 7
   },
   "label_id_to_name": {
     "0": "fender_0",
@@ -38,10 +36,10 @@
     "4": "storage_0",
     "5": "wheel_0",
     "6": "wheel_1",
-    "7": "unknown_0",
-    "8": "unknown_1"
+    "7": "unknown_0"
   },
   "cluster_to_label_name": {
+    "0": "storage_0",
     "1": "fender_0",
     "2": "wheel_0",
     "4": "handlebar_0",
@@ -58,11 +56,19 @@
     "16": "storage_0",
     "17": "wheel_1",
     "18": "storage_0",
-    "0": "unknown_0",
-    "3": "unknown_1",
+    "3": "unknown_0",
     "13": "headlight_0"
   },
   "label_to_clusters": {
+    "storage_0": [
+      0,
+      5,
+      6,
+      8,
+      14,
+      16,
+      18
+    ],
     "fender_0": [
       1,
       7,
@@ -76,14 +82,6 @@
       4,
       10
     ],
-    "storage_0": [
-      5,
-      6,
-      8,
-      14,
-      16,
-      18
-    ],
     "seat_0": [
       11
     ],
@@ -92,9 +90,6 @@
       17
     ],
     "unknown_0": [
-      0
-    ],
-    "unknown_1": [
       3
     ],
     "headlight_0": [
@@ -106,11 +101,10 @@
     "handlebar_0": 4677,
     "headlight_0": 3541,
     "seat_0": 3484,
-    "storage_0": 26705,
+    "storage_0": 29768,
     "wheel_0": 8325,
     "wheel_1": 7895,
-    "unknown_0": 3063,
-    "unknown_1": 4904
+    "unknown_0": 4904
   },
   "n_points_total": 77845
 }
