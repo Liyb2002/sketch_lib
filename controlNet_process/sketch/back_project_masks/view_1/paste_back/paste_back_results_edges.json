@@ -1,0 +1,102 @@
+{
+  "view": "view_1",
+  "root_label": "wheel_0",
+  "status": "ok_edges_parent_fixed_child_translated",
+  "constraints_json": "sketch/back_project_masks/view_1/constraints/close_boundaries_summary.json",
+  "homography_json": "sketch/back_project_masks/view_1/homography/homography_results.json",
+  "reached_labels_from_root": [
+    "fender_0",
+    "handlebar_0",
+    "headlight_0",
+    "wheel_0",
+    "wheel_1"
+  ],
+  "edge_results": [
+    {
+      "parent": "wheel_0",
+      "child": "fender_0",
+      "status": "moved",
+      "translation_dxdy": [
+        -17.166666666666668,
+        -8.5
+      ],
+      "num_anchor_pairs_used": 6,
+      "mean_l2_error_before": 36.924512338616445,
+      "mean_l2_error_after": 32.13157490090072,
+      "edge_output_dir": "edges/wheel_0__fender_0"
+    },
+    {
+      "parent": "wheel_0",
+      "child": "unknown_0",
+      "status": "missing_masks",
+      "has_parent_mask": true,
+      "has_child_warped": false
+    },
+    {
+      "parent": "wheel_0",
+      "child": "wheel_1",
+      "status": "no_anchors_keep_as_is",
+      "edge_output_dir": "edges/wheel_0__wheel_1"
+    },
+    {
+      "parent": "fender_0",
+      "child": "handlebar_0",
+      "status": "moved",
+      "translation_dxdy": [
+        0.5,
+        10.0
+      ],
+      "num_anchor_pairs_used": 2,
+      "mean_l2_error_before": 10.024937810560445,
+      "mean_l2_error_after": 0.5,
+      "edge_output_dir": "edges/fender_0__handlebar_0"
+    },
+    {
+      "parent": "fender_0",
+      "child": "headlight_0",
+      "status": "moved",
+      "translation_dxdy": [
+        -1.3333333333333333,
+        7.0
+      ],
+      "num_anchor_pairs_used": 3,
+      "mean_l2_error_before": 17.625074604162016,
+      "mean_l2_error_after": 16.17957441595446,
+      "edge_output_dir": "edges/fender_0__headlight_0"
+    },
+    {
+      "parent": "unknown_0",
+      "child": "storage_0",
+      "status": "missing_masks",
+      "has_parent_mask": false,
+      "has_child_warped": true
+    },
+    {
+      "parent": "wheel_1",
+      "child": "unknown_1",
+      "status": "missing_masks",
+      "has_parent_mask": true,
+      "has_child_warped": false
+    },
+    {
+      "parent": "storage_0",
+      "child": "seat_0",
+      "status": "missing_masks",
+      "has_parent_mask": false,
+      "has_child_warped": true
+    }
+  ],
+  "outputs": {
+    "paste_back_dir": "sketch/back_project_masks/view_1/paste_back",
+    "masks_final_dir": "sketch/back_project_masks/view_1/paste_back/masks_final",
+    "edges_dir": "sketch/back_project_masks/view_1/paste_back/edges",
+    "all_final_masks_overlay": "sketch/back_project_masks/view_1/paste_back/all_final_masks_overlay.png"
+  },
+  "final_masks": {
+    "wheel_0": "sketch/back_project_masks/view_1/paste_back/masks_final/wheel_0_mask_final.png",
+    "fender_0": "sketch/back_project_masks/view_1/paste_back/masks_final/fender_0_mask_final.png",
+    "wheel_1": "sketch/back_project_masks/view_1/paste_back/masks_final/wheel_1_mask_final.png",
+    "handlebar_0": "sketch/back_project_masks/view_1/paste_back/masks_final/handlebar_0_mask_final.png",
+    "headlight_0": "sketch/back_project_masks/view_1/paste_back/masks_final/headlight_0_mask_final.png"
+  }
+}

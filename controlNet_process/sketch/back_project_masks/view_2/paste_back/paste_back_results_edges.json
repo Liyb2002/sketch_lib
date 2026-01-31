@@ -1,0 +1,94 @@
+{
+  "view": "view_2",
+  "root_label": "wheel_0",
+  "status": "ok_edges_parent_fixed_child_translated",
+  "constraints_json": "sketch/back_project_masks/view_2/constraints/close_boundaries_summary.json",
+  "homography_json": "sketch/back_project_masks/view_2/homography/homography_results.json",
+  "reached_labels_from_root": [
+    "fender_0",
+    "handlebar_0",
+    "wheel_0",
+    "wheel_1"
+  ],
+  "edge_results": [
+    {
+      "parent": "wheel_0",
+      "child": "fender_0",
+      "status": "moved",
+      "translation_dxdy": [
+        -0.14285714285714285,
+        3.142857142857143
+      ],
+      "num_anchor_pairs_used": 7,
+      "mean_l2_error_before": 34.053187035554096,
+      "mean_l2_error_after": 34.32498543689939,
+      "edge_output_dir": "edges/wheel_0__fender_0"
+    },
+    {
+      "parent": "wheel_0",
+      "child": "unknown_0",
+      "status": "missing_masks",
+      "has_parent_mask": true,
+      "has_child_warped": false
+    },
+    {
+      "parent": "wheel_0",
+      "child": "wheel_1",
+      "status": "no_anchors_keep_as_is",
+      "edge_output_dir": "edges/wheel_0__wheel_1"
+    },
+    {
+      "parent": "fender_0",
+      "child": "handlebar_0",
+      "status": "moved",
+      "translation_dxdy": [
+        4.333333333333333,
+        7.166666666666667
+      ],
+      "num_anchor_pairs_used": 6,
+      "mean_l2_error_before": 17.72888713294579,
+      "mean_l2_error_after": 16.601671791694525,
+      "edge_output_dir": "edges/fender_0__handlebar_0"
+    },
+    {
+      "parent": "fender_0",
+      "child": "headlight_0",
+      "status": "missing_masks",
+      "has_parent_mask": true,
+      "has_child_warped": false
+    },
+    {
+      "parent": "unknown_0",
+      "child": "storage_0",
+      "status": "missing_masks",
+      "has_parent_mask": false,
+      "has_child_warped": true
+    },
+    {
+      "parent": "wheel_1",
+      "child": "unknown_1",
+      "status": "missing_masks",
+      "has_parent_mask": true,
+      "has_child_warped": false
+    },
+    {
+      "parent": "storage_0",
+      "child": "seat_0",
+      "status": "missing_masks",
+      "has_parent_mask": false,
+      "has_child_warped": true
+    }
+  ],
+  "outputs": {
+    "paste_back_dir": "sketch/back_project_masks/view_2/paste_back",
+    "masks_final_dir": "sketch/back_project_masks/view_2/paste_back/masks_final",
+    "edges_dir": "sketch/back_project_masks/view_2/paste_back/edges",
+    "all_final_masks_overlay": "sketch/back_project_masks/view_2/paste_back/all_final_masks_overlay.png"
+  },
+  "final_masks": {
+    "wheel_0": "sketch/back_project_masks/view_2/paste_back/masks_final/wheel_0_mask_final.png",
+    "fender_0": "sketch/back_project_masks/view_2/paste_back/masks_final/fender_0_mask_final.png",
+    "wheel_1": "sketch/back_project_masks/view_2/paste_back/masks_final/wheel_1_mask_final.png",
+    "handlebar_0": "sketch/back_project_masks/view_2/paste_back/masks_final/handlebar_0_mask_final.png"
+  }
+}
