@@ -1,8 +1,140 @@
 {
   "view": "view_0",
-  "root": "wheel_0",
-  "edges_processed": [],
+  "root_label": "wheel_0",
+  "hierarchy_used": true,
+  "labels_involved": [
+    "fender_0",
+    "handlebar_0",
+    "headlight_0",
+    "seat_0",
+    "storage_0",
+    "unknown_0",
+    "wheel_0",
+    "wheel_1"
+  ],
+  "translations_xy": {
+    "headlight_0": [
+      -1.8900604248046875,
+      11.94024658203125
+    ],
+    "fender_0": [
+      -8.126495361328125,
+      5.8172607421875
+    ],
+    "wheel_0": [
+      0.0,
+      0.0
+    ],
+    "storage_0": [
+      0.0,
+      0.0
+    ],
+    "unknown_0": [
+      0.0,
+      0.0
+    ],
+    "handlebar_0": [
+      -9.154022216796875,
+      18.423324584960938
+    ],
+    "wheel_1": [
+      0.0,
+      0.0
+    ],
+    "seat_0": [
+      0.0,
+      0.0
+    ]
+  },
+  "edges_processed": [
+    {
+      "parent": "wheel_0",
+      "child": "fender_0",
+      "delta_child_xy": [
+        -8.126495361328125,
+        5.8172607421875
+      ],
+      "child_translation_xy": [
+        -8.126495361328125,
+        5.8172607421875
+      ],
+      "nn_dist_before": {
+        "mean": 9.994020462036133,
+        "median": 9.994020462036133,
+        "count": 1
+      },
+      "nn_dist_after": {
+        "mean": 0.0,
+        "median": 0.0,
+        "count": 1
+      },
+      "pair_vis": "edges/wheel_0__fender_0.png",
+      "dbg": {
+        "used": 2
+      }
+    },
+    {
+      "parent": "fender_0",
+      "child": "handlebar_0",
+      "delta_child_xy": [
+        -9.154022216796875,
+        18.423324584960938
+      ],
+      "child_translation_xy": [
+        -9.154022216796875,
+        18.423324584960938
+      ],
+      "nn_dist_before": {
+        "mean": 20.572189331054688,
+        "median": 20.572189331054688,
+        "count": 1
+      },
+      "nn_dist_after": {
+        "mean": 0.0,
+        "median": 0.0,
+        "count": 1
+      },
+      "pair_vis": "edges/fender_0__handlebar_0.png",
+      "dbg": {
+        "used": 2
+      }
+    },
+    {
+      "parent": "fender_0",
+      "child": "headlight_0",
+      "delta_child_xy": [
+        -1.8900604248046875,
+        11.94024658203125
+      ],
+      "child_translation_xy": [
+        -1.8900604248046875,
+        11.94024658203125
+      ],
+      "nn_dist_before": {
+        "mean": 15.945228576660156,
+        "median": 13.17788314819336,
+        "count": 3
+      },
+      "nn_dist_after": {
+        "mean": 7.395608901977539,
+        "median": 10.03519344329834,
+        "count": 3
+      },
+      "pair_vis": "edges/fender_0__headlight_0.png",
+      "dbg": {
+        "used": 7
+      }
+    }
+  ],
+  "inputs": {
+    "hierarchy_tree": "sketch/AEP/hierarchy_tree.json",
+    "homography_results": "sketch/back_project_masks/view_0/homography/homography_results.json",
+    "moved_anchor_points": "sketch/back_project_masks/view_0/moved_anchor/moved_anchor_points.json"
+  },
   "outputs": {
-    "all_masks_after_overlay": "all_masks_after_overlay.png"
+    "before_overlay": "before_overlay.png",
+    "after_overlay": "after_overlay.png",
+    "masks_dir": "masks/",
+    "edges_dir": "edges/"
   }
 }

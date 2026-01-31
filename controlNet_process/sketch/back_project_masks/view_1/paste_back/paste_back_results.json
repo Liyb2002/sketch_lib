@@ -1,8 +1,166 @@
 {
   "view": "view_1",
-  "root": "wheel_0",
-  "edges_processed": [],
+  "root_label": "wheel_0",
+  "hierarchy_used": true,
+  "labels_involved": [
+    "fender_0",
+    "handlebar_0",
+    "headlight_0",
+    "seat_0",
+    "storage_0",
+    "unknown_0",
+    "wheel_0",
+    "wheel_1"
+  ],
+  "translations_xy": {
+    "headlight_0": [
+      0.172943115234375,
+      12.413429260253906
+    ],
+    "fender_0": [
+      -4.845481872558594,
+      3.8597488403320312
+    ],
+    "wheel_0": [
+      0.0,
+      0.0
+    ],
+    "storage_0": [
+      0.0,
+      0.0
+    ],
+    "unknown_0": [
+      0.0,
+      0.0
+    ],
+    "handlebar_0": [
+      -6.6995697021484375,
+      18.915748596191406
+    ],
+    "wheel_1": [
+      0.0,
+      0.0
+    ],
+    "seat_0": [
+      -0.925384521484375,
+      16.10235595703125
+    ]
+  },
+  "edges_processed": [
+    {
+      "parent": "wheel_0",
+      "child": "fender_0",
+      "delta_child_xy": [
+        -4.845481872558594,
+        3.8597488403320312
+      ],
+      "child_translation_xy": [
+        -4.845481872558594,
+        3.8597488403320312
+      ],
+      "nn_dist_before": {
+        "mean": 11.946690559387207,
+        "median": 10.365828514099121,
+        "count": 8
+      },
+      "nn_dist_after": {
+        "mean": 9.108285903930664,
+        "median": 9.782413482666016,
+        "count": 8
+      },
+      "pair_vis": "edges/wheel_0__fender_0.png",
+      "dbg": {
+        "used": 14
+      }
+    },
+    {
+      "parent": "fender_0",
+      "child": "handlebar_0",
+      "delta_child_xy": [
+        -6.6995697021484375,
+        18.915748596191406
+      ],
+      "child_translation_xy": [
+        -6.6995697021484375,
+        18.915748596191406
+      ],
+      "nn_dist_before": {
+        "mean": 20.0671329498291,
+        "median": 20.0671329498291,
+        "count": 1
+      },
+      "nn_dist_after": {
+        "mean": 0.0,
+        "median": 0.0,
+        "count": 1
+      },
+      "pair_vis": "edges/fender_0__handlebar_0.png",
+      "dbg": {
+        "used": 2
+      }
+    },
+    {
+      "parent": "fender_0",
+      "child": "headlight_0",
+      "delta_child_xy": [
+        0.172943115234375,
+        12.413429260253906
+      ],
+      "child_translation_xy": [
+        0.172943115234375,
+        12.413429260253906
+      ],
+      "nn_dist_before": {
+        "mean": 15.288985252380371,
+        "median": 12.414633750915527,
+        "count": 3
+      },
+      "nn_dist_after": {
+        "mean": 3.8192198276519775,
+        "median": 0.1492837369441986,
+        "count": 3
+      },
+      "pair_vis": "edges/fender_0__headlight_0.png",
+      "dbg": {
+        "used": 6
+      }
+    },
+    {
+      "parent": "storage_0",
+      "child": "seat_0",
+      "delta_child_xy": [
+        -0.925384521484375,
+        16.10235595703125
+      ],
+      "child_translation_xy": [
+        -0.925384521484375,
+        16.10235595703125
+      ],
+      "nn_dist_before": {
+        "mean": 17.29173469543457,
+        "median": 16.741209030151367,
+        "count": 10
+      },
+      "nn_dist_after": {
+        "mean": 4.190987586975098,
+        "median": 2.80704927444458,
+        "count": 10
+      },
+      "pair_vis": "edges/storage_0__seat_0.png",
+      "dbg": {
+        "used": 20
+      }
+    }
+  ],
+  "inputs": {
+    "hierarchy_tree": "sketch/AEP/hierarchy_tree.json",
+    "homography_results": "sketch/back_project_masks/view_1/homography/homography_results.json",
+    "moved_anchor_points": "sketch/back_project_masks/view_1/moved_anchor/moved_anchor_points.json"
+  },
   "outputs": {
-    "all_masks_after_overlay": "all_masks_after_overlay.png"
+    "before_overlay": "before_overlay.png",
+    "after_overlay": "after_overlay.png",
+    "masks_dir": "masks/",
+    "edges_dir": "edges/"
   }
 }

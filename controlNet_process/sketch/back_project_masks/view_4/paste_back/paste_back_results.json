@@ -1,8 +1,114 @@
 {
   "view": "view_4",
-  "root": "wheel_0",
-  "edges_processed": [],
+  "root_label": "wheel_0",
+  "hierarchy_used": true,
+  "labels_involved": [
+    "fender_0",
+    "handlebar_0",
+    "headlight_0",
+    "seat_0",
+    "storage_0",
+    "unknown_0",
+    "wheel_0",
+    "wheel_1"
+  ],
+  "translations_xy": {
+    "headlight_0": [
+      0.0,
+      0.0
+    ],
+    "fender_0": [
+      -5.6671142578125,
+      6.580558776855469
+    ],
+    "wheel_0": [
+      0.0,
+      0.0
+    ],
+    "storage_0": [
+      0.0,
+      0.0
+    ],
+    "unknown_0": [
+      0.0,
+      0.0
+    ],
+    "handlebar_0": [
+      0.0,
+      0.0
+    ],
+    "wheel_1": [
+      0.0,
+      0.0
+    ],
+    "seat_0": [
+      4.3054962158203125,
+      17.60345458984375
+    ]
+  },
+  "edges_processed": [
+    {
+      "parent": "wheel_0",
+      "child": "fender_0",
+      "delta_child_xy": [
+        -5.6671142578125,
+        6.580558776855469
+      ],
+      "child_translation_xy": [
+        -5.6671142578125,
+        6.580558776855469
+      ],
+      "nn_dist_before": {
+        "mean": 10.493051528930664,
+        "median": 10.493051528930664,
+        "count": 2
+      },
+      "nn_dist_after": {
+        "mean": 4.801510810852051,
+        "median": 4.801510810852051,
+        "count": 2
+      },
+      "pair_vis": "edges/wheel_0__fender_0.png",
+      "dbg": {
+        "used": 4
+      }
+    },
+    {
+      "parent": "storage_0",
+      "child": "seat_0",
+      "delta_child_xy": [
+        4.3054962158203125,
+        17.60345458984375
+      ],
+      "child_translation_xy": [
+        4.3054962158203125,
+        17.60345458984375
+      ],
+      "nn_dist_before": {
+        "mean": 19.70421028137207,
+        "median": 18.122331619262695,
+        "count": 11
+      },
+      "nn_dist_after": {
+        "mean": 4.130095958709717,
+        "median": 2.25778865814209,
+        "count": 11
+      },
+      "pair_vis": "edges/storage_0__seat_0.png",
+      "dbg": {
+        "used": 21
+      }
+    }
+  ],
+  "inputs": {
+    "hierarchy_tree": "sketch/AEP/hierarchy_tree.json",
+    "homography_results": "sketch/back_project_masks/view_4/homography/homography_results.json",
+    "moved_anchor_points": "sketch/back_project_masks/view_4/moved_anchor/moved_anchor_points.json"
+  },
   "outputs": {
-    "all_masks_after_overlay": "all_masks_after_overlay.png"
+    "before_overlay": "before_overlay.png",
+    "after_overlay": "after_overlay.png",
+    "masks_dir": "masks/",
+    "edges_dir": "edges/"
   }
 }

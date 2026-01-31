@@ -1,26 +1,34 @@
 #!/usr/bin/env python3
 # homography/paste_back.py
 #
-# Paste-back (translation-only) alignment using constraint anchor correspondences.
+# Paste-back / translate warped masks to satisfy close-boundary anchor constraints,
+# using the already-computed moved anchor locations under homography.
 #
-# Inputs per view:
-#   sketch/back_project_masks/view_{x}/constraints/close_boundaries_summary.json
-#     - close_pairs[*].paired_anchors_l1_l2_xy / paired_anchors_l2_l1_xy
-#   sketch/back_project_masks/view_{x}/homography/{label}_mask_warped.png
+# Core idea (tree / root anchored):
+#   - Root label is fixed (translation = [0,0]).
+#   - For each parent->child edge in hierarchy_tree.json:
+#       compute a TRANSLATION for the child (in image pixels) so that
+#       child's moved anchors (after homography) align to parent's moved anchors,
+#       with parent already in its final translated position.
+#   - Apply translations to warped masks (output of homography/homography.py).
+#
+# Inputs:
+#   sketch/AEP/hierarchy_tree.json                 (dict: label -> {parent, children})
+#   sketch/back_project_masks/view_{x}/homography/homography_results.json
+#   sketch/back_project_masks/view_{x}/moved_anchor/moved_anchor_points.json
 #   sketch/views/view_{x}.png
-#   sketch/AEP/hierarchy_tree.json  (dict format: label -> {parent, children})
 #
-# Outputs per view:
+# Outputs:
 #   sketch/back_project_masks/view_{x}/paste_back/
-#     - edges/{parent}__{child}/...
-#     - all_masks_after_overlay.png
+#     - before_overlay.png
+#     - after_overlay.png
+#     - masks/{label}_mask_translated.png
+#     - edges/{parent}__{child}.png                (side-by-side BEFORE|AFTER anchor fit)
 #     - paste_back_results.json
 
 import os
 import json
-from collections import deque
-from typing import Dict, Any, Tuple, List, Optional
-
+import shutil
 import numpy as np
 import cv2
 
@@ -28,377 +36,503 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 HIER_PATH = os.path.join(ROOT, "sketch", "AEP", "hierarchy_tree.json")
 VIEWS_DIR = os.path.join(ROOT, "sketch", "views")
-SEG_DIR = os.path.join(ROOT, "sketch", "segmentation_original_image")
-BPM_DIR = os.path.join(ROOT, "sketch", "back_project_masks")
+OUT_ROOT  = os.path.join(ROOT, "sketch", "back_project_masks")
 
 NUM_VIEWS = 6
 
-# Visual colors (BGR)
-COL_PARENT = (255, 0, 0)     # blue
-COL_CHILD  = (0, 0, 255)     # red
-COL_LINE   = (255, 255, 0)   # cyan/yellow-ish
-COL_CLOSE  = (0, 255, 0)     # green
+# Visual style
+ALPHA_FILL = 0.6
+CONTOUR_THICK = 2
 
-ANCHOR_RADIUS = 2
-LINE_THICK = 1
-BOUND_THICK = 2
-ALPHA = 0.35
+C_MASK_PARENT = (255, 0, 0)   # blue
+C_MASK_CHILD  = (0, 0, 255)   # red
+C_PARENT_ANCH = (255, 0, 0) # cyan
+C_CHILD_ANCH  = (255, 0, 255) # magenta
+C_LINE        = (0, 255, 255) # yellow
+
+R_ANCHOR = 3
+LINE_THICK = 2
 
 
 # ----------------------------
-# IO + hierarchy
+# IO utils
 # ----------------------------
-def _read_json(path: str) -> Dict[str, Any]:
+def _read_json(path: str):
     with open(path, "r") as f:
         return json.load(f)
 
 
-def _load_hierarchy_tree(path: str) -> Dict[str, Any]:
-    if not os.path.exists(path):
-        raise FileNotFoundError(path)
-    data = _read_json(path)
-    if not isinstance(data, dict):
-        raise ValueError("hierarchy_tree.json must be dict(label -> {parent, children})")
-    return data
+def _clean_dir(path: str):
+    if os.path.exists(path):
+        shutil.rmtree(path)
+    os.makedirs(path, exist_ok=True)
 
 
-def _find_root_label(tree: Dict[str, Any]) -> str:
-    roots = []
-    for lbl, info in tree.items():
-        if info.get("parent", None) is None:
-            roots.append(lbl)
-    if len(roots) == 0:
-        # fallback: pick arbitrary label
-        return next(iter(tree.keys()))
-    # if multiple roots, pick first deterministic
-    roots.sort()
-    return roots[0]
+def _ensure_float_pts(pts_xy) -> np.ndarray:
+    arr = np.array(pts_xy, dtype=np.float32) if pts_xy is not None else np.zeros((0, 2), np.float32)
+    if arr.size == 0:
+        return np.zeros((0, 2), dtype=np.float32)
+    return arr.reshape(-1, 2).astype(np.float32)
 
 
-def _bfs_edges_from_root(tree: Dict[str, Any], root: str) -> List[Tuple[str, str]]:
-    """Return directed edges (parent, child) in BFS order from root."""
-    edges = []
-    q = deque([root])
-    seen = set([root])
-    while q:
-        p = q.popleft()
-        children = tree.get(p, {}).get("children", []) or []
-        for c in children:
-            edges.append((p, c))
-            if c not in seen:
-                seen.add(c)
-                q.append(c)
-    return edges
+def _overlay_mask_on_image(img_bgr, mask_u8, color_bgr, alpha=0.25, contour_thick=2):
+    out = img_bgr.copy()
+    if mask_u8 is None:
+        return out
+    binary = mask_u8 > 0
+    if not np.any(binary):
+        return out
+
+    fill = np.zeros_like(out)
+    fill[:] = color_bgr
+    out[binary] = cv2.addWeighted(out[binary], 1.0 - alpha, fill[binary], alpha, 0)
+
+    contours, _ = cv2.findContours(mask_u8, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    if contours:
+        cv2.drawContours(out, contours, -1, color_bgr, contour_thick)
+
+    return out
 
 
-# ----------------------------
-# Mask + geometry utils
-# ----------------------------
-def _imread_gray(path: str) -> Optional[np.ndarray]:
-    img = cv2.imread(path, cv2.IMREAD_GRAYSCALE)
-    return img
+def _draw_points(img, pts_xy, color, r=2):
+    for x, y in pts_xy:
+        cv2.circle(img, (int(round(float(x))), int(round(float(y)))), r, color, thickness=-1)
 
 
-def _ensure_mask_shape(mask_u8: np.ndarray, H: int, W: int) -> np.ndarray:
-    if mask_u8.shape[:2] != (H, W):
-        mask_u8 = cv2.resize(mask_u8, (W, H), interpolation=cv2.INTER_NEAREST)
-    mask_u8 = (mask_u8 > 0).astype(np.uint8) * 255
-    return mask_u8
+def _draw_lines(img, pairs, color, thick=1):
+    for p, q in pairs:
+        x1, y1 = int(round(float(p[0]))), int(round(float(p[1])))
+        x2, y2 = int(round(float(q[0]))), int(round(float(q[1])))
+        cv2.line(img, (x1, y1), (x2, y2), color, thickness=thick, lineType=cv2.LINE_AA)
 
 
-def _mask_boundary(mask_u8: np.ndarray) -> np.ndarray:
-    bin_u8 = (mask_u8 > 0).astype(np.uint8)
-    kernel = np.ones((3, 3), np.uint8)
-    er = cv2.erode(bin_u8, kernel, iterations=1)
-    b = (bin_u8 - er)
-    return (b > 0).astype(np.uint8) * 255
+def _nn_pairs(src_xy: np.ndarray, dst_xy: np.ndarray):
+    """
+    Visual-only nearest-neighbor pairing:
+      for each src point, connect to nearest dst point.
+    Returns list[(src, dst)].
+    """
+    if src_xy is None or dst_xy is None:
+        return []
+    if src_xy.size == 0 or dst_xy.size == 0:
+        return []
+
+    s = src_xy.astype(np.float32)
+    d = dst_xy.astype(np.float32)
+
+    diff = s[:, None, :] - d[None, :, :]
+    dist2 = diff[..., 0] * diff[..., 0] + diff[..., 1] * diff[..., 1]
+    nn = np.argmin(dist2, axis=1)
+
+    out = []
+    for i in range(s.shape[0]):
+        out.append((s[i], d[nn[i]]))
+    return out
 
 
-def _translate_mask(mask_u8: np.ndarray, dx: float, dy: float) -> np.ndarray:
-    H, W = mask_u8.shape[:2]
-    M = np.array([[1.0, 0.0, dx],
-                  [0.0, 1.0, dy]], dtype=np.float32)
-    out = cv2.warpAffine(
+def _nn_stats(src_xy: np.ndarray, dst_xy: np.ndarray):
+    """Return mean/median NN distance from src->dst (src anchors to nearest dst anchor)."""
+    if src_xy is None or dst_xy is None or src_xy.size == 0 or dst_xy.size == 0:
+        return {"mean": None, "median": None, "count": 0}
+
+    s = src_xy.astype(np.float32)
+    d = dst_xy.astype(np.float32)
+    diff = s[:, None, :] - d[None, :, :]
+    dist2 = diff[..., 0] * diff[..., 0] + diff[..., 1] * diff[..., 1]
+    nn = np.argmin(dist2, axis=1)
+    nn_dist = np.sqrt(dist2[np.arange(s.shape[0]), nn])
+
+    return {
+        "mean": float(np.mean(nn_dist)) if nn_dist.size else None,
+        "median": float(np.median(nn_dist)) if nn_dist.size else None,
+        "count": int(nn_dist.size),
+    }
+
+
+def _robust_translation(parent_xy: np.ndarray, child_xy: np.ndarray):
+    """
+    Compute translation delta to apply to child so it aligns to parent.
+    Uses mutual NN-ish robustness:
+      - child->parent NN vectors
+      - parent->child NN vectors (negated)
+      - concatenate and take median vector
+    """
+    if parent_xy is None or child_xy is None or parent_xy.size == 0 or child_xy.size == 0:
+        return np.array([0.0, 0.0], dtype=np.float32), {"used": 0}
+
+    p = parent_xy.astype(np.float32)
+    c = child_xy.astype(np.float32)
+
+    # child -> parent
+    diff_cp = c[:, None, :] - p[None, :, :]
+    dist2_cp = diff_cp[..., 0] * diff_cp[..., 0] + diff_cp[..., 1] * diff_cp[..., 1]
+    nn_p = np.argmin(dist2_cp, axis=1)
+    vec_cp = p[nn_p] - c  # vectors that move c to p
+
+    # parent -> child
+    diff_pc = p[:, None, :] - c[None, :, :]
+    dist2_pc = diff_pc[..., 0] * diff_pc[..., 0] + diff_pc[..., 1] * diff_pc[..., 1]
+    nn_c = np.argmin(dist2_pc, axis=1)
+    vec_pc = p - c[nn_c]  # vectors that move (nearest child) to each parent
+
+    vec = np.concatenate([vec_cp, vec_pc], axis=0)
+    delta = np.median(vec, axis=0).astype(np.float32)
+
+    return delta, {"used": int(vec.shape[0])}
+
+
+def _warp_translate_mask(mask_u8: np.ndarray, dx: float, dy: float, out_w: int, out_h: int):
+    if mask_u8 is None:
+        return None
+    M = np.array([[1, 0, dx], [0, 1, dy]], dtype=np.float32)
+    moved = cv2.warpAffine(
         mask_u8,
         M,
-        (W, H),
+        (out_w, out_h),
         flags=cv2.INTER_NEAREST,
         borderMode=cv2.BORDER_CONSTANT,
         borderValue=0,
     )
-    out = (out > 0).astype(np.uint8) * 255
-    return out
-
-
-def _translate_points_xy(pts_xy: np.ndarray, dx: float, dy: float) -> np.ndarray:
-    if pts_xy.size == 0:
-        return pts_xy.astype(np.float64)
-    pts = pts_xy.astype(np.float64).copy()
-    pts[:, 0] += dx
-    pts[:, 1] += dy
-    return pts
-
-
-def _draw_points(img_bgr: np.ndarray, pts_xy: np.ndarray, color: Tuple[int, int, int], r: int = 2):
-    for x, y in pts_xy:
-        cv2.circle(img_bgr, (int(round(x)), int(round(y))), r, color, thickness=-1)
-
-
-def _draw_pairs(img_bgr: np.ndarray,
-                parent_xy: np.ndarray,
-                child_xy: np.ndarray,
-                color_line: Tuple[int, int, int],
-                thickness: int = 1):
-    K = min(parent_xy.shape[0], child_xy.shape[0])
-    for i in range(K):
-        x1, y1 = parent_xy[i]
-        x2, y2 = child_xy[i]
-        cv2.line(img_bgr,
-                 (int(round(x1)), int(round(y1))),
-                 (int(round(x2)), int(round(y2))),
-                 color_line,
-                 thickness)
-
-
-def _overlay_boundary(img_bgr: np.ndarray, boundary_u8: np.ndarray, color: Tuple[int, int, int], thick: int = 2):
-    out = img_bgr.copy()
-    contours, _ = cv2.findContours(boundary_u8, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    if contours:
-        cv2.drawContours(out, contours, -1, color, thick)
-    return out
-
-
-def _overlay_mask_fill(img_bgr: np.ndarray, mask_u8: np.ndarray, color: Tuple[int, int, int], alpha: float = 0.35):
-    out = img_bgr.copy()
-    bin_ = mask_u8 > 0
-    if np.any(bin_):
-        fill = np.zeros_like(out)
-        fill[:] = color
-        out[bin_] = cv2.addWeighted(out[bin_], 1.0 - alpha, fill[bin_], alpha, 0)
-    return out
-
-
-def _mean_pair_dist(parent_xy: np.ndarray, child_xy: np.ndarray) -> float:
-    if parent_xy.size == 0 or child_xy.size == 0:
-        return float("nan")
-    K = min(parent_xy.shape[0], child_xy.shape[0])
-    d = parent_xy[:K] - child_xy[:K]
-    dist = np.sqrt(np.sum(d * d, axis=1))
-    return float(np.mean(dist))
+    moved = (moved > 0).astype(np.uint8) * 255
+    return moved
 
 
 # ----------------------------
-# Constraints: get paired anchors for an edge
+# Hierarchy parsing
 # ----------------------------
-def _build_pair_index(constraints_json: Dict[str, Any]) -> Dict[Tuple[str, str], Dict[str, Any]]:
+def _load_hierarchy_tree_dict(path: str):
     """
-    Map unordered (a,b) -> close_pair dict.
+    Expects the 'new format' you showed:
+    {
+      "wheel_0": {"parent": null, "children": [...]},
+      ...
+    }
+    Returns: (tree_dict, root_label, edges_list[parent,child])
+    """
+    if not os.path.exists(path):
+        return {}, None, []
+
+    tree = _read_json(path)
+    if not isinstance(tree, dict) or len(tree) == 0:
+        return {}, None, []
+
+    roots = [k for k, v in tree.items() if (isinstance(v, dict) and v.get("parent", None) is None)]
+    root = roots[0] if roots else None
+
+    edges = []
+    for parent, info in tree.items():
+        if not isinstance(info, dict):
+            continue
+        children = info.get("children", []) or []
+        for ch in children:
+            edges.append((parent, ch))
+
+    return tree, root, edges
+
+
+def _bfs_order(tree: dict, root: str):
+    """Return BFS parent->children order list of nodes and edges."""
+    if root is None or root not in tree:
+        return [root] if root else [], []
+
+    q = [root]
+    seen = {root}
+    order = []
+    edges = []
+
+    while q:
+        u = q.pop(0)
+        order.append(u)
+        children = (tree.get(u, {}) or {}).get("children", []) or []
+        for v in children:
+            edges.append((u, v))
+            if v not in seen:
+                seen.add(v)
+                q.append(v)
+    return order, edges
+
+
+# ----------------------------
+# Anchor lookup from moved_anchor_points.json
+# ----------------------------
+def _build_pair_anchor_lookup(moved_anchor_json: dict):
+    """
+    Build mapping:
+      frozenset({a,b}) -> record with anchors for a and b in AFTER coords
+    Each record:
+      {
+        "a": labelA, "b": labelB,
+        "a_after": (Na,2), "b_after": (Nb,2),
+        "a_before": ..., "b_before": ...
+      }
     """
     out = {}
-    for p in constraints_json.get("close_pairs", []):
-        a = p.get("label1")
-        b = p.get("label2")
-        if a is None or b is None:
+    for rec in (moved_anchor_json.get("pairs") or []):
+        l1 = rec.get("label1")
+        l2 = rec.get("label2")
+        if not l1 or not l2:
             continue
-        key = tuple(sorted([a, b]))
-        out[key] = p
+
+        a1b = _ensure_float_pts(rec.get("anchors_label1_before_xy", []))
+        a2b = _ensure_float_pts(rec.get("anchors_label2_before_xy", []))
+        a1a = _ensure_float_pts(rec.get("anchors_label1_after_xy", []))
+        a2a = _ensure_float_pts(rec.get("anchors_label2_after_xy", []))
+
+        out[frozenset([l1, l2])] = {
+            "a": l1, "b": l2,
+            "a_before": a1b, "b_before": a2b,
+            "a_after": a1a, "b_after": a2a,
+        }
     return out
 
 
-def _get_paired_anchors_for_edge(pair_rec: Dict[str, Any], parent: str, child: str) -> Tuple[np.ndarray, np.ndarray]:
+def _get_pair_anchors(pair_map: dict, u: str, v: str):
     """
-    Returns (parent_pts_xy, child_pts_xy) with guaranteed correspondence ordering.
-    Requires that constraints JSON saved paired_anchors_l1_l2_xy and paired_anchors_l2_l1_xy.
+    Return (u_after, v_after, u_before, v_before) using stored orientation.
     """
-    l1 = pair_rec.get("label1")
-    l2 = pair_rec.get("label2")
+    key = frozenset([u, v])
+    rec = pair_map.get(key, None)
+    if rec is None:
+        return None, None, None, None
 
-    p12 = np.array(pair_rec.get("paired_anchors_l1_l2_xy", []), dtype=np.float64)  # [[[x1,y1],[x2,y2]]]
-    p21 = np.array(pair_rec.get("paired_anchors_l2_l1_xy", []), dtype=np.float64)
+    if rec["a"] == u and rec["b"] == v:
+        return rec["a_after"], rec["b_after"], rec["a_before"], rec["b_before"]
+    if rec["a"] == v and rec["b"] == u:
+        # swapped
+        return rec["b_after"], rec["a_after"], rec["b_before"], rec["a_before"]
 
-    # Choose the correct direction so returned arrays are (parent, child)
-    if parent == l1 and child == l2:
-        pairs = p12
-        # pairs[:,0] are l1 points, pairs[:,1] are l2 points
-        parent_xy = pairs[:, 0, :] if pairs.size else np.zeros((0, 2), dtype=np.float64)
-        child_xy  = pairs[:, 1, :] if pairs.size else np.zeros((0, 2), dtype=np.float64)
-        return parent_xy, child_xy
-
-    if parent == l2 and child == l1:
-        pairs = p21
-        # pairs[:,0] are l2 points, pairs[:,1] are l1 points
-        parent_xy = pairs[:, 0, :] if pairs.size else np.zeros((0, 2), dtype=np.float64)
-        child_xy  = pairs[:, 1, :] if pairs.size else np.zeros((0, 2), dtype=np.float64)
-        return parent_xy, child_xy
-
-    # If something inconsistent, return empty
-    return np.zeros((0, 2), dtype=np.float64), np.zeros((0, 2), dtype=np.float64)
+    return None, None, None, None
 
 
 # ----------------------------
-# Main paste-back
+# Main
 # ----------------------------
 def main():
-    tree = _load_hierarchy_tree(HIER_PATH)
-    root = _find_root_label(tree)
-    edges = _bfs_edges_from_root(tree, root)
+    tree, root_label, _ = _load_hierarchy_tree_dict(HIER_PATH)
 
-    for vx in range(NUM_VIEWS):
-        view = f"view_{vx}"
-        base_path = os.path.join(VIEWS_DIR, f"{view}.png")
-        if not os.path.exists(base_path):
+    for x in range(NUM_VIEWS):
+        view_name = f"view_{x}"
+        img_path = os.path.join(VIEWS_DIR, f"{view_name}.png")
+
+        homo_json = os.path.join(OUT_ROOT, view_name, "homography", "homography_results.json")
+        moved_json = os.path.join(OUT_ROOT, view_name, "moved_anchor", "moved_anchor_points.json")
+
+        if not (os.path.exists(img_path) and os.path.exists(homo_json) and os.path.exists(moved_json)):
             continue
 
-        base = cv2.imread(base_path, cv2.IMREAD_COLOR)
+        base = cv2.imread(img_path, cv2.IMREAD_COLOR)
         if base is None:
             continue
         H_img, W_img = base.shape[:2]
 
-        constraints_path = os.path.join(BPM_DIR, view, "constraints", "close_boundaries_summary.json")
-        if not os.path.exists(constraints_path):
-            continue
-        constraints_json = _read_json(constraints_path)
-        pair_index = _build_pair_index(constraints_json)
+        homo = _read_json(homo_json)
+        moved = _read_json(moved_json)
+        pair_map = _build_pair_anchor_lookup(moved)
 
-        # output dirs
-        out_dir = os.path.join(BPM_DIR, view, "paste_back")
-        edges_dir = os.path.join(out_dir, "edges")
-        os.makedirs(edges_dir, exist_ok=True)
+        homo_labels = (homo.get("labels") or {})
 
-        # Load initial masks: prefer homography warped, else original segmentation
-        masks: Dict[str, np.ndarray] = {}
-        hom_dir = os.path.join(BPM_DIR, view, "homography")
-        seg_dir = os.path.join(SEG_DIR, view)
+        # Determine root: prefer hierarchy root if present; otherwise pick any label in moved pairs
+        root = root_label
+        if root is None or root not in tree:
+            # fallback: try to find a root-like node in the view
+            # (first label appearing in moved pairs)
+            mpairs = moved.get("pairs") or []
+            root = mpairs[0].get("label1") if mpairs else None
 
-        # candidate labels from constraints json (safer than listing folders)
-        labels = set()
-        for p in constraints_json.get("close_pairs", []):
-            if "label1" in p: labels.add(p["label1"])
-            if "label2" in p: labels.add(p["label2"])
-        labels.add(root)
-
-        for lbl in sorted(labels):
-            warped_path = os.path.join(hom_dir, f"{lbl}_mask_warped.png")
-            if os.path.exists(warped_path):
-                m = _imread_gray(warped_path)
-            else:
-                m = _imread_gray(os.path.join(seg_dir, f"{lbl}_mask.png"))
-            if m is None:
-                continue
-            masks[lbl] = _ensure_mask_shape(m, H_img, W_img)
-
-        if root not in masks:
-            # can't do anything meaningful
+        if root is None:
             continue
 
-        # Track moved masks separately (so child-of-child uses already-moved parent)
-        moved_masks: Dict[str, np.ndarray] = dict(masks)
+        order_nodes, order_edges = _bfs_order(tree, root) if (tree and root in tree) else ([root], [])
 
-        results = {
-            "view": view,
-            "root": root,
-            "edges_processed": [],
-        }
+        # Build warped mask paths for labels
+        def _warped_mask_path(label: str):
+            ent = homo_labels.get(label, None)
+            if ent is None:
+                return None
+            outp = ent.get("outputs", {}) or {}
+            rel = outp.get("mask_warped", None)
+            if not rel:
+                return None
+            return os.path.join(ROOT, rel)
 
-        # Process BFS edges: parent fixed, child moved
-        for parent, child in edges:
-            if parent not in moved_masks or child not in moved_masks:
+        # Load warped masks for all labels we might touch
+        labels_involved = set()
+        labels_involved.add(root)
+        for u, v in order_edges:
+            labels_involved.add(u)
+            labels_involved.add(v)
+        # also include any labels in moved pairs that touch root (so you at least get “root-related”)
+        for rec in moved.get("pairs") or []:
+            if rec.get("label1") == root or rec.get("label2") == root:
+                labels_involved.add(rec.get("label1"))
+                labels_involved.add(rec.get("label2"))
+
+        warped_masks = {}
+        for lbl in labels_involved:
+            p = _warped_mask_path(lbl)
+            if p and os.path.exists(p):
+                m = cv2.imread(p, cv2.IMREAD_GRAYSCALE)
+                if m is not None:
+                    if m.shape[:2] != (H_img, W_img):
+                        m = cv2.resize(m, (W_img, H_img), interpolation=cv2.INTER_NEAREST)
+                    warped_masks[lbl] = (m > 0).astype(np.uint8) * 255
+
+        # Output dirs (CLEAN)
+        out_dir = os.path.join(OUT_ROOT, view_name, "paste_back")
+        _clean_dir(out_dir)
+        out_masks = os.path.join(out_dir, "masks")
+        out_edges = os.path.join(out_dir, "edges")
+        os.makedirs(out_masks, exist_ok=True)
+        os.makedirs(out_edges, exist_ok=True)
+
+        # Current translations (accumulated) for each label
+        t = {lbl: np.array([0.0, 0.0], dtype=np.float32) for lbl in labels_involved}
+        t[root] = np.array([0.0, 0.0], dtype=np.float32)
+
+        edge_reports = []
+
+        # If we have a hierarchy, do all root-child relations along BFS.
+        # If hierarchy missing, we still do all pairs involving root (one hop) as requested earlier.
+        edges_to_process = []
+        if order_edges:
+            edges_to_process = order_edges
+        else:
+            # fallback: root-one-hop from moved pairs
+            for rec in moved.get("pairs") or []:
+                a = rec.get("label1")
+                b = rec.get("label2")
+                if a == root and b:
+                    edges_to_process.append((root, b))
+                elif b == root and a:
+                    edges_to_process.append((root, a))
+
+        # Process edges in BFS order: parent already fixed, child moves
+        for parent, child in edges_to_process:
+            if parent not in labels_involved or child not in labels_involved:
                 continue
 
-            key = tuple(sorted([parent, child]))
-            if key not in pair_index:
-                # no constraint record between these two => skip for now
+            p_after, c_after, p_before, c_before = _get_pair_anchors(pair_map, parent, child)
+            if p_after is None or c_after is None:
+                # no constraints anchors for this edge in this view
                 continue
 
-            pair_rec = pair_index[key]
-            parent_pts, child_pts = _get_paired_anchors_for_edge(pair_rec, parent, child)
+            # anchors BEFORE translation application (current state = after homography + current t)
+            p_curr = p_after + t[parent][None, :]
+            c_curr = c_after + t[child][None, :]
 
-            if parent_pts.shape[0] == 0 or child_pts.shape[0] == 0:
-                continue
+            # compute child delta to align to parent
+            delta, dbg = _robust_translation(p_curr, c_curr)
 
-            # Compute translation (child -> parent) from paired anchors
-            # dx,dy = mean(parent - child)
-            delta = parent_pts - child_pts
-            dx = float(np.mean(delta[:, 0]))
-            dy = float(np.mean(delta[:, 1]))
+            # stats before applying delta
+            stats_before = _nn_stats(c_curr, p_curr)
 
-            child_before = moved_masks[child].copy()
-            parent_mask  = moved_masks[parent]  # unchanged
+            # update child translation
+            t[child] = t[child] + delta
 
-            child_after = _translate_mask(child_before, dx, dy)
-            moved_masks[child] = child_after
+            # anchors AFTER translation
+            c_new = c_after + t[child][None, :]
+            p_new = p_after + t[parent][None, :]
 
-            # -------- visuals: correspondence BEFORE / AFTER (using given pairs) --------
-            edge_out = os.path.join(edges_dir, f"{parent}__{child}")
-            os.makedirs(edge_out, exist_ok=True)
+            stats_after = _nn_stats(c_new, p_new)
 
-            # BEFORE: show boundaries + anchors + correspondence lines
-            vis_before = base.copy()
-            vis_before = _overlay_boundary(vis_before, _mask_boundary(parent_mask), COL_PARENT, thick=BOUND_THICK)
-            vis_before = _overlay_boundary(vis_before, _mask_boundary(child_before),  COL_CHILD,  thick=BOUND_THICK)
-            _draw_points(vis_before, parent_pts, COL_PARENT, r=ANCHOR_RADIUS)
-            _draw_points(vis_before, child_pts,  COL_CHILD,  r=ANCHOR_RADIUS)
-            _draw_pairs(vis_before, parent_pts, child_pts, COL_LINE, thickness=LINE_THICK)
-            cv2.imwrite(os.path.join(edge_out, "correspondence_before.png"), vis_before)
+            # write per-edge visualization (side-by-side BEFORE | AFTER)
+            visL = base.copy()
+            visR = base.copy()
 
-            # AFTER: child anchors translated
-            child_pts_after = _translate_points_xy(child_pts, dx, dy)
-            vis_after = base.copy()
-            vis_after = _overlay_boundary(vis_after, _mask_boundary(parent_mask), COL_PARENT, thick=BOUND_THICK)
-            vis_after = _overlay_boundary(vis_after, _mask_boundary(child_after),  COL_CHILD,  thick=BOUND_THICK)
-            _draw_points(vis_after, parent_pts, COL_PARENT, r=ANCHOR_RADIUS)
-            _draw_points(vis_after, child_pts_after, COL_CHILD, r=ANCHOR_RADIUS)
-            _draw_pairs(vis_after, parent_pts, child_pts_after, COL_LINE, thickness=LINE_THICK)
-            cv2.imwrite(os.path.join(edge_out, "correspondence_after.png"), vis_after)
+            m_parent = warped_masks.get(parent, None)
+            m_child  = warped_masks.get(child, None)
 
-            # Optional: filled overlays before/after (more legible)
-            filled_before = base.copy()
-            filled_before = _overlay_mask_fill(filled_before, parent_mask, COL_PARENT, alpha=ALPHA)
-            filled_before = _overlay_mask_fill(filled_before, child_before, COL_CHILD, alpha=ALPHA)
-            cv2.imwrite(os.path.join(edge_out, "masks_filled_before.png"), filled_before)
+            # BEFORE: child not yet updated for this edge? For clarity, show current before applying delta:
+            # Use c_curr and a translated child mask with t[child]-delta
+            t_child_before = t[child] - delta
+            m_child_before = _warp_translate_mask(m_child, float(t_child_before[0]), float(t_child_before[1]), W_img, H_img) if m_child is not None else None
+            m_parent_vis   = _warp_translate_mask(m_parent, float(t[parent][0]), float(t[parent][1]), W_img, H_img) if m_parent is not None else None
 
-            filled_after = base.copy()
-            filled_after = _overlay_mask_fill(filled_after, parent_mask, COL_PARENT, alpha=ALPHA)
-            filled_after = _overlay_mask_fill(filled_after, child_after, COL_CHILD, alpha=ALPHA)
-            cv2.imwrite(os.path.join(edge_out, "masks_filled_after.png"), filled_after)
+            visL = _overlay_mask_on_image(visL, m_parent_vis, C_MASK_PARENT, alpha=ALPHA_FILL, contour_thick=CONTOUR_THICK)
+            visL = _overlay_mask_on_image(visL, m_child_before, C_MASK_CHILD,  alpha=ALPHA_FILL, contour_thick=CONTOUR_THICK)
 
-            # Save child before/after masks
-            cv2.imwrite(os.path.join(edge_out, f"{child}_mask_before.png"), child_before)
-            cv2.imwrite(os.path.join(edge_out, f"{child}_mask_after.png"), child_after)
+            lines_before = _nn_pairs(c_curr, p_curr)
+            _draw_lines(visL, lines_before, C_LINE, thick=LINE_THICK)
+            _draw_points(visL, p_curr, C_PARENT_ANCH, r=R_ANCHOR)
+            _draw_points(visL, c_curr, C_CHILD_ANCH,  r=R_ANCHOR)
 
-            # Errors (mean paired distance)
-            err_before = _mean_pair_dist(parent_pts, child_pts)
-            err_after  = _mean_pair_dist(parent_pts, child_pts_after)
+            # AFTER: child updated
+            m_child_after = _warp_translate_mask(m_child, float(t[child][0]), float(t[child][1]), W_img, H_img) if m_child is not None else None
 
-            results["edges_processed"].append({
+            visR = _overlay_mask_on_image(visR, m_parent_vis, C_MASK_PARENT, alpha=ALPHA_FILL, contour_thick=CONTOUR_THICK)
+            visR = _overlay_mask_on_image(visR, m_child_after, C_MASK_CHILD,  alpha=ALPHA_FILL, contour_thick=CONTOUR_THICK)
+
+            lines_after = _nn_pairs(c_new, p_new)
+            _draw_lines(visR, lines_after, C_LINE, thick=LINE_THICK)
+            _draw_points(visR, p_new, C_PARENT_ANCH, r=R_ANCHOR)
+            _draw_points(visR, c_new, C_CHILD_ANCH,  r=R_ANCHOR)
+
+            side = np.concatenate([visL, visR], axis=1)
+            cv2.putText(side, f"BEFORE  {parent}->{child}", (10, 25), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2, cv2.LINE_AA)
+            cv2.putText(side, f"AFTER   {parent}->{child}", (W_img + 10, 25), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2, cv2.LINE_AA)
+
+            # write stats
+            if stats_before["mean"] is not None and stats_after["mean"] is not None:
+                txt = f"NN mean px: {stats_before['mean']:.2f} -> {stats_after['mean']:.2f}"
+                cv2.putText(side, txt, (10, H_img - 12), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 0), 3, cv2.LINE_AA)
+                cv2.putText(side, txt, (10, H_img - 12), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2, cv2.LINE_AA)
+
+            out_edge = os.path.join(out_edges, f"{parent}__{child}.png")
+            cv2.imwrite(out_edge, side)
+
+            edge_reports.append({
                 "parent": parent,
                 "child": child,
-                "translation_dx_dy": [dx, dy],
-                "num_pairs_used": int(parent_pts.shape[0]),
-                "mean_pair_dist_before": err_before,
-                "mean_pair_dist_after": err_after,
-                "outputs": {
-                    "correspondence_before": os.path.join("edges", f"{parent}__{child}", "correspondence_before.png"),
-                    "correspondence_after":  os.path.join("edges", f"{parent}__{child}", "correspondence_after.png"),
-                    "masks_filled_before":   os.path.join("edges", f"{parent}__{child}", "masks_filled_before.png"),
-                    "masks_filled_after":    os.path.join("edges", f"{parent}__{child}", "masks_filled_after.png"),
-                },
+                "delta_child_xy": [float(delta[0]), float(delta[1])],
+                "child_translation_xy": [float(t[child][0]), float(t[child][1])],
+                "nn_dist_before": stats_before,
+                "nn_dist_after": stats_after,
+                "pair_vis": os.path.relpath(out_edge, out_dir),
+                "dbg": dbg,
             })
 
-        # Final overlay of all moved masks
-        all_overlay = base.copy()
-        for lbl, m in moved_masks.items():
-            # deterministic pseudo-color by hash
-            h = (abs(hash(lbl)) % 180)
-            hsv = np.uint8([[[h, 220, 255]]])
-            bgr = cv2.cvtColor(hsv, cv2.COLOR_HSV2BGR)[0, 0]
-            col = (int(bgr[0]), int(bgr[1]), int(bgr[2]))
-            all_overlay = _overlay_mask_fill(all_overlay, m, col, alpha=0.25)
-        cv2.imwrite(os.path.join(out_dir, "all_masks_after_overlay.png"), all_overlay)
+        # Apply final translations to all involved warped masks and save
+        translated_masks = {}
+        for lbl, m in warped_masks.items():
+            moved_m = _warp_translate_mask(m, float(t[lbl][0]), float(t[lbl][1]), W_img, H_img)
+            translated_masks[lbl] = moved_m
+            cv2.imwrite(os.path.join(out_masks, f"{lbl}_mask_translated.png"), moved_m)
 
-        # Save json
-        results["outputs"] = {
-            "all_masks_after_overlay": "all_masks_after_overlay.png",
+        # Overlays
+        before_overlay = base.copy()
+        after_overlay  = base.copy()
+
+        # show root-related labels first (consistent)
+        for lbl in sorted(labels_involved):
+            m0 = warped_masks.get(lbl, None)
+            m1 = translated_masks.get(lbl, None)
+            if m0 is not None:
+                before_overlay = _overlay_mask_on_image(before_overlay, m0, (0, 255, 0), alpha=0.12, contour_thick=1)
+            if m1 is not None:
+                after_overlay = _overlay_mask_on_image(after_overlay, m1, (0, 255, 0), alpha=0.12, contour_thick=1)
+
+        cv2.imwrite(os.path.join(out_dir, "before_overlay.png"), before_overlay)
+        cv2.imwrite(os.path.join(out_dir, "after_overlay.png"), after_overlay)
+
+        # Save results JSON
+        results = {
+            "view": view_name,
+            "root_label": root,
+            "hierarchy_used": bool(tree and root in tree),
+            "labels_involved": sorted([l for l in labels_involved if l]),
+            "translations_xy": {lbl: [float(t[lbl][0]), float(t[lbl][1])] for lbl in labels_involved if lbl},
+            "edges_processed": edge_reports,
+            "inputs": {
+                "hierarchy_tree": os.path.relpath(HIER_PATH, ROOT) if os.path.exists(HIER_PATH) else None,
+                "homography_results": os.path.relpath(homo_json, ROOT),
+                "moved_anchor_points": os.path.relpath(moved_json, ROOT),
+            },
+            "outputs": {
+                "before_overlay": "before_overlay.png",
+                "after_overlay": "after_overlay.png",
+                "masks_dir": "masks/",
+                "edges_dir": "edges/",
+            },
         }
         with open(os.path.join(out_dir, "paste_back_results.json"), "w") as f:
             json.dump(results, f, indent=2)
