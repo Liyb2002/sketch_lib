@@ -1,42 +1,7 @@
 {
   "view": "view_4",
   "root": "wheel_0",
-  "edges_processed": [
-    {
-      "parent": "wheel_0",
-      "child": "fender_0",
-      "translation_dx_dy": [
-        -1.5,
-        4.5
-      ],
-      "num_pairs_used": 2,
-      "mean_pair_dist_before": 4.8302124068042085,
-      "mean_pair_dist_after": 3.5355339059327378,
-      "outputs": {
-        "correspondence_before": "edges/wheel_0__fender_0/correspondence_before.png",
-        "correspondence_after": "edges/wheel_0__fender_0/correspondence_after.png",
-        "masks_filled_before": "edges/wheel_0__fender_0/masks_filled_before.png",
-        "masks_filled_after": "edges/wheel_0__fender_0/masks_filled_after.png"
-      }
-    },
-    {
-      "parent": "storage_0",
-      "child": "seat_0",
-      "translation_dx_dy": [
-        0.3,
-        2.2
-      ],
-      "num_pairs_used": 10,
-      "mean_pair_dist_before": 2.3043291423591947,
-      "mean_pair_dist_after": 1.8985826974556796,
-      "outputs": {
-        "correspondence_before": "edges/storage_0__seat_0/correspondence_before.png",
-        "correspondence_after": "edges/storage_0__seat_0/correspondence_after.png",
-        "masks_filled_before": "edges/storage_0__seat_0/masks_filled_before.png",
-        "masks_filled_after": "edges/storage_0__seat_0/masks_filled_after.png"
-      }
-    }
-  ],
+  "edges_processed": [],
   "outputs": {
     "all_masks_after_overlay": "all_masks_after_overlay.png"
   }

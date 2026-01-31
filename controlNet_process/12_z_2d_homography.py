@@ -6,8 +6,9 @@
 # Pipeline:
 # 1. Compute homographies from 2D bounding box correspondences (homography/homography.py)
 # 2. Compute boundary constraints + anchor points (homography/constraints.py)
-# 3. Read hierarchy tree (homography/paste_back.py)
-# 4. (next) Paste-back / combine translated masks (homography/combine.py)
+# 3. Move anchor points with per-label homographies (homography/move_anchor_points.py)
+# 4. Read hierarchy tree (homography/paste_back.py)
+# 5. (next) Paste-back / combine translated masks (homography/combine.py)
 
 import os
 import sys
@@ -17,7 +18,8 @@ sys.path.insert(0, ROOT)
 
 from homography import homography
 from homography import constraints
-from homography import paste_back  # <-- NEW
+from homography import move_anchor_points  # <-- NEW
+from homography import paste_back
 
 
 def main():
@@ -32,7 +34,12 @@ def main():
     constraints.main()
 
     print("\n" + "=" * 80)
-    print("STEP 3: Reading hierarchy tree (root anchored, children movable)")
+    print("STEP 3: Moving anchor points with per-label homographies")
+    print("=" * 80)
+    move_anchor_points.main()
+
+    print("\n" + "=" * 80)
+    print("STEP 4: Reading hierarchy tree (root anchored, children movable)")
     print("=" * 80)
     paste_back.main()
 

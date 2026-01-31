@@ -1,0 +1,200 @@
+{
+  "view": "view_0",
+  "image": "sketch/views/view_0.png",
+  "constraints_summary": "sketch/back_project_masks/view_0/constraints/close_boundaries_summary.json",
+  "homography_results": "sketch/back_project_masks/view_0/homography/homography_results.json",
+  "pairs": [
+    {
+      "label1": "fender_0",
+      "label2": "handlebar_0",
+      "anchors_label1_before_xy": [
+        [
+          199.0,
+          108.0
+        ]
+      ],
+      "anchors_label2_before_xy": [
+        [
+          203.0,
+          102.0
+        ]
+      ],
+      "anchors_label1_after_xy": [
+        [
+          196.4683837890625,
+          134.0382843017578
+        ]
+      ],
+      "anchors_label2_after_xy": [
+        [
+          201.46243286132812,
+          122.44557189941406
+        ]
+      ],
+      "pair_vis": "pairs/fender_0__handlebar_0.png"
+    },
+    {
+      "label1": "fender_0",
+      "label2": "headlight_0",
+      "anchors_label1_before_xy": [
+        [
+          178.0,
+          129.0
+        ],
+        [
+          191.0,
+          116.0
+        ],
+        [
+          156.0,
+          123.0
+        ],
+        [
+          200.0,
+          108.0
+        ],
+        [
+          166.0,
+          127.0
+        ]
+      ],
+      "anchors_label2_before_xy": [
+        [
+          169.0,
+          118.0
+        ],
+        [
+          185.0,
+          115.0
+        ],
+        [
+          160.0,
+          113.0
+        ],
+        [
+          191.0,
+          107.0
+        ]
+      ],
+      "anchors_label1_after_xy": [
+        [
+          175.83924865722656,
+          154.37184143066406
+        ],
+        [
+          188.62664794921875,
+          141.7676544189453
+        ],
+        [
+          154.12933349609375,
+          148.46376037597656
+        ],
+        [
+          197.45179748535156,
+          134.04144287109375
+        ],
+        [
+          163.9932403564453,
+          152.38780212402344
+        ]
+      ],
+      "anchors_label2_after_xy": [
+        [
+          167.377197265625,
+          138.7967071533203
+        ],
+        [
+          183.31129455566406,
+          135.8113555908203
+        ],
+        [
+          158.40872192382812,
+          133.81700134277344
+        ],
+        [
+          189.26292419433594,
+          127.85894775390625
+        ]
+      ],
+      "pair_vis": "pairs/fender_0__headlight_0.png"
+    },
+    {
+      "label1": "fender_0",
+      "label2": "wheel_0",
+      "anchors_label1_before_xy": [
+        [
+          194.0,
+          243.0
+        ]
+      ],
+      "anchors_label2_before_xy": [
+        [
+          184.0,
+          238.99998474121094
+        ],
+        [
+          185.0,
+          248.99998474121094
+        ]
+      ],
+      "anchors_label1_after_xy": [
+        [
+          192.06838989257812,
+          267.4968566894531
+        ]
+      ],
+      "anchors_label2_after_xy": [
+        [
+          184.1991424560547,
+          263.7759094238281
+        ],
+        [
+          184.4713897705078,
+          269.8434753417969
+        ]
+      ],
+      "pair_vis": "pairs/fender_0__wheel_0.png"
+    },
+    {
+      "label1": "handlebar_0",
+      "label2": "headlight_0",
+      "anchors_label1_before_xy": [
+        [
+          201.0,
+          102.0
+        ]
+      ],
+      "anchors_label2_before_xy": [
+        [
+          192.0,
+          105.0
+        ],
+        [
+          190.0,
+          95.0
+        ]
+      ],
+      "anchors_label1_after_xy": [
+        [
+          199.47296142578125,
+          122.44805145263672
+        ]
+      ],
+      "anchors_label2_after_xy": [
+        [
+          190.25192260742188,
+          125.87310791015625
+        ],
+        [
+          188.23849487304688,
+          115.95353698730469
+        ]
+      ],
+      "pair_vis": "pairs/handlebar_0__headlight_0.png"
+    }
+  ],
+  "outputs": {
+    "pairs_dir": "pairs/",
+    "moved_anchor_all": "moved_anchor_all.png"
+  }
+}

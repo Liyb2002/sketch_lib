@@ -1,59 +1,7 @@
 {
   "view": "view_5",
   "root": "wheel_0",
-  "edges_processed": [
-    {
-      "parent": "wheel_0",
-      "child": "fender_0",
-      "translation_dx_dy": [
-        2.125,
-        3.875
-      ],
-      "num_pairs_used": 8,
-      "mean_pair_dist_before": 5.423261387765915,
-      "mean_pair_dist_after": 3.5439523290490307,
-      "outputs": {
-        "correspondence_before": "edges/wheel_0__fender_0/correspondence_before.png",
-        "correspondence_after": "edges/wheel_0__fender_0/correspondence_after.png",
-        "masks_filled_before": "edges/wheel_0__fender_0/masks_filled_before.png",
-        "masks_filled_after": "edges/wheel_0__fender_0/masks_filled_after.png"
-      }
-    },
-    {
-      "parent": "fender_0",
-      "child": "headlight_0",
-      "translation_dx_dy": [
-        -0.4,
-        3.6
-      ],
-      "num_pairs_used": 5,
-      "mean_pair_dist_before": 5.361358027187734,
-      "mean_pair_dist_after": 4.472511242206723,
-      "outputs": {
-        "correspondence_before": "edges/fender_0__headlight_0/correspondence_before.png",
-        "correspondence_after": "edges/fender_0__headlight_0/correspondence_after.png",
-        "masks_filled_before": "edges/fender_0__headlight_0/masks_filled_before.png",
-        "masks_filled_after": "edges/fender_0__headlight_0/masks_filled_after.png"
-      }
-    },
-    {
-      "parent": "storage_0",
-      "child": "seat_0",
-      "translation_dx_dy": [
-        0.5555555555555556,
-        3.6666666666666665
-      ],
-      "num_pairs_used": 9,
-      "mean_pair_dist_before": 3.7978155430554383,
-      "mean_pair_dist_after": 1.7774524016065625,
-      "outputs": {
-        "correspondence_before": "edges/storage_0__seat_0/correspondence_before.png",
-        "correspondence_after": "edges/storage_0__seat_0/correspondence_after.png",
-        "masks_filled_before": "edges/storage_0__seat_0/masks_filled_before.png",
-        "masks_filled_after": "edges/storage_0__seat_0/masks_filled_after.png"
-      }
-    }
-  ],
+  "edges_processed": [],
   "outputs": {
     "all_masks_after_overlay": "all_masks_after_overlay.png"
   }
