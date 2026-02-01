@@ -125,12 +125,12 @@
       "homography_status": "ok",
       "valid_pairs": 8,
       "original_centroid": [
-        236.36610169491524,
-        94.70847457627119
+        170.0130165961601,
+        98.74194598112594
       ],
       "warped_centroid": [
-        234.36610169491524,
-        114.70847457627119
+        167.3068716661437,
+        119.11515531848133
       ],
       "outputs": {
         "mask_warped": "sketch/back_project_masks/view_0/homography/handlebar_0_mask_warped.png",
@@ -162,12 +162,12 @@
       "homography_status": "ok",
       "valid_pairs": 8,
       "original_centroid": [
-        174.1436343852013,
-        103.73558215451578
+        180.31944444444446,
+        111.29166666666667
       ],
       "warped_centroid": [
-        172.1436343852013,
-        124.73558215451578
+        178.31944444444446,
+        132.29166666666666
       ],
       "outputs": {
         "mask_warped": "sketch/back_project_masks/view_0/homography/headlight_0_mask_warped.png",

@@ -13,60 +13,61 @@
     "wheel_1"
   ],
   "translations_xy": {
-    "headlight_0": [
-      0.172943115234375,
-      12.413429260253906
+    "handlebar_0": [
+      -2.060638427734375,
+      17.06951904296875
+    ],
+    "storage_0": [
+      -1.198577880859375,
+      4.1638946533203125
     ],
     "fender_0": [
-      -4.845481872558594,
-      3.8597488403320312
+      -1.198577880859375,
+      4.1638946533203125
     ],
     "wheel_0": [
       0.0,
       0.0
     ],
-    "storage_0": [
+    "wheel_1": [
       0.0,
       0.0
+    ],
+    "headlight_0": [
+      0.28363800048828125,
+      13.696147918701172
     ],
     "unknown_0": [
       0.0,
       0.0
     ],
-    "handlebar_0": [
-      -6.6995697021484375,
-      18.915748596191406
-    ],
-    "wheel_1": [
-      0.0,
-      0.0
-    ],
     "seat_0": [
-      -0.925384521484375,
-      16.10235595703125
+      -4.125968933105469,
+      20.126739501953125
     ]
   },
   "edges_processed": [
     {
       "parent": "wheel_0",
       "child": "fender_0",
+      "status": "paired_anchor_fit",
       "delta_child_xy": [
-        -4.845481872558594,
-        3.8597488403320312
+        -1.198577880859375,
+        4.1638946533203125
       ],
       "child_translation_xy": [
-        -4.845481872558594,
-        3.8597488403320312
+        -1.198577880859375,
+        4.1638946533203125
       ],
       "nn_dist_before": {
-        "mean": 11.946690559387207,
-        "median": 10.365828514099121,
-        "count": 8
+        "mean": 8.913168907165527,
+        "median": 6.735734462738037,
+        "count": 7
       },
       "nn_dist_after": {
-        "mean": 9.108285903930664,
-        "median": 9.782413482666016,
-        "count": 8
+        "mean": 6.749080181121826,
+        "median": 7.151116847991943,
+        "count": 7
       },
       "pair_vis": "edges/wheel_0__fender_0.png",
       "dbg": {
@@ -74,50 +75,79 @@
       }
     },
     {
-      "parent": "fender_0",
-      "child": "handlebar_0",
-      "delta_child_xy": [
-        -6.6995697021484375,
-        18.915748596191406
-      ],
+      "parent": "wheel_0",
+      "child": "wheel_1",
+      "status": "no_pair_anchors_propagate_parent",
       "child_translation_xy": [
-        -6.6995697021484375,
-        18.915748596191406
+        0.0,
+        0.0
+      ],
+      "delta_child_xy": [
+        0.0,
+        0.0
       ],
       "nn_dist_before": {
-        "mean": 20.0671329498291,
-        "median": 20.0671329498291,
-        "count": 1
+        "mean": null,
+        "median": null,
+        "count": 0
       },
       "nn_dist_after": {
-        "mean": 0.0,
-        "median": 0.0,
-        "count": 1
+        "mean": null,
+        "median": null,
+        "count": 0
+      },
+      "pair_vis": null,
+      "dbg": {
+        "used": 0
+      }
+    },
+    {
+      "parent": "fender_0",
+      "child": "handlebar_0",
+      "status": "paired_anchor_fit",
+      "delta_child_xy": [
+        -2.060638427734375,
+        17.06951904296875
+      ],
+      "child_translation_xy": [
+        -2.060638427734375,
+        17.06951904296875
+      ],
+      "nn_dist_before": {
+        "mean": 17.869365692138672,
+        "median": 17.869365692138672,
+        "count": 2
+      },
+      "nn_dist_after": {
+        "mean": 1.259999394416809,
+        "median": 1.259999394416809,
+        "count": 2
       },
       "pair_vis": "edges/fender_0__handlebar_0.png",
       "dbg": {
-        "used": 2
+        "used": 4
       }
     },
     {
       "parent": "fender_0",
       "child": "headlight_0",
+      "status": "paired_anchor_fit",
       "delta_child_xy": [
-        0.172943115234375,
-        12.413429260253906
+        0.28363800048828125,
+        13.696147918701172
       ],
       "child_translation_xy": [
-        0.172943115234375,
-        12.413429260253906
+        0.28363800048828125,
+        13.696147918701172
       ],
       "nn_dist_before": {
-        "mean": 15.288985252380371,
-        "median": 12.414633750915527,
+        "mean": 15.345393180847168,
+        "median": 15.779029846191406,
         "count": 3
       },
       "nn_dist_after": {
-        "mean": 3.8192198276519775,
-        "median": 0.1492837369441986,
+        "mean": 4.740621566772461,
+        "median": 4.161088466644287,
         "count": 3
       },
       "pair_vis": "edges/fender_0__headlight_0.png",
@@ -126,29 +156,84 @@
       }
     },
     {
-      "parent": "storage_0",
-      "child": "seat_0",
-      "delta_child_xy": [
-        -0.925384521484375,
-        16.10235595703125
-      ],
+      "parent": "fender_0",
+      "child": "storage_0",
+      "status": "no_pair_anchors_propagate_parent",
       "child_translation_xy": [
-        -0.925384521484375,
-        16.10235595703125
+        -1.198577880859375,
+        4.1638946533203125
+      ],
+      "delta_child_xy": [
+        0.0,
+        0.0
       ],
       "nn_dist_before": {
-        "mean": 17.29173469543457,
-        "median": 16.741209030151367,
-        "count": 10
+        "mean": null,
+        "median": null,
+        "count": 0
       },
       "nn_dist_after": {
-        "mean": 4.190987586975098,
-        "median": 2.80704927444458,
-        "count": 10
+        "mean": null,
+        "median": null,
+        "count": 0
+      },
+      "pair_vis": null,
+      "dbg": {
+        "used": 0
+      }
+    },
+    {
+      "parent": "wheel_1",
+      "child": "unknown_0",
+      "status": "no_pair_anchors_propagate_parent",
+      "child_translation_xy": [
+        0.0,
+        0.0
+      ],
+      "delta_child_xy": [
+        0.0,
+        0.0
+      ],
+      "nn_dist_before": {
+        "mean": null,
+        "median": null,
+        "count": 0
+      },
+      "nn_dist_after": {
+        "mean": null,
+        "median": null,
+        "count": 0
+      },
+      "pair_vis": null,
+      "dbg": {
+        "used": 0
+      }
+    },
+    {
+      "parent": "storage_0",
+      "child": "seat_0",
+      "status": "paired_anchor_fit",
+      "delta_child_xy": [
+        -4.125968933105469,
+        20.126739501953125
+      ],
+      "child_translation_xy": [
+        -4.125968933105469,
+        20.126739501953125
+      ],
+      "nn_dist_before": {
+        "mean": 21.587650299072266,
+        "median": 21.293392181396484,
+        "count": 8
+      },
+      "nn_dist_after": {
+        "mean": 5.192112445831299,
+        "median": 4.823960304260254,
+        "count": 8
       },
       "pair_vis": "edges/storage_0__seat_0.png",
       "dbg": {
-        "used": 20
+        "used": 18
       }
     }
   ],

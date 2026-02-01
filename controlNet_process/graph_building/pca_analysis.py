@@ -12,6 +12,107 @@ from graph_building.object_space import world_to_object
 # Helpers
 # ----------------------------
 
+
+def _robust_outlier_mask_local(pts_local: np.ndarray, max_frac: float = 0.02) -> np.ndarray:
+    """
+    Return boolean mask of inliers (True = keep), removing up to max_frac points
+    with largest robust distance from the median in LOCAL coordinates.
+
+    Deterministic, and guaranteed to remove <= max_frac of points.
+    """
+    n = int(pts_local.shape[0])
+    if n == 0:
+        return np.zeros((0,), dtype=bool)
+
+    # robust center/scale per axis
+    med = np.median(pts_local, axis=0)
+    mad = np.median(np.abs(pts_local - med), axis=0)
+
+    # Avoid divide-by-zero: if axis has no spread, keep it from dominating
+    mad = np.maximum(mad, 1e-12)
+
+    z = (pts_local - med) / mad
+    # robust distance (L2 in robust-z space)
+    dist = np.sqrt((z * z).sum(axis=1))
+
+    k_remove = int(np.floor(max_frac * n))
+    if k_remove <= 0:
+        return np.ones((n,), dtype=bool)
+
+    # remove the k largest distances
+    idx = np.argsort(dist)  # ascending
+    keep = np.ones((n,), dtype=bool)
+    keep[idx[-k_remove:]] = False
+    return keep
+
+
+def _compute_aabb_in_object_space_trimmed(points_world: np.ndarray,
+                                         origin: np.ndarray,
+                                         axes: np.ndarray,
+                                         max_outlier_frac: float = 0.02):
+    """
+    Compute baseline AABB-in-frame OBB, then try dropping up to max_outlier_frac outliers
+    (in that frame) and recompute. Return (obb_full, obb_trimmed_or_None, frac_removed).
+    """
+    if points_world.shape[0] == 0:
+        return None, None, 0.0
+
+    pts_local = world_to_object(points_world, origin, axes)
+
+    keep = _robust_outlier_mask_local(pts_local, max_frac=max_outlier_frac)
+    frac_removed = float(1.0 - (keep.mean() if keep.size else 1.0))
+
+    obb_full = compute_aabb_in_object_space(points_world, origin, axes)
+    obb_trim = None
+
+    if keep.sum() >= 4 and keep.sum() < points_world.shape[0]:
+        obb_trim = compute_aabb_in_object_space(points_world[keep], origin, axes)
+
+    return obb_full, obb_trim, frac_removed
+
+
+def _maybe_use_trimmed_bbox(obb_full: dict,
+                            obb_trim: dict,
+                            frac_removed: float,
+                            improve_thresh: float = 0.10):
+    """
+    Decide whether to replace obb_full by obb_trim based on:
+      - obb_trim exists
+      - frac_removed <= 2% (already enforced by how we build it)
+      - volume shrinks by > improve_thresh
+    Returns (chosen_obb, debug_dict)
+    """
+    dbg = {
+        "used_trimmed": False,
+        "frac_removed": float(frac_removed),
+        "full_volume": None,
+        "trim_volume": None,
+        "trim_improvement_frac": None,
+    }
+    if obb_full is None:
+        return None, dbg
+
+    full_ext = np.asarray(obb_full["extents"], dtype=np.float64)
+    full_vol = _obb_half_extents_volume(full_ext)
+    dbg["full_volume"] = float(full_vol)
+
+    if obb_trim is None:
+        return obb_full, dbg
+
+    trim_ext = np.asarray(obb_trim["extents"], dtype=np.float64)
+    trim_vol = _obb_half_extents_volume(trim_ext)
+    dbg["trim_volume"] = float(trim_vol)
+
+    if np.isfinite(full_vol) and full_vol > 0:
+        imp = (full_vol - trim_vol) / full_vol
+        dbg["trim_improvement_frac"] = float(imp)
+        if imp > improve_thresh:
+            dbg["used_trimmed"] = True
+            return obb_trim, dbg
+
+    return obb_full, dbg
+
+
 def _ensure_right_handed(R: np.ndarray) -> np.ndarray:
     # R columns are axes. Ensure det(R) = +1
     if np.linalg.det(R) < 0:
@@ -245,15 +346,53 @@ def run(label_assign_dir: str, object_space: dict):
             continue
 
         # (A) baseline: object-space AABB lifted back as an OBB with global object axes (UNCHANGED)
-        obb_base = compute_aabb_in_object_space(label_pts, origin, axes)
-        if obb_base is None:
+        obb_base_full, obb_base_trim, frac_removed_base = _compute_aabb_in_object_space_trimmed(
+            label_pts, origin, axes, max_outlier_frac=0.02
+        )
+        if obb_base_full is None:
             continue
+
+        obb_base, dbg_base_trim = _maybe_use_trimmed_bbox(
+            obb_base_full, obb_base_trim, frac_removed_base, improve_thresh=0.10
+        )
 
         base_ext = np.asarray(obb_base["extents"], dtype=np.float64)
         base_vol = _obb_half_extents_volume(base_ext)
 
         # (B) candidate: constrained tight OBB (2 axes rotate in a plane, 1 axis fixed to object space)
         obb_tight = _compute_tight_obb_constrained(label_pts, axes, n_steps=n_steps)
+        
+
+        dbg_tight_trim = None
+        obb_tight_chosen = obb_tight
+
+        if obb_tight is not None:
+            # Use the tight axes as the frame; origin can be anything (extents translation-invariant),
+            # but for consistency use the same origin used by compute_aabb_in_object_space.
+            # Here: pick centroid for stability.
+            origin_t = np.asarray(label_pts, dtype=np.float64).mean(axis=0)
+            axes_t = np.asarray(obb_tight["axes"], dtype=np.float64)
+
+            obb_t_full, obb_t_trim, frac_removed_t = _compute_aabb_in_object_space_trimmed(
+                label_pts, origin_t, axes_t, max_outlier_frac=0.02
+            )
+            # Important: obb_t_full here should match the extents you'd get in that same frame;
+            # but we still want to keep the original tight center/axes schema.
+            # So we swap only if trimmed improves volume >10%.
+            obb_t_candidate, dbg_tight_trim = _maybe_use_trimmed_bbox(
+                obb_t_full, obb_t_trim, frac_removed_t, improve_thresh=0.10
+            )
+
+            if dbg_tight_trim["used_trimmed"]:
+                # Keep axes = tight axes, but use trimmed center/extents from recompute in that frame.
+                obb_tight_chosen = {
+                    "center": obb_t_candidate["center"],
+                    "axes": obb_t_candidate["axes"],
+                    "extents": obb_t_candidate["extents"],
+                    "_debug_constrained": obb_tight.get("_debug_constrained", None),
+                }
+
+
 
         chosen = "object_aabb"
         chosen_obb = {
@@ -275,7 +414,7 @@ def run(label_assign_dir: str, object_space: dict):
         }
 
         if obb_tight is not None:
-            tight_ext = np.asarray(obb_tight["extents"], dtype=np.float64)
+            tight_ext = np.asarray(obb_tight_chosen["extents"], dtype=np.float64)
             tight_vol = _obb_half_extents_volume(tight_ext)
 
             debug["tight_volume"] = float(tight_vol)
@@ -289,9 +428,9 @@ def run(label_assign_dir: str, object_space: dict):
                 if improvement > improve_thresh:
                     chosen = "tight_obb_constrained"
                     chosen_obb = {
-                        "center": obb_tight["center"],
-                        "axes": obb_tight["axes"],
-                        "extents": obb_tight["extents"],
+                        "center": obb_tight_chosen["center"],
+                        "axes": obb_tight_chosen["axes"],
+                        "extents": obb_tight_chosen["extents"],
                     }
                     debug["method_chosen"] = chosen
 

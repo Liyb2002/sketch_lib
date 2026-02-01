@@ -13,27 +13,19 @@
     "wheel_1"
   ],
   "translations_xy": {
-    "headlight_0": [
-      -3.9210052490234375,
-      7.958709716796875
-    ],
-    "fender_0": [
-      2.463165283203125,
-      2.8824310302734375
-    ],
-    "wheel_0": [
-      0.0,
-      0.0
+    "handlebar_0": [
+      2.1858749389648438,
+      4.6811065673828125
     ],
     "storage_0": [
-      0.0,
-      0.0
+      2.1858749389648438,
+      4.6811065673828125
     ],
-    "unknown_0": [
-      0.0,
-      0.0
+    "fender_0": [
+      2.1858749389648438,
+      4.6811065673828125
     ],
-    "handlebar_0": [
+    "wheel_0": [
       0.0,
       0.0
     ],
@@ -41,31 +33,40 @@
       0.0,
       0.0
     ],
+    "headlight_0": [
+      -2.66802978515625,
+      11.628524780273438
+    ],
+    "unknown_0": [
+      0.0,
+      0.0
+    ],
     "seat_0": [
-      2.2333221435546875,
-      17.691925048828125
+      1.1736297607421875,
+      21.771133422851562
     ]
   },
   "edges_processed": [
     {
       "parent": "wheel_0",
       "child": "fender_0",
+      "status": "paired_anchor_fit",
       "delta_child_xy": [
-        2.463165283203125,
-        2.8824310302734375
+        2.1858749389648438,
+        4.6811065673828125
       ],
       "child_translation_xy": [
-        2.463165283203125,
-        2.8824310302734375
+        2.1858749389648438,
+        4.6811065673828125
       ],
       "nn_dist_before": {
-        "mean": 10.883074760437012,
-        "median": 7.3637919425964355,
+        "mean": 9.152863502502441,
+        "median": 6.745053291320801,
         "count": 9
       },
       "nn_dist_after": {
-        "mean": 8.555761337280273,
-        "median": 4.588113307952881,
+        "mean": 7.4063873291015625,
+        "median": 5.33624792098999,
         "count": 9
       },
       "pair_vis": "edges/wheel_0__fender_0.png",
@@ -74,55 +75,165 @@
       }
     },
     {
-      "parent": "fender_0",
-      "child": "headlight_0",
-      "delta_child_xy": [
-        -3.9210052490234375,
-        7.958709716796875
-      ],
+      "parent": "wheel_0",
+      "child": "wheel_1",
+      "status": "no_pair_anchors_propagate_parent",
       "child_translation_xy": [
-        -3.9210052490234375,
-        7.958709716796875
+        0.0,
+        0.0
+      ],
+      "delta_child_xy": [
+        0.0,
+        0.0
       ],
       "nn_dist_before": {
-        "mean": 12.153931617736816,
-        "median": 12.267657279968262,
-        "count": 4
+        "mean": null,
+        "median": null,
+        "count": 0
       },
       "nn_dist_after": {
-        "mean": 5.052117347717285,
-        "median": 5.518561840057373,
-        "count": 4
+        "mean": null,
+        "median": null,
+        "count": 0
+      },
+      "pair_vis": null,
+      "dbg": {
+        "used": 0
+      }
+    },
+    {
+      "parent": "fender_0",
+      "child": "handlebar_0",
+      "status": "no_pair_anchors_propagate_parent",
+      "child_translation_xy": [
+        2.1858749389648438,
+        4.6811065673828125
+      ],
+      "delta_child_xy": [
+        0.0,
+        0.0
+      ],
+      "nn_dist_before": {
+        "mean": null,
+        "median": null,
+        "count": 0
+      },
+      "nn_dist_after": {
+        "mean": null,
+        "median": null,
+        "count": 0
+      },
+      "pair_vis": null,
+      "dbg": {
+        "used": 0
+      }
+    },
+    {
+      "parent": "fender_0",
+      "child": "headlight_0",
+      "status": "paired_anchor_fit",
+      "delta_child_xy": [
+        -2.66802978515625,
+        11.628524780273438
+      ],
+      "child_translation_xy": [
+        -2.66802978515625,
+        11.628524780273438
+      ],
+      "nn_dist_before": {
+        "mean": 13.57776165008545,
+        "median": 11.68802261352539,
+        "count": 3
+      },
+      "nn_dist_after": {
+        "mean": 3.365422248840332,
+        "median": 1.7495099306106567,
+        "count": 3
       },
       "pair_vis": "edges/fender_0__headlight_0.png",
       "dbg": {
-        "used": 9
+        "used": 8
+      }
+    },
+    {
+      "parent": "fender_0",
+      "child": "storage_0",
+      "status": "no_pair_anchors_propagate_parent",
+      "child_translation_xy": [
+        2.1858749389648438,
+        4.6811065673828125
+      ],
+      "delta_child_xy": [
+        0.0,
+        0.0
+      ],
+      "nn_dist_before": {
+        "mean": null,
+        "median": null,
+        "count": 0
+      },
+      "nn_dist_after": {
+        "mean": null,
+        "median": null,
+        "count": 0
+      },
+      "pair_vis": null,
+      "dbg": {
+        "used": 0
+      }
+    },
+    {
+      "parent": "wheel_1",
+      "child": "unknown_0",
+      "status": "no_pair_anchors_propagate_parent",
+      "child_translation_xy": [
+        0.0,
+        0.0
+      ],
+      "delta_child_xy": [
+        0.0,
+        0.0
+      ],
+      "nn_dist_before": {
+        "mean": null,
+        "median": null,
+        "count": 0
+      },
+      "nn_dist_after": {
+        "mean": null,
+        "median": null,
+        "count": 0
+      },
+      "pair_vis": null,
+      "dbg": {
+        "used": 0
       }
     },
     {
       "parent": "storage_0",
       "child": "seat_0",
+      "status": "paired_anchor_fit",
       "delta_child_xy": [
-        2.2333221435546875,
-        17.691925048828125
+        1.1736297607421875,
+        21.771133422851562
       ],
       "child_translation_xy": [
-        2.2333221435546875,
-        17.691925048828125
+        1.1736297607421875,
+        21.771133422851562
       ],
       "nn_dist_before": {
-        "mean": 18.528684616088867,
-        "median": 18.151607513427734,
+        "mean": 23.397891998291016,
+        "median": 22.939167022705078,
         "count": 10
       },
       "nn_dist_after": {
-        "mean": 3.9719150066375732,
-        "median": 3.3603405952453613,
+        "mean": 5.574624061584473,
+        "median": 6.05706262588501,
         "count": 10
       },
       "pair_vis": "edges/storage_0__seat_0.png",
       "dbg": {
-        "used": 19
+        "used": 18
       }
     }
   ],

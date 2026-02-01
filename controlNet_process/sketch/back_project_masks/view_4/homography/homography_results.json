@@ -29,12 +29,12 @@
       "homography_status": "ok",
       "valid_pairs": 8,
       "original_centroid": [
-        244.48104465037912,
-        200.14574557708508
+        243.23456790123456,
+        203.10390946502056
       ],
       "warped_centroid": [
-        245.1677096370463,
-        207.40801001251563
+        243.7969465648855,
+        209.5679389312977
       ],
       "outputs": {
         "mask_warped": "sketch/back_project_masks/view_4/homography/wheel_0_mask_warped.png",
@@ -140,12 +140,12 @@
       "homography_status": "ok",
       "valid_pairs": 8,
       "original_centroid": [
-        263.8322147651007,
-        164.35570469798657
+        222.97575,
+        141.1155
       ],
       "warped_centroid": [
-        266.9645390070922,
-        181.80851063829786
+        226.66964170223775,
+        159.2857327641961
       ],
       "outputs": {
         "mask_warped": "sketch/back_project_masks/view_4/homography/fender_0_mask_warped.png",
@@ -177,12 +177,12 @@
       "homography_status": "ok",
       "valid_pairs": 8,
       "original_centroid": [
-        216.67241379310346,
-        68.62241379310345
+        216.79527559055117,
+        68.49081364829397
       ],
       "warped_centroid": [
-        220.20786026200872,
-        84.98078602620087
+        220.32535460992906,
+        84.85283687943263
       ],
       "outputs": {
         "mask_warped": "sketch/back_project_masks/view_4/homography/handlebar_0_mask_warped.png",
@@ -225,12 +225,12 @@
       "homography_status": "ok",
       "valid_pairs": 6,
       "original_centroid": [
-        116.97766295707473,
-        191.66089030206678
+        115.64045943541211,
+        191.99797783709457
       ],
       "warped_centroid": [
-        121.68900401069519,
-        207.49273061497325
+        120.3274057687399,
+        207.86216285203778
       ],
       "outputs": {
         "mask_warped": "sketch/back_project_masks/view_4/homography/storage_0_mask_warped.png",

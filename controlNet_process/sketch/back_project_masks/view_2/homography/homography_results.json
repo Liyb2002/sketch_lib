@@ -66,12 +66,12 @@
       "homography_status": "ok",
       "valid_pairs": 8,
       "original_centroid": [
-        238.03809523809525,
-        239.3455782312925
+        238.23822290310227,
+        250.35005744925317
       ],
       "warped_centroid": [
-        238.45260185558692,
-        250.61355385235981
+        238.4359261331841,
+        257.92445439283716
       ],
       "outputs": {
         "mask_warped": "sketch/back_project_masks/view_2/homography/wheel_1_mask_warped.png",
@@ -225,12 +225,12 @@
       "homography_status": "ok",
       "valid_pairs": 6,
       "original_centroid": [
-        215.34022887323943,
-        184.24031690140845
+        217.2458638191286,
+        188.54887614527718
       ],
       "warped_centroid": [
-        211.58427751047648,
-        199.5053546484557
+        213.45604740327641,
+        203.7019867549669
       ],
       "outputs": {
         "mask_warped": "sketch/back_project_masks/view_2/homography/storage_0_mask_warped.png",

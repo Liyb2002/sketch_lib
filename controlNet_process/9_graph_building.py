@@ -24,7 +24,7 @@ IDS_PATH = os.path.join(SAVE_DIR, "assigned_label_ids.npy")
 OBJSPACE_JSON = os.path.join(SAVE_DIR, "object_space.json")
 AEP_DIR = os.path.join(ROOT, "sketch", "AEP")
 
-VIS_VERIFY = False
+VIS_VERIFY = True
 
 ATTACH_THRESH = 0.01
 

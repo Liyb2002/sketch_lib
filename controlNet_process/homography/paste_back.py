@@ -6,10 +6,14 @@
 #
 # Core idea (tree / root anchored):
 #   - Root label is fixed (translation = [0,0]).
-#   - For each parent->child edge in hierarchy_tree.json:
-#       compute a TRANSLATION for the child (in image pixels) so that
-#       child's moved anchors (after homography) align to parent's moved anchors,
-#       with parent already in its final translated position.
+#   - For each parent->child edge in hierarchy_tree.json (FULL TREE):
+#       * If anchor constraints exist in moved_anchor_points.json for (parent, child):
+#           compute a TRANSLATION for the child (in image pixels) so that
+#           child's moved anchors align to parent's moved anchors,
+#           with parent already in its final translated position.
+#       * If NO anchor constraints exist for (parent, child):
+#           still propagate hierarchy by setting child's translation = parent's translation.
+#           (So the entire hierarchy receives a well-defined translation and moves together.)
 #   - Apply translations to warped masks (output of homography/homography.py).
 #
 # Inputs:
@@ -22,8 +26,8 @@
 #   sketch/back_project_masks/view_{x}/paste_back/
 #     - before_overlay.png
 #     - after_overlay.png
-#     - masks/{label}_mask_translated.png
-#     - edges/{parent}__{child}.png                (side-by-side BEFORE|AFTER anchor fit)
+#     - masks/{label}_mask.png
+#     - edges/{parent}__{child}.png                (side-by-side BEFORE|AFTER anchor fit; only when anchors exist)
 #     - paste_back_results.json
 
 import os
@@ -46,7 +50,7 @@ CONTOUR_THICK = 2
 
 C_MASK_PARENT = (255, 0, 0)   # blue
 C_MASK_CHILD  = (0, 0, 255)   # red
-C_PARENT_ANCH = (255, 0, 0) # cyan
+C_PARENT_ANCH = (255, 0, 0)   # cyan-ish (BGR)
 C_CHILD_ANCH  = (255, 0, 255) # magenta
 C_LINE        = (0, 255, 255) # yellow
 
@@ -202,7 +206,7 @@ def _warp_translate_mask(mask_u8: np.ndarray, dx: float, dy: float, out_w: int, 
 # ----------------------------
 def _load_hierarchy_tree_dict(path: str):
     """
-    Expects the 'new format' you showed:
+    Expects:
     {
       "wheel_0": {"parent": null, "children": [...]},
       ...
@@ -231,7 +235,7 @@ def _load_hierarchy_tree_dict(path: str):
 
 
 def _bfs_order(tree: dict, root: str):
-    """Return BFS parent->children order list of nodes and edges."""
+    """Return BFS order list of nodes and edges (parent->child)."""
     if root is None or root not in tree:
         return [root] if root else [], []
 
@@ -308,7 +312,7 @@ def _get_pair_anchors(pair_map: dict, u: str, v: str):
 # Main
 # ----------------------------
 def main():
-    tree, root_label, _ = _load_hierarchy_tree_dict(HIER_PATH)
+    tree, tree_root_label, _ = _load_hierarchy_tree_dict(HIER_PATH)
 
     for x in range(NUM_VIEWS):
         view_name = f"view_{x}"
@@ -331,18 +335,32 @@ def main():
 
         homo_labels = (homo.get("labels") or {})
 
-        # Determine root: prefer hierarchy root if present; otherwise pick any label in moved pairs
-        root = root_label
-        if root is None or root not in tree:
-            # fallback: try to find a root-like node in the view
-            # (first label appearing in moved pairs)
+        # Always use hierarchy root if hierarchy exists; otherwise fallback to first moved pair label.
+        root = tree_root_label if (tree and tree_root_label in tree) else None
+        if root is None:
             mpairs = moved.get("pairs") or []
             root = mpairs[0].get("label1") if mpairs else None
-
         if root is None:
             continue
 
-        order_nodes, order_edges = _bfs_order(tree, root) if (tree and root in tree) else ([root], [])
+        # FULL hierarchy traversal (if hierarchy exists); otherwise no edges.
+        hierarchy_used = bool(tree and root in tree)
+        order_nodes, order_edges = _bfs_order(tree, root) if hierarchy_used else ([root], [])
+
+        # FULL labels_involved = entire tree (when available) so every node gets a translation.
+        labels_involved = set()
+        if hierarchy_used:
+            labels_involved.update(tree.keys())
+        else:
+            labels_involved.add(root)
+            # if no hierarchy, still include labels appearing in moved pairs so we can write outputs
+            for rec in moved.get("pairs") or []:
+                a = rec.get("label1")
+                b = rec.get("label2")
+                if a:
+                    labels_involved.add(a)
+                if b:
+                    labels_involved.add(b)
 
         # Build warped mask paths for labels
         def _warped_mask_path(label: str):
@@ -355,20 +373,9 @@ def main():
                 return None
             return os.path.join(ROOT, rel)
 
-        # Load warped masks for all labels we might touch
-        labels_involved = set()
-        labels_involved.add(root)
-        for u, v in order_edges:
-            labels_involved.add(u)
-            labels_involved.add(v)
-        # also include any labels in moved pairs that touch root (so you at least get “root-related”)
-        for rec in moved.get("pairs") or []:
-            if rec.get("label1") == root or rec.get("label2") == root:
-                labels_involved.add(rec.get("label1"))
-                labels_involved.add(rec.get("label2"))
-
+        # Load warped masks for all labels we might touch (only those present in homography outputs)
         warped_masks = {}
-        for lbl in labels_involved:
+        for lbl in sorted(labels_involved):
             p = _warped_mask_path(lbl)
             if p and os.path.exists(p):
                 m = cv2.imread(p, cv2.IMREAD_GRAYSCALE)
@@ -391,29 +398,27 @@ def main():
 
         edge_reports = []
 
-        # If we have a hierarchy, do all root-child relations along BFS.
-        # If hierarchy missing, we still do all pairs involving root (one hop) as requested earlier.
-        edges_to_process = []
-        if order_edges:
-            edges_to_process = order_edges
-        else:
-            # fallback: root-one-hop from moved pairs
-            for rec in moved.get("pairs") or []:
-                a = rec.get("label1")
-                b = rec.get("label2")
-                if a == root and b:
-                    edges_to_process.append((root, b))
-                elif b == root and a:
-                    edges_to_process.append((root, a))
-
         # Process edges in BFS order: parent already fixed, child moves
-        for parent, child in edges_to_process:
+        for parent, child in order_edges:
             if parent not in labels_involved or child not in labels_involved:
                 continue
 
+            # Default: if no anchors exist, propagate hierarchy by inheriting parent's translation.
+            # (This ensures the FULL tree is assigned translations and moves consistently.)
             p_after, c_after, p_before, c_before = _get_pair_anchors(pair_map, parent, child)
             if p_after is None or c_after is None:
-                # no constraints anchors for this edge in this view
+                t[child] = t[parent].copy()
+                edge_reports.append({
+                    "parent": parent,
+                    "child": child,
+                    "status": "no_pair_anchors_propagate_parent",
+                    "child_translation_xy": [float(t[child][0]), float(t[child][1])],
+                    "delta_child_xy": [0.0, 0.0],
+                    "nn_dist_before": {"mean": None, "median": None, "count": 0},
+                    "nn_dist_after": {"mean": None, "median": None, "count": 0},
+                    "pair_vis": None,
+                    "dbg": {"used": 0},
+                })
                 continue
 
             # anchors BEFORE translation application (current state = after homography + current t)
@@ -442,11 +447,14 @@ def main():
             m_parent = warped_masks.get(parent, None)
             m_child  = warped_masks.get(child, None)
 
-            # BEFORE: child not yet updated for this edge? For clarity, show current before applying delta:
-            # Use c_curr and a translated child mask with t[child]-delta
+            # BEFORE: show current before applying delta:
             t_child_before = t[child] - delta
-            m_child_before = _warp_translate_mask(m_child, float(t_child_before[0]), float(t_child_before[1]), W_img, H_img) if m_child is not None else None
-            m_parent_vis   = _warp_translate_mask(m_parent, float(t[parent][0]), float(t[parent][1]), W_img, H_img) if m_parent is not None else None
+            m_child_before = _warp_translate_mask(
+                m_child, float(t_child_before[0]), float(t_child_before[1]), W_img, H_img
+            ) if m_child is not None else None
+            m_parent_vis = _warp_translate_mask(
+                m_parent, float(t[parent][0]), float(t[parent][1]), W_img, H_img
+            ) if m_parent is not None else None
 
             visL = _overlay_mask_on_image(visL, m_parent_vis, C_MASK_PARENT, alpha=ALPHA_FILL, contour_thick=CONTOUR_THICK)
             visL = _overlay_mask_on_image(visL, m_child_before, C_MASK_CHILD,  alpha=ALPHA_FILL, contour_thick=CONTOUR_THICK)
@@ -457,7 +465,9 @@ def main():
             _draw_points(visL, c_curr, C_CHILD_ANCH,  r=R_ANCHOR)
 
             # AFTER: child updated
-            m_child_after = _warp_translate_mask(m_child, float(t[child][0]), float(t[child][1]), W_img, H_img) if m_child is not None else None
+            m_child_after = _warp_translate_mask(
+                m_child, float(t[child][0]), float(t[child][1]), W_img, H_img
+            ) if m_child is not None else None
 
             visR = _overlay_mask_on_image(visR, m_parent_vis, C_MASK_PARENT, alpha=ALPHA_FILL, contour_thick=CONTOUR_THICK)
             visR = _overlay_mask_on_image(visR, m_child_after, C_MASK_CHILD,  alpha=ALPHA_FILL, contour_thick=CONTOUR_THICK)
@@ -471,7 +481,6 @@ def main():
             cv2.putText(side, f"BEFORE  {parent}->{child}", (10, 25), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2, cv2.LINE_AA)
             cv2.putText(side, f"AFTER   {parent}->{child}", (W_img + 10, 25), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2, cv2.LINE_AA)
 
-            # write stats
             if stats_before["mean"] is not None and stats_after["mean"] is not None:
                 txt = f"NN mean px: {stats_before['mean']:.2f} -> {stats_after['mean']:.2f}"
                 cv2.putText(side, txt, (10, H_img - 12), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 0), 3, cv2.LINE_AA)
@@ -483,6 +492,7 @@ def main():
             edge_reports.append({
                 "parent": parent,
                 "child": child,
+                "status": "paired_anchor_fit",
                 "delta_child_xy": [float(delta[0]), float(delta[1])],
                 "child_translation_xy": [float(t[child][0]), float(t[child][1])],
                 "nn_dist_before": stats_before,
@@ -491,18 +501,17 @@ def main():
                 "dbg": dbg,
             })
 
-        # Apply final translations to all involved warped masks and save
+        # Apply final translations to all loaded warped masks and save
         translated_masks = {}
         for lbl, m in warped_masks.items():
             moved_m = _warp_translate_mask(m, float(t[lbl][0]), float(t[lbl][1]), W_img, H_img)
             translated_masks[lbl] = moved_m
-            cv2.imwrite(os.path.join(out_masks, f"{lbl}_mask_translated.png"), moved_m)
+            cv2.imwrite(os.path.join(out_masks, f"{lbl}_mask.png"), moved_m)
 
         # Overlays
         before_overlay = base.copy()
         after_overlay  = base.copy()
 
-        # show root-related labels first (consistent)
         for lbl in sorted(labels_involved):
             m0 = warped_masks.get(lbl, None)
             m1 = translated_masks.get(lbl, None)
@@ -518,7 +527,7 @@ def main():
         results = {
             "view": view_name,
             "root_label": root,
-            "hierarchy_used": bool(tree and root in tree),
+            "hierarchy_used": hierarchy_used,
             "labels_involved": sorted([l for l in labels_involved if l]),
             "translations_xy": {lbl: [float(t[lbl][0]), float(t[lbl][1])] for lbl in labels_involved if lbl},
             "edges_processed": edge_reports,
